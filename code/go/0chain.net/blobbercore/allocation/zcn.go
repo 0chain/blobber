@@ -66,7 +66,7 @@ func SyncAllocation(allocationId string) (*Allocation, error) {
 
 	err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		var e error
-		if e := Repo.Save(ctx, alloc); e != nil {
+		if e := Repo.Create(ctx, alloc); e != nil {
 			return e
 		}
 		tx := datastore.GetStore().GetTransaction(ctx)

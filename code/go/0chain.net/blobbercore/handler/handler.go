@@ -21,13 +21,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"net/http"
 	"os"
 	"runtime/pprof"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 
 	"github.com/go-openapi/runtime/middleware"
 
@@ -179,10 +180,10 @@ func setupHandlers(r *mux.Router) {
 		Methods(http.MethodPost, http.MethodDelete, http.MethodOptions)
 
 	r.HandleFunc("/v1/connection/commit/{allocation}",
-		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnection(CommitHandler))))
+		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnectionForWM(CommitHandler))))
 
 	r.HandleFunc("/v1/connection/rollback/{allocation}",
-		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnection(RollbackHandler))))
+		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnectionForWM(RollbackHandler))))
 
 	//object info related apis
 	r.HandleFunc("/allocation",

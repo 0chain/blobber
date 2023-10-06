@@ -460,6 +460,7 @@ func TestDownloadFile(t *testing.T) {
 				datastore.MocketTheStore(t, mocketLogging)
 				setupInMock(t, test.parameters)
 				setupOutMock(t, test.parameters)
+				allocation.Repo.DeleteAllocation(mockAllocationId)
 
 				ctx := setupCtx(test.parameters)
 				ctx = context.WithValue(ctx, constants.ContextKeyAllocationID, mockAllocationId)

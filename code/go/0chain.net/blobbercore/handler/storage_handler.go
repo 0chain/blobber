@@ -9,8 +9,6 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-
 	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
@@ -49,8 +47,6 @@ func (fsh *StorageHandler) verifyAllocation(ctx context.Context, allocationID, a
 		return nil, common.NewErrorf("verify_allocation",
 			"verifying allocation transaction error: %v", err)
 	}
-
-	logging.Logger.Info("verifyAllocation", zap.Any("alloc", alloc), zap.Any("now", common.Now()))
 
 	if alloc.Expiration < common.Now() {
 		return nil, common.NewError("verify_allocation",

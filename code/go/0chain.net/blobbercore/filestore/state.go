@@ -90,7 +90,6 @@ func (fs *FileStore) initMap() error {
 		}).Error
 
 		wg.Wait()
-		db.Commit()
 		return err
 	})
 	return err

@@ -233,6 +233,7 @@ func Test_GetAllocation(t *testing.T) {
 			func(t *testing.T) {
 				var mock = datastore.MockTheStore(t)
 				test.mockSetup(mock)
+				allocation.Repo.DeleteAllocation(alloc.ID)
 				if test.expectCommit {
 					mock.ExpectCommit()
 				}

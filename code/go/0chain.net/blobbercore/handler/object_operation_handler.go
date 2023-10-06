@@ -25,7 +25,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
-	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
 	"go.uber.org/zap"
@@ -504,11 +503,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 
-	// Lock will compete with other CommitWrites and Challenge validation
-	mutex := lock.GetMutex(allocationObj.TableName(), allocationID)
-	mutex.Lock()
-	defer mutex.Unlock()
-
 	elapsedGetLock := time.Since(startTime) - elapsedAllocation
 
 	err = checkPendingMarkers(ctx, allocationObj.ID)
@@ -518,7 +512,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
-
 	if err != nil {
 		// might be good to check if blobber already has stored writemarker
 		return nil, common.NewErrorf("invalid_parameters",
@@ -662,7 +655,22 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	allocationObj.BlobberSizeUsed += connectionObj.Size
 	allocationObj.UsedSize += connectionObj.Size
 
-	if err = allocation.Repo.Save(ctx, allocationObj); err != nil {
+	updateMap := map[string]interface{}{
+		"allocation_root":    allocationRoot,
+		"file_meta_root":     fileMetaRoot,
+		"used_size":          allocationObj.UsedSize,
+		"blobber_size_used":  allocationObj.BlobberSizeUsed,
+		"is_redeem_required": true,
+	}
+	updateOption := func(a *allocation.Allocation) {
+		a.AllocationRoot = allocationRoot
+		a.FileMetaRoot = fileMetaRoot
+		a.IsRedeemRequired = true
+		a.BlobberSizeUsed = allocationObj.BlobberSizeUsed
+		a.UsedSize = allocationObj.UsedSize
+	}
+
+	if err = allocation.Repo.UpdateAllocation(ctx, allocationObj, updateMap, updateOption); err != nil {
 		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
 	}
 
@@ -1251,8 +1259,12 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	clientKey := ctx.Value(constants.ContextKeyClientKey).(string)
 	clientKeyBytes, _ := hex.DecodeString(clientKey)
+	var (
+		allocationObj *allocation.Allocation
+		err           error
+	)
 
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
+	allocationObj, err = fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
 		Logger.Error("Error in verifying allocation", zap.Error(err))
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -1270,10 +1282,6 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	if !ok {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
-	// Lock will compete with other CommitWrites and Challenge validation
-	mutex := lock.GetMutex(allocationObj.TableName(), allocationID)
-	mutex.Lock()
-	defer mutex.Unlock()
 
 	elapsedGetLock := time.Since(startTime) - elapsedAllocation
 
@@ -1387,17 +1395,31 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	alloc.UsedSize -= latestWriteMarkerEntity.WM.Size
 	alloc.AllocationRoot = allocationRoot
 	alloc.FileMetaRoot = fileMetaRoot
+	updateMap := map[string]interface{}{
+		"blobber_size_used": alloc.BlobberSizeUsed,
+		"used_size":         alloc.UsedSize,
+		"allocation_root":   alloc.AllocationRoot,
+		"file_meta_root":    alloc.FileMetaRoot,
+	}
 	sendWM := !alloc.IsRedeemRequired
 	if alloc.IsRedeemRequired {
 		writemarkerEntity.Status = writemarker.Rollbacked
 		alloc.IsRedeemRequired = false
+		updateMap["is_redeem_required"] = alloc.IsRedeemRequired
+	}
+	updateOption := func(a *allocation.Allocation) {
+		a.BlobberSizeUsed = alloc.BlobberSizeUsed
+		a.UsedSize = alloc.UsedSize
+		a.AllocationRoot = alloc.AllocationRoot
+		a.FileMetaRoot = alloc.FileMetaRoot
+		a.IsRedeemRequired = alloc.IsRedeemRequired
 	}
 	err = txn.Create(writemarkerEntity).Error
 	if err != nil {
 		txn.Rollback()
 		return &result, common.NewError("write_marker_error", "Error persisting the write marker "+err.Error())
 	}
-	if err = allocation.Repo.Save(c, alloc); err != nil {
+	if err = allocation.Repo.UpdateAllocation(c, alloc, updateMap, updateOption); err != nil {
 		txn.Rollback()
 		return &result, common.NewError("allocation_write_error", "Error persisting the allocation object "+err.Error())
 	}
