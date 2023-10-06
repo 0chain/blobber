@@ -75,6 +75,7 @@ func init() {
 	config.Configuration.SignatureScheme = "bls0chain"
 	blobConfig.Configuration.BlockLimitDaily = 1562500
 	blobConfig.Configuration.BlockLimitRequest = 500
+	blobConfig.StorageSCConfig.MaxFileSize = 1024 * 1024 * 1024 * 1024 * 5
 	logging.Logger = zap.NewNop()
 	ConfigRateLimits()
 
