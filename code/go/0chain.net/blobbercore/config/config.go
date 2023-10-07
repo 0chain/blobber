@@ -187,6 +187,7 @@ func ValidChain(chain string) error {
 // good to go
 type StorageSCConfiguration struct {
 	ChallengeCompletionTime int64
+	MaxFileSize             int64
 }
 
 var StorageSCConfig StorageSCConfiguration

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"mime/multipart"
 	"net/http"
 
@@ -60,6 +61,11 @@ func (cmd *UpdateFileCommand) IsValidated(ctx context.Context, req *http.Request
 	if err != nil {
 		return common.NewError("invalid_parameters",
 			"Invalid parameters. Error parsing the meta data for upload."+err.Error())
+	}
+
+	if cmd.fileChanger.Size > config.StorageSCConfig.MaxFileSize {
+		return common.NewError("max_file_size",
+			fmt.Sprintf("file size %d should not be greater than %d", cmd.fileChanger.Size, config.StorageSCConfig.MaxFileSize))
 	}
 
 	if cmd.fileChanger.ConnectionID == "" {

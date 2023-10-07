@@ -108,7 +108,7 @@ func setupMockForFileManagerInit(mock sqlmock.Sqlmock) {
 		WillReturnRows(
 			sqlmock.NewRows([]string{"file_size"}).AddRow(6553600),
 		)
-
+	mock.ExpectCommit()
 }
 
 func init() {
