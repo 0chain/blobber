@@ -198,7 +198,7 @@ func updateAllocation(ctx context.Context, a *Allocation, selfBlobberID string) 
 	}
 
 	// remove data
-	if a.Finalized && !a.CleanedUp {
+	if sa.Finalized && !a.CleanedUp {
 		cleanupAllocation(ctx, a)
 	}
 }
