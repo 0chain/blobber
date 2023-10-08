@@ -45,7 +45,6 @@ func Int64Comparator(a, b interface{}) int {
 
 var (
 	toProcessChallenge = make(chan *ChallengeEntity, 100)
-	toCommitChallenge  = make(chan *ChallengeEntity, 100)
 	challengeMap       = treemap.NewWith(Int64Comparator)
 	challengeMapLock   = sync.RWMutex{}
 	roundInfo          = RoundInfo{}
