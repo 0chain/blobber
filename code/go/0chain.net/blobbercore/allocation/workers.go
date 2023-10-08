@@ -187,8 +187,11 @@ func updateAllocation(ctx context.Context, a *Allocation, selfBlobberID string) 
 		}
 	}
 
+	logging.Logger.Info("Jayash Finalize : ", zap.Any("id", sa.ID))
+
 	// send finalize allocation transaction
 	if shouldFinalize(sa) {
+		logging.Logger.Info("Jayash Should Finalize : ", zap.Any("id", sa.ID))
 		sendFinalizeAllocation(a.ID)
 		cleanupAllocation(ctx, a)
 		return
@@ -314,6 +317,7 @@ type finalizeRequest struct {
 }
 
 func sendFinalizeAllocation(allocationID string) {
+	logging.Logger.Info("Jayash sending finalize", zap.Any("id", allocationID))
 	var tx, err = transaction.NewTransactionEntity()
 	if err != nil {
 		logging.Logger.Error("creating new transaction entity", zap.Error(err))
