@@ -78,6 +78,7 @@ func FinalizeAllocationsWorker(ctx context.Context, interval time.Duration) {
 		select {
 		case <-tick:
 			_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+				logging.Logger.Info("finalize expired allocations")
 				finalizeExpiredAllocations(ctx)
 				return nil
 			})
@@ -207,6 +208,7 @@ func finalizeExpiredAllocations(ctx context.Context) {
 	}
 
 	for _, allocID := range allocs {
+		logging.Logger.Info("finalize expired allocation", zap.String("id", allocID))
 		sendFinalizeAllocation(allocID)
 	}
 }
