@@ -168,19 +168,6 @@ func updateAllocation(ctx context.Context, a *Allocation, selfBlobberID string) 
 		return
 	}
 
-	removedBlobber := true
-	for _, d := range sa.BlobberDetails {
-		if d.BlobberID == selfBlobberID {
-			removedBlobber = false
-			break
-		}
-	}
-
-	if removedBlobber {
-		logging.Logger.Info("blobber removed from allocation", zap.String("blobber", selfBlobberID), zap.String("allocation", a.ID))
-		cleanupAllocation(ctx, a)
-	}
-
 	// if new Tx, then we have to update the allocation
 	if sa.Tx != a.Tx || sa.OwnerID != a.OwnerID || sa.Finalized != a.Finalized {
 		if a, err = updateAllocationInDB(ctx, a, sa); err != nil {
@@ -195,6 +182,19 @@ func updateAllocation(ctx context.Context, a *Allocation, selfBlobberID string) 
 		sendFinalizeAllocation(a.ID)
 		cleanupAllocation(ctx, a)
 		return
+	}
+
+	removedBlobber := true
+	for _, d := range sa.BlobberDetails {
+		if d.BlobberID == selfBlobberID {
+			removedBlobber = false
+			break
+		}
+	}
+
+	if removedBlobber {
+		logging.Logger.Info("blobber removed from allocation", zap.String("blobber", selfBlobberID), zap.String("allocation", a.ID))
+		cleanupAllocation(ctx, a)
 	}
 
 	// remove data
