@@ -151,6 +151,8 @@ func findAllocations(ctx context.Context, offset int64) (allocs []*Allocation, c
 
 func shouldFinalize(sa *transaction.StorageAllocation) bool {
 	var now = common.Now()
+	logging.Logger.Info("Jayash Finalize : ", zap.Any("sa", sa), zap.Any("now", now))
+
 	return sa.Expiration < now && !sa.Finalized
 }
 
@@ -186,8 +188,6 @@ func updateAllocation(ctx context.Context, a *Allocation, selfBlobberID string) 
 			return
 		}
 	}
-
-	logging.Logger.Info("Jayash Finalize : ", zap.Any("sa", sa))
 
 	// send finalize allocation transaction
 	if shouldFinalize(sa) {
