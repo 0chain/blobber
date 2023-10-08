@@ -78,7 +78,6 @@ func FinalizeAllocationsWorker(ctx context.Context, interval time.Duration) {
 		select {
 		case <-tick:
 			_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-				logging.Logger.Info("finalize expired allocations")
 				finalizeExpiredAllocations(ctx)
 				return nil
 			})
@@ -151,8 +150,6 @@ func findAllocations(ctx context.Context, offset int64) (allocs []*Allocation, c
 
 func shouldFinalize(sa *transaction.StorageAllocation) bool {
 	var now = common.Now()
-	logging.Logger.Info("Jayash Finalize : ", zap.Any("sa", sa), zap.Any("now", now))
-
 	return sa.Expiration < now && !sa.Finalized
 }
 
@@ -165,22 +162,6 @@ func updateAllocation(ctx context.Context, a *Allocation, selfBlobberID string) 
 	var sa, err = requestAllocation(a.ID)
 	if err != nil {
 		logging.Logger.Error("requesting allocations from SC", zap.Error(err))
-		return
-	}
-
-	// if new Tx, then we have to update the allocation
-	if sa.Tx != a.Tx || sa.OwnerID != a.OwnerID || sa.Finalized != a.Finalized {
-		if a, err = updateAllocationInDB(ctx, a, sa); err != nil {
-			logging.Logger.Error("updating allocation in DB", zap.Error(err))
-			return
-		}
-	}
-
-	// send finalize allocation transaction
-	if shouldFinalize(sa) {
-		logging.Logger.Info("Jayash Should Finalize : ", zap.Any("sa", sa))
-		sendFinalizeAllocation(a.ID)
-		cleanupAllocation(ctx, a)
 		return
 	}
 
@@ -197,8 +178,23 @@ func updateAllocation(ctx context.Context, a *Allocation, selfBlobberID string) 
 		cleanupAllocation(ctx, a)
 	}
 
+	// if new Tx, then we have to update the allocation
+	if sa.Tx != a.Tx || sa.OwnerID != a.OwnerID || sa.Finalized != a.Finalized {
+		if a, err = updateAllocationInDB(ctx, a, sa); err != nil {
+			logging.Logger.Error("updating allocation in DB", zap.Error(err))
+			return
+		}
+	}
+
+	// send finalize allocation transaction
+	if shouldFinalize(sa) {
+		sendFinalizeAllocation(a.ID)
+		cleanupAllocation(ctx, a)
+		return
+	}
+
 	// remove data
-	if sa.Finalized && !a.CleanedUp {
+	if a.Finalized && !a.CleanedUp {
 		cleanupAllocation(ctx, a)
 	}
 }
@@ -211,7 +207,6 @@ func finalizeExpiredAllocations(ctx context.Context) {
 	}
 
 	for _, allocID := range allocs {
-		logging.Logger.Info("finalize expired allocation", zap.String("id", allocID))
 		sendFinalizeAllocation(allocID)
 	}
 }
@@ -317,7 +312,6 @@ type finalizeRequest struct {
 }
 
 func sendFinalizeAllocation(allocationID string) {
-	logging.Logger.Info("Jayash sending finalize", zap.Any("id", allocationID))
 	var tx, err = transaction.NewTransactionEntity()
 	if err != nil {
 		logging.Logger.Error("creating new transaction entity", zap.Error(err))
