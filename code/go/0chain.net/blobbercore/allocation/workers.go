@@ -187,7 +187,7 @@ func updateAllocation(ctx context.Context, a *Allocation, selfBlobberID string) 
 		}
 	}
 
-	logging.Logger.Info("Jayash Finalize : ", zap.Any("id", sa.ID))
+	logging.Logger.Info("Jayash Finalize : ", zap.Any("sa", sa))
 
 	// send finalize allocation transaction
 	if shouldFinalize(sa) {
