@@ -264,7 +264,7 @@ func updateAllocationInDB(ctx context.Context, a *Allocation, sa *transaction.St
 	updateMap["owner_id"] = a.OwnerID
 	updateMap["owner_public_key"] = a.OwnerPublicKey
 	updateMap["expiration_date"] = a.Expiration
-	updateMap["total_size"] = a.TotalSize
+	updateMap["size"] = a.TotalSize
 	updateMap["finalized"] = a.Finalized
 	updateMap["file_options"] = a.FileOptions
 	updateMap["blobber_size"] = a.BlobberSize
