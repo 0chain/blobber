@@ -277,6 +277,10 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("download_file", "invalid client")
 	}
 
+	if ok := CheckBlacklist(clientID); ok {
+		return nil, common.NewError("blacklisted_client", "Client is blacklisted: "+clientID)
+	}
+
 	alloc, err := fsh.verifyAllocation(ctx, allocationID, allocationTx, false)
 	if err != nil {
 		return nil, common.NewErrorf("download_file", "invalid allocation id passed: %v", err)
@@ -425,7 +429,10 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 
 	fileDownloadResponse.Data = chunkData
 	reference.FileBlockDownloaded(ctx, fileref, dr.NumBlocks)
-	addDailyBlocks(clientID, dr.NumBlocks)
+	go func() {
+		addDailyBlocks(clientID, dr.NumBlocks)
+		AddDownloadedData(clientID, dr.NumBlocks)
+	}()
 	return fileDownloadResponse, nil
 }
 
@@ -486,6 +493,14 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	clientKey := ctx.Value(constants.ContextKeyClientKey).(string)
 	clientKeyBytes, _ := hex.DecodeString(clientKey)
 
+	if clientID == "" || clientKey == "" {
+		return nil, common.NewError("invalid_parameters", "Please provide clientID and clientKey")
+	}
+
+	if ok := CheckBlacklist(clientID); ok {
+		return nil, common.NewError("blacklisted_client", "Client is blacklisted: "+clientID)
+	}
+
 	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -523,10 +538,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	elapsedGetConnObj := time.Since(startTime) - elapsedAllocation - elapsedGetLock
-
-	if clientID == "" || clientKey == "" {
-		return nil, common.NewError("invalid_parameters", "Please provide clientID and clientKey")
-	}
 
 	if allocationObj.OwnerID != clientID || encryption.Hash(clientKeyBytes) != clientID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
@@ -703,6 +714,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	db.Delete(connectionObj)
 	go allocation.DeleteConnectionObjEntry(connectionID)
+	go AddWriteMarkerCount(clientID, 1)
 
 	Logger.Info("[commit]"+commitOperation,
 		zap.String("alloc_id", allocationID),
@@ -1173,6 +1185,12 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 	if !ok {
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
+	if clientID == "" {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
+	}
+	if ok := CheckBlacklist(clientID); ok {
+		return nil, common.NewError("blacklisted_client", "Client is blacklisted: "+clientID)
+	}
 	elapsedParseForm := time.Since(startTime)
 	st := time.Now()
 	connectionProcessor := allocation.GetConnectionProcessor(connectionID)
@@ -1212,9 +1230,6 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
-	if clientID == "" {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
-	}
 	elapsedVerifySig := time.Since(st)
 
 	allocationID := allocationObj.ID
@@ -1225,6 +1240,10 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 	}
 	result := allocation.UploadResult{
 		Filename: cmd.GetPath(),
+	}
+	blocks := cmd.GetNumBlocks()
+	if blocks > 0 {
+		go AddUploadedData(clientID, blocks)
 	}
 	Logger.Info("[upload]elapsed",
 		zap.String("alloc_id", allocationID),
