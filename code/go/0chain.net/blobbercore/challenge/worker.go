@@ -2,10 +2,10 @@ package challenge
 
 import (
 	"context"
-	"github.com/0chain/gosdk/zboxcore/sdk"
-	"github.com/0chain/gosdk/zcncore"
 	"sync"
 	"time"
+
+	"github.com/0chain/gosdk/zcncore"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -87,8 +87,7 @@ func getRoundWorker(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			network := zcncore.GetNetwork()
-			currentRound, _ := sdk.GetRoundFromSharders(network.Sharders)
+			currentRound, _ := zcncore.GetRoundFromSharders()
 
 			if roundInfo.LastRoundDiff == 0 {
 				roundInfo.LastRoundDiff = 1000
