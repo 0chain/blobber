@@ -10,7 +10,7 @@ CREATE TABLE public.client_stats(
     total_upload bigint DEFAULT 0 NOT NULL,
     total_download bigint DEFAULT 0 NOT NULL,
     total_write_marker bigint DEFAULT 0 NOT NULL
-)
+);
 
 -- +goose StatementBegin
 
