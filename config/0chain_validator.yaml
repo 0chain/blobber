@@ -3,9 +3,9 @@ version: 1.0
 # delegate wallet (must be set)
 delegate_wallet: '9c693cb14f29917968d6e8c909ebbea3425b4c1bc64b6732cadc2a1869f49be9'
 # maximum allowed number of stake holders
-num_delegates: 50
+num_delegates: 1
 # service charge of related blobber
-service_charge: 0.10
+service_charge: 1 #TODO CHECK IF 0 WORKS WELL
 
 block_worker: https://dev.0chain.net/dns
 
@@ -21,7 +21,7 @@ logging:
   console: true # printing log to console is only supported in development mode
 
 healthcheck:
-  frequency: 60s # send healthcheck to miners every 60 seconds
+  frequency: 50m # send healthcheck to miners every 60 seconds
 
 server_chain:
   id: "0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe"
