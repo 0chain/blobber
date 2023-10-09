@@ -435,11 +435,13 @@ const tpl = `
 
 func StatsHandler(w http.ResponseWriter, r *http.Request) {
 	t := template.Must(template.New("diagnostics").Funcs(funcMap).Parse(tpl))
-	ctx := datastore.GetStore().CreateTransaction(r.Context())
-	ctx = setStatsRequestDataInContext(ctx, r)
-	db := datastore.GetStore().GetTransaction(ctx)
-	defer db.Rollback()
-	bs := LoadBlobberStats(ctx)
+	ctx := setStatsRequestDataInContext(context.TODO(), r)
+	ctx = datastore.GetStore().CreateTransaction(ctx)
+	var bs *BlobberStats
+	_ = datastore.GetStore().WithTransaction(ctx, func(ctx context.Context) error {
+		bs = LoadBlobberStats(ctx)
+		return common.NewError("rollback", "read only")
+	})
 
 	err := t.Execute(w, bs)
 	if err != nil {

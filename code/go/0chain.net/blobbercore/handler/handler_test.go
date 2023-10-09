@@ -75,6 +75,7 @@ func init() {
 	config.Configuration.SignatureScheme = "bls0chain"
 	blobConfig.Configuration.BlockLimitDaily = 1562500
 	blobConfig.Configuration.BlockLimitRequest = 500
+	blobConfig.StorageSCConfig.MaxFileSize = 1024 * 1024 * 1024 * 1024 * 5
 	logging.Logger = zap.NewNop()
 	ConfigRateLimits()
 
@@ -871,7 +872,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			mock := datastore.MockTheStore(t)
 			test.setupDbMock(mock)
-
+			allocation.Repo.DeleteAllocation(alloc.ID)
 			if test.begin != nil {
 				test.begin()
 			}

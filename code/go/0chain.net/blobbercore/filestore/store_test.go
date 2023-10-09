@@ -162,7 +162,7 @@ func setupMockForFileManagerInit(mock sqlmock.Sqlmock, ip initParams) {
 			sqlmock.NewRows([]string{"file_size"}).AddRow(ip.usedSize),
 		)
 
-	mock.ExpectClose()
+	mock.ExpectCommit()
 
 }
 

@@ -21,13 +21,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"net/http"
 	"os"
 	"runtime/pprof"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 
 	"github.com/go-openapi/runtime/middleware"
 
@@ -179,10 +180,10 @@ func setupHandlers(r *mux.Router) {
 		Methods(http.MethodPost, http.MethodDelete, http.MethodOptions)
 
 	r.HandleFunc("/v1/connection/commit/{allocation}",
-		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnection(CommitHandler))))
+		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnectionForWM(CommitHandler))))
 
 	r.HandleFunc("/v1/connection/rollback/{allocation}",
-		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnection(RollbackHandler))))
+		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnectionForWM(RollbackHandler))))
 
 	//object info related apis
 	r.HandleFunc("/allocation",
@@ -228,7 +229,7 @@ func setupHandlers(r *mux.Router) {
 	// r.HandleFunc("/_statsJSON", common.AuthenticateAdmin(common.ToJSONResponse(stats.StatsJSONHandler)))
 	r.HandleFunc("/_statsJSON", RateLimitByCommmitRL(common.ToJSONResponse(stats.StatsJSONHandler)))
 	// r.HandleFunc("/_cleanupdisk", common.AuthenticateAdmin(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))
-	r.HandleFunc("/_cleanupdisk", RateLimitByCommmitRL(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))
+	// r.HandleFunc("/_cleanupdisk", RateLimitByCommmitRL(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))
 	// r.HandleFunc("/getstats", common.AuthenticateAdmin(common.ToJSONResponse(stats.GetStatsHandler)))
 	r.HandleFunc("/getstats", RateLimitByCommmitRL(common.ToJSONResponse(WithReadOnlyConnection(stats.GetStatsHandler))))
 	// r.HandleFunc("/challengetimings", common.AuthenticateAdmin(common.ToJSONResponse(GetChallengeTimings)))
@@ -275,11 +276,12 @@ func setupHandlers(r *mux.Router) {
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {
 	return func(ctx context.Context, r *http.Request) (interface{}, error) {
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
+		tx := GetMetaDataStore().GetTransaction(ctx)
+		defer func() {
+			tx.Rollback()
+		}()
 
 		res, err := handler(ctx, r)
-		defer func() {
-			GetMetaDataStore().GetTransaction(ctx).Rollback()
-		}()
 		return res, err
 	}
 }
@@ -713,12 +715,16 @@ func writeResponse(w http.ResponseWriter, resp []byte) {
 // todo wrap with connection
 func StatsHandler(w http.ResponseWriter, r *http.Request) {
 	isJSON := r.Header.Get("Accept") == "application/json"
-
 	if isJSON {
+		var (
+			blobberStats any
+			err          error
+		)
 		blobberInfo := GetBlobberInfoJson()
-
-		ctx := datastore.GetStore().CreateTransaction(r.Context())
-		blobberStats, err := stats.StatsJSONHandler(ctx, r)
+		err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+			blobberStats, err = stats.StatsJSONHandler(ctx, r)
+			return err
+		})
 
 		if err != nil {
 			Logger.Error("Error getting blobber JSON stats", zap.Error(err))
