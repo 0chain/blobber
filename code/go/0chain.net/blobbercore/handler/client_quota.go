@@ -43,6 +43,9 @@ func GetUploadedData(clientID string) uint64 {
 	mpLock.RLock()
 	defer mpLock.RUnlock()
 	cs := clientMap[clientID]
+	if cs == nil {
+		return 0
+	}
 	return cs.TotalUpload
 }
 
@@ -50,6 +53,10 @@ func AddUploadedData(clientID string, data int64) {
 	mpLock.Lock()
 	defer mpLock.Unlock()
 	cs := clientMap[clientID]
+	if cs == nil {
+		cs = &ClientStats{ClientID: clientID}
+		clientMap[clientID] = cs
+	}
 	cs.TotalUpload += uint64(data)
 }
 
@@ -64,6 +71,10 @@ func AddDownloadedData(clientID string, data int64) {
 	mpLock.Lock()
 	defer mpLock.Unlock()
 	cs := clientMap[clientID]
+	if cs == nil {
+		cs = &ClientStats{ClientID: clientID}
+		clientMap[clientID] = cs
+	}
 	cs.TotalDownload += uint64(data)
 }
 
@@ -71,6 +82,9 @@ func GetWriteMarkerCount(clientID string) uint64 {
 	mpLock.RLock()
 	defer mpLock.RUnlock()
 	cs := clientMap[clientID]
+	if cs == nil {
+		return 0
+	}
 	return cs.TotalWM
 }
 
@@ -78,6 +92,10 @@ func AddWriteMarkerCount(clientID string, count int64) {
 	mpLock.Lock()
 	defer mpLock.Unlock()
 	cs := clientMap[clientID]
+	if cs == nil {
+		cs = &ClientStats{ClientID: clientID}
+		clientMap[clientID] = cs
+	}
 	cs.TotalWM += uint64(count)
 }
 
