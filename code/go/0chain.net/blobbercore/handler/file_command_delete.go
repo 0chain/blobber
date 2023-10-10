@@ -105,3 +105,7 @@ func (cmd *DeleteFileCommand) ProcessThumbnail(allocationObj *allocation.Allocat
 	//DO NOTHING
 	return nil
 }
+
+func (cmd *DeleteFileCommand) GetNumBlocks() int64 {
+	return 0
+}

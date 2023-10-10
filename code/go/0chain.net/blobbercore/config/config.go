@@ -25,6 +25,9 @@ func SetupDefaultConfig() {
 	viper.SetDefault("challenge_response.cleanup_gap", 100000)
 	viper.SetDefault("rate_limiters.block_limit_daily", 1562500)
 	viper.SetDefault("rate_limiters.block_limit_request", 500)
+	viper.SetDefault("rate_limiters.block_limit_monthly", 31250000)
+	viper.SetDefault("rate_limiters.upload_limit_monthly", 31250000)
+	viper.SetDefault("rate_limiters.commit_limit_monthly", 30000)
 
 	viper.SetDefault("healthcheck.frequency", "60s")
 
@@ -93,6 +96,9 @@ type Config struct {
 	TempFilesCleanupNumWorkers    int
 	BlockLimitDaily               int64
 	BlockLimitRequest             int64
+	BlockLimitMonthly             int64
+	UploadLimitMonthly            int64
+	CommitLimitMonthly            int64
 	ChallengeCleanupGap           int64
 
 	HealthCheckWorkerFreq time.Duration

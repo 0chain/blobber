@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"math"
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"go.uber.org/zap"
@@ -253,4 +255,11 @@ func (cmd *UploadFileCommand) UpdateChange(ctx context.Context, connectionObj *a
 	connectionObj.AddChange(cmd.allocationChange, cmd.fileChanger)
 
 	return connectionObj.Save(ctx)
+}
+
+func (cmd *UploadFileCommand) GetNumBlocks() int64 {
+	if cmd.fileChanger.IsFinal {
+		return int64(math.Ceil(float64(cmd.fileChanger.Size*1.0) / float64(cmd.fileChanger.ChunkSize)))
+	}
+	return 0
 }
