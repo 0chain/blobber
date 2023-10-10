@@ -2,6 +2,7 @@ package writemarker
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
@@ -78,6 +79,12 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 		return err
 	}
 
+	if alloc.Finalized {
+		logging.Logger.Info("Allocation is finalized. Skipping redeeming the write marker.", zap.Any("allocation", allocationID), zap.Any("wm", wm.WM.AllocationID))
+		shouldRollback = true
+		return nil
+	}
+
 	if alloc.AllocationRoot != wm.WM.AllocationRoot {
 		logging.Logger.Info("Stale write marker. Allocation root mismatch",
 			zap.Any("allocation", allocationID),
@@ -97,7 +104,9 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 		logging.Logger.Error("Error redeeming the write marker.",
 			zap.Any("allocation", allocationID),
 			zap.Any("wm", wm), zap.Any("error", err), zap.Any("elapsedTime", elapsedTime))
-		go tryAgain(wm)
+		if retryRedeem(err.Error()) {
+			go tryAgain(wm)
+		}
 		shouldRollback = true
 
 		return err
@@ -165,5 +174,11 @@ func startRedeem(ctx context.Context) {
 }
 
 func tryAgain(wm *WriteMarkerEntity) {
+	time.Sleep(time.Duration(wm.ReedeemRetries) * 5 * time.Second)
 	writeMarkerChan <- wm
+}
+
+// Can add more cases where we don't want to retry
+func retryRedeem(errString string) bool {
+	return strings.Contains(errString, "value not present")
 }
