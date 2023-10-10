@@ -95,6 +95,7 @@ challenge_response:
   frequency: 10
   num_workers: 5
   max_retries: 20
+  cleanup_gap: 100000
 
 healthcheck:
   frequency: 60m # send healthcheck to miners every 60 minutes

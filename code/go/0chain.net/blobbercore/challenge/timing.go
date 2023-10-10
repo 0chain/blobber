@@ -3,6 +3,7 @@ package challenge
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -185,4 +186,25 @@ func GetChallengeTiming(challengeID string) (*ChallengeTiming, error) {
 		return tx.Model(&ChallengeTiming{}).Where("challenge_id = ?", challengeID).First(&ch).Error
 	})
 	return ch, err
+}
+
+func SetupChallengeTimingsCleanupWorker(ctx context.Context) {
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(cleanupInterval):
+				cleanUpTimingWorker()
+			}
+		}
+	}()
+}
+
+func cleanUpTimingWorker() {
+	_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		db := datastore.GetStore().GetTransaction(ctx)
+		return db.Model(&ChallengeTiming{}).Unscoped().Delete(&ChallengeTiming{}, "created_at_blobber < ?", time.Now().Add(-cleanupGap).Unix()).Error
+	})
 }
