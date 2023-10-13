@@ -656,7 +656,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	writemarkerEntity.ClientPublicKey = clientKey
 
 	db := datastore.GetStore().GetTransaction(ctx)
-
+	writemarkerEntity.Latest = true
 	if err = db.Create(writemarkerEntity).Error; err != nil {
 		return nil, common.NewError("write_marker_error", "Error persisting the write marker")
 	}
@@ -1433,6 +1433,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		a.FileMetaRoot = alloc.FileMetaRoot
 		a.IsRedeemRequired = alloc.IsRedeemRequired
 	}
+	writemarkerEntity.Latest = true
 	err = txn.Create(writemarkerEntity).Error
 	if err != nil {
 		txn.Rollback()
