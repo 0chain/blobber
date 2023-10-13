@@ -222,6 +222,7 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocatio
 	if err != nil {
 		return rootRef, err
 	}
+	logging.Logger.Info("ApplyChanges", zap.Any("rootRef", rootRef))
 	err = collector.Finalize(ctx)
 	return rootRef, err
 }
