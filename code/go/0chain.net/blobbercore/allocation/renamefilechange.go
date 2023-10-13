@@ -133,5 +133,5 @@ func (rf *RenameFileChange) CommitToFileStore(ctx context.Context, mut *sync.Mut
 
 func (rf *RenameFileChange) GetPath() []string {
 
-	return []string{rf.Path}
+	return []string{rf.Path, rf.Path}
 }
