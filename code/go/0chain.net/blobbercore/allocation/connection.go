@@ -17,7 +17,7 @@ var (
 	// ConnectionObjCleanInterval start to clean the connectionObjMap
 	ConnectionObjCleanInterval = 10 * time.Minute
 	// ConnectionObjTimout after which connectionObj entry should be invalid
-	ConnectionObjTimeout = 10 * time.Minute
+	ConnectionObjTimeout = 20 * time.Minute
 )
 
 var (
