@@ -469,8 +469,8 @@ func (fsh *StorageHandler) CreateConnection(ctx context.Context, r *http.Request
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
-	err = connectionObj.Save(ctx)
-	if err != nil {
+	err = connectionObj.Create(ctx)
+	if err != nil && err != gorm.ErrDuplicatedKey {
 		Logger.Error("Error in writing the connection meta data", zap.Error(err))
 		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
 	}
@@ -533,6 +533,10 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			"Invalid connection id. Connection id was not found: %v", err)
 	}
 	if len(connectionObj.Changes) == 0 {
+		if connectionObj.Status == allocation.NewConnection {
+			return nil, common.NewError("invalid_parameters",
+				"Invalid connection id. Connection not found.")
+		}
 		return nil, common.NewError("invalid_parameters",
 			"Invalid connection id. Connection does not have any changes.")
 	}
@@ -799,7 +803,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	allocationChange.Size = 0
 	allocationChange.Operation = constants.FileOperationRename
 	dfc := &allocation.RenameFileChange{ConnectionID: connectionObj.ID,
-		AllocationID: connectionObj.AllocationID, Path: objectRef.Path}
+		AllocationID: connectionObj.AllocationID, Path: objectRef.Path, Type: objectRef.Type}
 	dfc.NewName = new_name
 	connectionObj.AddChange(allocationChange, dfc)
 
