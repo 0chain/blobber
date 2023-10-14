@@ -43,8 +43,9 @@ func setupDatabase() error {
 		return err
 	}
 	if name != "hdd_tablespace" {
-		logging.Logger.Info("Creating hdd_archive tablespace")
-		err = pgDB.Exec("CREATE TABLESPACE hdd_tablespace LOCATION ?", config.Configuration.ArchiveDBPath).Error
+		execStr := "CREATE TABLESPACE hdd_tablespace LOCATION '" + config.Configuration.ArchiveDBPath + "'"
+		logging.Logger.Info("Creating hdd_archive tablespace", zap.String("path", config.Configuration.ArchiveDBPath), zap.String("execStr", execStr))
+		err = pgDB.Exec(execStr).Error
 		if err != nil {
 			logging.Logger.Error("Failed to create hdd_tablespace", zap.Error(err))
 			return err
