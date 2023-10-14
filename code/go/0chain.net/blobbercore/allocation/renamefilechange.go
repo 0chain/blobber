@@ -19,6 +19,7 @@ type RenameFileChange struct {
 	Path         string `json:"path"`
 	NewName      string `json:"new_name"`
 	Name         string `json:"name"`
+	Type         string `json:"type"`
 }
 
 func (rf *RenameFileChange) DeleteTempFile() error {
@@ -132,6 +133,8 @@ func (rf *RenameFileChange) CommitToFileStore(ctx context.Context, mut *sync.Mut
 }
 
 func (rf *RenameFileChange) GetPath() []string {
-
-	return []string{rf.Path, rf.Path}
+	if rf.Type == reference.DIRECTORY {
+		return []string{rf.Path, rf.Path}
+	}
+	return []string{rf.Path}
 }

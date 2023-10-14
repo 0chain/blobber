@@ -141,6 +141,7 @@ func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clien
 		cc.ComputeProperties()
 		// Load connection Obj size from memory
 		cc.Size = GetConnectionObjSize(connectionID)
+		cc.Status = InProgressConnection
 		return cc, nil
 	}
 
@@ -169,6 +170,12 @@ func (cc *AllocationChangeCollector) Save(ctx context.Context) error {
 	}
 
 	return db.Save(cc).Error
+}
+
+func (cc *AllocationChangeCollector) Create(ctx context.Context) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+	cc.Status = NewConnection
+	return db.Create(cc).Error
 }
 
 // ComputeProperties unmarshal all ChangeProcesses from postgres
@@ -222,7 +229,6 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocatio
 	if err != nil {
 		return rootRef, err
 	}
-	logging.Logger.Info("ApplyChanges", zap.Any("rootRef", rootRef))
 	err = collector.Finalize(ctx)
 	return rootRef, err
 }
