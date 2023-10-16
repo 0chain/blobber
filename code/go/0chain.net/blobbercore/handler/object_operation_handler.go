@@ -469,8 +469,8 @@ func (fsh *StorageHandler) CreateConnection(ctx context.Context, r *http.Request
 	if err != nil {
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
-	err = connectionObj.Create(ctx)
-	if err != nil && err != gorm.ErrDuplicatedKey {
+	err = connectionObj.Save(ctx)
+	if err != nil {
 		Logger.Error("Error in writing the connection meta data", zap.Error(err))
 		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
 	}
