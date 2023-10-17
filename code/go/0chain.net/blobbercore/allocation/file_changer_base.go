@@ -137,6 +137,7 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context, mut *sync.Mute
 	fileInputData.ValidationRoot = fc.ValidationRoot
 	fileInputData.FixedMerkleRoot = fc.FixedMerkleRoot
 	fileInputData.ChunkSize = fc.ChunkSize
+	fileInputData.Size = fc.Size
 	fileInputData.Hasher = GetHasher(fc.ConnectionID, encryption.Hash(fc.Path))
 	if fileInputData.Hasher == nil {
 		return common.NewError("invalid_parameters", "Invalid parameters. Error getting hasher for commit.")

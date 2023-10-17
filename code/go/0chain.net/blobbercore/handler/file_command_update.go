@@ -161,6 +161,7 @@ func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		IsFinal:      cmd.fileChanger.IsFinal,
 		FilePathHash: filePathHash,
 		Hasher:       hasher,
+		Size:         cmd.fileChanger.Size,
 	}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connID, fileInputData, cmd.contentFile)
 	if err != nil {

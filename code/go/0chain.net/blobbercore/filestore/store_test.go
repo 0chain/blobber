@@ -342,6 +342,7 @@ func TestDeletePreCommitDir(t *testing.T) {
 		ChunkSize:       64 * KB,
 		FilePathHash:    pathHash,
 		Hasher:          hasher,
+		Size:            int64(size),
 	}
 	// checkc if file to be uploaded exists
 	f, err := os.Open(fPath)
@@ -356,8 +357,8 @@ func TestDeletePreCommitDir(t *testing.T) {
 	tempFilePath := fs.getTempPathForFile(allocID, fileName, pathHash, connID)
 	tF, err := os.Stat(tempFilePath)
 	require.Nil(t, err)
-
-	require.Equal(t, int64(size), tF.Size())
+	nodeSize := getNodesSize(int64(size), util.MaxMerkleLeavesSize)
+	require.Equal(t, int64(size), tF.Size()-nodeSize-FMTSize)
 
 	// Commit file to pre-commit location
 	success, err := fs.CommitWrite(allocID, connID, fid)
