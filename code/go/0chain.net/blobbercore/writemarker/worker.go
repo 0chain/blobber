@@ -180,5 +180,5 @@ func tryAgain(wm *WriteMarkerEntity) {
 
 // Can add more cases where we don't want to retry
 func retryRedeem(errString string) bool {
-	return strings.Contains(errString, "value not present")
+	return !strings.Contains(errString, "value not present")
 }
