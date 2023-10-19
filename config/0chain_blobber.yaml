@@ -109,7 +109,7 @@ db:
   password: blobber
   host: postgres
   port: 5432
-  archive_path: "/mnt/hdd/blobber1/data/"
+  archive_path: "/var/lib/postgresql/hdd"
 
 storage:
   files_dir: "/path/to/hdd"

@@ -68,7 +68,7 @@ func setupConfig(configDir string, deploymentMode int) {
 	config.Configuration.DBTablesToKeep = viper.GetStringSlice("db.keep_tables")
 	config.Configuration.ArchiveDBPath = viper.GetString("db.archive_path")
 	if config.Configuration.ArchiveDBPath == "" {
-		config.Configuration.ArchiveDBPath = "/mnt/hdd/blobber1/data/"
+		config.Configuration.ArchiveDBPath = "/var/lib/postgresql/hdd"
 	}
 
 	config.Configuration.PriceInUSD = viper.GetBool("price_in_usd")
