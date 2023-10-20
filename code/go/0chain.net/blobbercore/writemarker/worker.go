@@ -117,7 +117,7 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 			mut.Release(1)
 		}
 	}()
-	err = allocation.Repo.UpdateAllocationRedeem(ctx, wm.WM.AllocationRoot, allocationID, alloc)
+	err = allocation.Repo.UpdateAllocationRedeem(ctx, allocationID, wm.WM.AllocationRoot, alloc)
 	if err != nil {
 		logging.Logger.Error("Error redeeming the write marker. Allocation latest wm redeemed update failed",
 			zap.Any("allocation", allocationID),
