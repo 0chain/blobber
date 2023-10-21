@@ -306,21 +306,14 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 		bs.AllocationStats = append(bs.AllocationStats, as)
 	}
 
-	if err = rows.Err(); err != nil && err != sql.ErrNoRows {
+	if err = rows.Err(); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		Logger.Error("Error in scanning record for blobber stats",
 			zap.Error(err))
 		return
 	}
 
-	var count int64
-	err = db.Table("reference_objects").Count(&count).Error
-	if err != nil {
-		Logger.Error("loadAllocationStats err", zap.Any("err", err))
-		return
-	}
-
 	if requestData != nil {
-		pagination := GeneratePagination(requestData.Page, requestData.Limit, requestData.Offset, int(count))
+		pagination := GeneratePagination(requestData.Page, requestData.Limit, requestData.Offset, len(bs.AllocationStats))
 		bs.AllocationListPagination = pagination
 	}
 }

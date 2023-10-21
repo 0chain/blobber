@@ -22,6 +22,12 @@ func SetupDefaultConfig() {
 	viper.SetDefault("challenge_response.frequency", 10)
 	viper.SetDefault("challenge_response.num_workers", 5)
 	viper.SetDefault("challenge_response.max_retries", 10)
+	viper.SetDefault("challenge_response.cleanup_gap", 100000)
+	viper.SetDefault("rate_limiters.block_limit_daily", 1562500)
+	viper.SetDefault("rate_limiters.block_limit_request", 500)
+	viper.SetDefault("rate_limiters.block_limit_monthly", 31250000)
+	viper.SetDefault("rate_limiters.upload_limit_monthly", 31250000)
+	viper.SetDefault("rate_limiters.commit_limit_monthly", 30000)
 
 	viper.SetDefault("healthcheck.frequency", "60s")
 
@@ -37,6 +43,7 @@ func SetupDefaultConfig() {
 	viper.SetDefault("service_charge", 0.3)
 
 	viper.SetDefault("update_allocations_interval", time.Duration(-1))
+	viper.SetDefault("finalize_allocations_interval", time.Duration(-1))
 }
 
 /*SetupConfig - setup the configuration system */
@@ -87,6 +94,12 @@ type Config struct {
 	ChallengeMaxRetires           int
 	TempFilesCleanupFreq          int64
 	TempFilesCleanupNumWorkers    int
+	BlockLimitDaily               int64
+	BlockLimitRequest             int64
+	BlockLimitMonthly             int64
+	UploadLimitMonthly            int64
+	CommitLimitMonthly            int64
+	ChallengeCleanupGap           int64
 
 	HealthCheckWorkerFreq time.Duration
 
@@ -97,7 +110,8 @@ type Config struct {
 	// WriteMarkerLockTimeout lock is released automatically if it is timeout
 	WriteMarkerLockTimeout time.Duration
 
-	UpdateAllocationsInterval time.Duration
+	UpdateAllocationsInterval   time.Duration
+	FinalizeAllocationsInterval time.Duration
 
 	MaxAllocationDirFiles int
 
@@ -180,7 +194,8 @@ func ValidChain(chain string) error {
 // If any field it required then it can simply be added in this struct and we are
 // good to go
 type StorageSCConfiguration struct {
-	ChallengeCompletionTime time.Duration
+	ChallengeCompletionTime int64
+	MaxFileSize             int64
 }
 
 var StorageSCConfig StorageSCConfiguration

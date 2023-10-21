@@ -63,6 +63,8 @@ type State struct {
 	BlobberDelete        BlobberDelete
 	AdversarialValidator AdversarialValidator
 	StopWMCommit         *bool
+	FailRenameCommit     []string
+	GetFileMetaRoot      bool
 }
 
 // Name returns NodeName by given NodeID.

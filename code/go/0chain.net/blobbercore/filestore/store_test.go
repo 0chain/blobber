@@ -162,7 +162,7 @@ func setupMockForFileManagerInit(mock sqlmock.Sqlmock, ip initParams) {
 			sqlmock.NewRows([]string{"file_size"}).AddRow(ip.usedSize),
 		)
 
-	mock.ExpectClose()
+	mock.ExpectCommit()
 
 }
 
@@ -258,6 +258,7 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 				ChunkSize:       64 * KB,
 				FilePathHash:    pathHash,
 				Hasher:          hasher,
+				Size:            int64(size),
 			}
 
 			f, err := os.Open(fPath)
@@ -274,8 +275,8 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 
 			finfo, err := f.Stat()
 			require.Nil(t, err)
-
-			require.Equal(t, finfo.Size(), tF.Size())
+			nodeSize := getNodesSize(int64(finfo.Size()), util.MaxMerkleLeavesSize)
+			require.Equal(t, finfo.Size(), tF.Size()-nodeSize-FMTSize)
 
 			if !test.shouldCommit {
 				return
@@ -305,7 +306,7 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 				require.Nil(t, err)
 				check_file, err := os.Stat(finalPath)
 				require.Nil(t, err)
-				require.True(t, check_file.Size() > tF.Size())
+				require.True(t, check_file.Size() == tF.Size())
 			}
 		})
 	}
@@ -342,6 +343,7 @@ func TestDeletePreCommitDir(t *testing.T) {
 		ChunkSize:       64 * KB,
 		FilePathHash:    pathHash,
 		Hasher:          hasher,
+		Size:            int64(size),
 	}
 	// checkc if file to be uploaded exists
 	f, err := os.Open(fPath)
@@ -356,8 +358,8 @@ func TestDeletePreCommitDir(t *testing.T) {
 	tempFilePath := fs.getTempPathForFile(allocID, fileName, pathHash, connID)
 	tF, err := os.Stat(tempFilePath)
 	require.Nil(t, err)
-
-	require.Equal(t, int64(size), tF.Size())
+	nodeSize := getNodesSize(int64(size), util.MaxMerkleLeavesSize)
+	require.Equal(t, int64(size), tF.Size()-nodeSize-FMTSize)
 
 	// Commit file to pre-commit location
 	success, err := fs.CommitWrite(allocID, connID, fid)
@@ -442,6 +444,7 @@ func TestStorageUploadUpdate(t *testing.T) {
 		ChunkSize:       64 * KB,
 		FilePathHash:    pathHash,
 		Hasher:          hasher,
+		Size:            int64(size),
 	}
 	// checkc if file to be uploaded exists
 	f, err := os.Open(fPath)
@@ -456,8 +459,8 @@ func TestStorageUploadUpdate(t *testing.T) {
 	tempFilePath := fs.getTempPathForFile(allocID, fileName, pathHash, connID)
 	tF, err := os.Stat(tempFilePath)
 	require.Nil(t, err)
-
-	require.Equal(t, int64(size), tF.Size())
+	nodeSize := getNodesSize(int64(size), util.MaxMerkleLeavesSize)
+	require.Equal(t, int64(size), tF.Size()-nodeSize-FMTSize)
 
 	// Commit file to pre-commit location
 	success, err := fs.CommitWrite(allocID, connID, fid)

@@ -60,7 +60,11 @@ const (
 
 func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error) {
 	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, fileData.FilePathHash, conID)
-	var initialSize int64
+	var (
+		initialSize int64
+		nodeSize    int64
+		offset      int64
+	)
 	finfo, err := os.Stat(tempFilePath)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, common.NewError("file_stat_error", err.Error())
@@ -68,18 +72,20 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 	if finfo != nil {
 		initialSize = finfo.Size()
 	}
-
+	if !fileData.IsThumbnail {
+		nodeSize = getNodesSize(fileData.Size, util.MaxMerkleLeavesSize)
+		offset = fileData.UploadOffset + nodeSize + FMTSize
+	}
 	if err = createDirs(filepath.Dir(tempFilePath)); err != nil {
 		return nil, common.NewError("dir_creation_error", err.Error())
 	}
-
 	f, err := os.OpenFile(tempFilePath, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return nil, common.NewError("file_open_error", err.Error())
 	}
 	defer f.Close()
 
-	_, err = f.Seek(fileData.UploadOffset, io.SeekStart)
+	_, err = f.Seek(offset, io.SeekStart)
 	if err != nil {
 		return nil, common.NewError("file_seek_error", err.Error())
 	}
@@ -99,11 +105,10 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 	currentSize := finfo.Size()
 	if currentSize > initialSize { // Is chunk new or rewritten
 		if !fileData.IsThumbnail {
-			_, err = f.Seek(fileData.UploadOffset, io.SeekStart)
+			_, err = f.Seek(offset, io.SeekStart)
 			if err != nil {
 				return nil, common.NewError("file_seek_error", err.Error())
 			}
-
 			_, err = io.CopyBuffer(fileData.Hasher, f, buf)
 			if err != nil {
 				return nil, common.NewError("file_read_error", err.Error())
@@ -112,11 +117,10 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 		fileRef.ChunkUploaded = true
 		fs.updateAllocTempFileSize(allocID, currentSize-initialSize)
 	}
-
+	fmt.Println("writtenSize", writtenSize, offset)
 	fileRef.Size = writtenSize
 	fileRef.Name = fileData.Name
 	fileRef.Path = fileData.Path
-
 	return fileRef, nil
 }
 
@@ -187,17 +191,10 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 		return false, common.NewError("blob_object_precommit_dir_creation_error", err.Error())
 	}
 
-	f, err := os.Create(preCommitPath)
-	if err != nil {
-		return false, common.NewError("file_create_error", err.Error())
-	}
-
-	r, err := os.Open(tempFilePath)
+	r, err := os.OpenFile(tempFilePath, os.O_RDWR, 0644)
 	if err != nil {
 		return false, err
 	}
-
-	defer f.Close()
 
 	defer func() {
 		r.Close()
@@ -231,7 +228,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 			return false, err
 		}
 
-		_, err = io.Copy(f, r)
+		err = os.Rename(tempFilePath, preCommitPath)
 		if err != nil {
 			return false, err
 		}
@@ -252,20 +249,14 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	if err != nil {
 		return false, common.NewError("stat_error", err.Error())
 	}
-
-	fileSize := rStat.Size()
-	bufSize := BufferSize
-	if fileSize < BufferSize {
-		bufSize = int(fileSize)
-	}
-	buffer := make([]byte, bufSize)
-
-	fmtRootBytes, err := fileData.Hasher.fmt.CalculateRootAndStoreNodes(f)
+	nodeSie := getNodesSize(fileData.Size, util.MaxMerkleLeavesSize)
+	fileSize := rStat.Size() - nodeSie - FMTSize
+	fmtRootBytes, err := fileData.Hasher.fmt.CalculateRootAndStoreNodes(r)
 	if err != nil {
 		return false, common.NewError("fmt_hash_calculation_error", err.Error())
 	}
 
-	validationRootBytes, err := fileData.Hasher.vt.CalculateRootAndStoreNodes(f)
+	validationRootBytes, err := fileData.Hasher.vt.CalculateRootAndStoreNodes(r)
 	if err != nil {
 		return false, common.NewError("validation_hash_calculation_error", err.Error())
 	}
@@ -281,7 +272,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 			"calculated validation root does not match with client's validation root")
 	}
 
-	_, err = io.CopyBuffer(f, r, buffer)
+	err = os.Rename(tempFilePath, preCommitPath)
 	if err != nil {
 		return false, common.NewError("write_error", err.Error())
 	}

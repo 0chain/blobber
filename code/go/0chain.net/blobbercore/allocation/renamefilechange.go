@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"path/filepath"
+	"sync"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -18,13 +19,14 @@ type RenameFileChange struct {
 	Path         string `json:"path"`
 	NewName      string `json:"new_name"`
 	Name         string `json:"name"`
+	Type         string `json:"type"`
 }
 
 func (rf *RenameFileChange) DeleteTempFile() error {
 	return nil
 }
 
-func (rf *RenameFileChange) ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
+func (rf *RenameFileChange) applyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
 	allocationRoot string, ts common.Timestamp, _ map[string]string) (*reference.Ref, error) {
 
 	if rf.Path == "/" {
@@ -126,11 +128,13 @@ func (rf *RenameFileChange) Unmarshal(input string) error {
 	return err
 }
 
-func (rf *RenameFileChange) CommitToFileStore(ctx context.Context) error {
+func (rf *RenameFileChange) CommitToFileStore(ctx context.Context, mut *sync.Mutex) error {
 	return nil
 }
 
 func (rf *RenameFileChange) GetPath() []string {
-
+	if rf.Type == reference.DIRECTORY {
+		return []string{rf.Path, rf.Path}
+	}
 	return []string{rf.Path}
 }

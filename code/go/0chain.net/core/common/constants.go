@@ -43,4 +43,7 @@ var (
 
 	// ErrNotFound ref is not found
 	ErrNotFound = errors.New("ref is not found")
+
+	// ErrNoThumbnail no thumbnail
+	ErrNoThumbnail = errors.New("no thumbnail")
 )

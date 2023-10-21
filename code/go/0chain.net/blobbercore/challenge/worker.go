@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0chain/gosdk/zcncore"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -14,10 +16,18 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
+const GetRoundInterval = 3 * time.Minute
+
 type TodoChallenge struct {
 	Id        string
 	CreatedAt time.Time
 	Status    ChallengeStatus
+}
+
+type RoundInfo struct {
+	CurrentRound            int64
+	CurrentRoundCaptureTime time.Time
+	LastRoundDiff           int64
 }
 
 func Int64Comparator(a, b interface{}) int {
@@ -37,6 +47,7 @@ var (
 	toProcessChallenge = make(chan *ChallengeEntity, 100)
 	challengeMap       = treemap.NewWith(Int64Comparator)
 	challengeMapLock   = sync.RWMutex{}
+	roundInfo          = RoundInfo{}
 )
 
 const batchSize = 5
@@ -60,10 +71,33 @@ func startPullWorker(ctx context.Context) {
 }
 
 func startWorkers(ctx context.Context) {
+	go getRoundWorker(ctx)
+
 	// start challenge listeners
 	go challengeProcessor(ctx)
 
 	go commitOnChainWorker(ctx)
+}
+
+func getRoundWorker(ctx context.Context) {
+	ticker := time.NewTicker(GetRoundInterval)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			currentRound, _ := zcncore.GetRoundFromSharders()
+
+			if roundInfo.LastRoundDiff == 0 {
+				roundInfo.LastRoundDiff = 1000
+			} else {
+				roundInfo.LastRoundDiff = currentRound - roundInfo.CurrentRound
+			}
+			roundInfo.CurrentRound = currentRound
+			roundInfo.CurrentRoundCaptureTime = time.Now()
+		}
+	}
 }
 
 func challengeProcessor(ctx context.Context) {
@@ -163,7 +197,7 @@ func commitOnChainWorker(ctx context.Context) {
 					_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 						err := challenge.VerifyChallengeTransaction(ctx, txn)
 						if err == nil || err != ErrEntityNotFound {
-							deleteChallenge(int64(challenge.RoundCreatedAt))
+							deleteChallenge(challenge.RoundCreatedAt)
 						}
 						return nil
 					})

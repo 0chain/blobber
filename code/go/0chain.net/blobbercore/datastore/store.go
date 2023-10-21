@@ -13,14 +13,27 @@ const (
 	ContextKeyStore
 )
 
+type CommitToCahe func(tx *EnhancedDB)
+
 type EnhancedDB struct {
-	SessionCache map[string]interface{}
+	SessionCache     map[string]interface{}
+	CommitAllocCache CommitToCahe
 	*gorm.DB
 }
 
 func EnhanceDB(db *gorm.DB) *EnhancedDB {
 	cache := make(map[string]interface{})
 	return &EnhancedDB{DB: db, SessionCache: cache}
+}
+
+func (edb *EnhancedDB) Commit() *gorm.DB {
+	db := edb.DB.Commit()
+	if db.Error == nil {
+		if edb.CommitAllocCache != nil {
+			edb.CommitAllocCache(edb)
+		}
+	}
+	return db
 }
 
 type Store interface {
