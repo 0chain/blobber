@@ -49,8 +49,11 @@ func challengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 
 	err = challengeRequest.VerifyChallenge(challengeObj, allocationObj)
 	if err != nil {
+		updateStats(false)
 		return InvalidValidationTicket(challengeObj, err)
 	}
+
+	updateStats(true)
 
 	return ValidValidationTicket(challengeObj, challengeRequest.ChallengeID, challengeHash)
 }

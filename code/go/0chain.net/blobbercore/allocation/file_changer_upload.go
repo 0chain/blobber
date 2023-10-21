@@ -24,7 +24,7 @@ type UploadFileChanger struct {
 func (nf *UploadFileChanger) ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
 	allocationRoot string, ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error) {
 
-	totalRefs, err := reference.CountRefs(nf.AllocationID)
+	totalRefs, err := reference.CountRefs(ctx, nf.AllocationID)
 	if err != nil {
 		return nil, err
 	}
@@ -50,6 +50,9 @@ func (nf *UploadFileChanger) ApplyChange(ctx context.Context, rootRef *reference
 		found := false
 		for _, child := range dirRef.Children {
 			if child.Name == fields[i] {
+				if child.Type != reference.DIRECTORY {
+					return nil, common.NewError("invalid_reference_path", "Reference path has invalid ref type")
+				}
 				dirRef = child
 				dirRef.UpdatedAt = ts
 				dirRef.HashToBeComputed = true

@@ -3,6 +3,8 @@ package handler
 import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 )
 
 var WriteMarkerMutext = &writemarker.Mutex{
@@ -14,6 +16,7 @@ func LockWriteMarker(ctx *Context) (interface{}, error) {
 	connectionID, _ := ctx.FormValue("connection_id")
 
 	result, err := WriteMarkerMutext.Lock(ctx, ctx.AllocationId, connectionID)
+	Logger.Info("Lock write marker result", zap.Any("result", result), zap.Error(err))
 	if err != nil {
 		return nil, err
 	}

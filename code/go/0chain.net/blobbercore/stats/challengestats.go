@@ -1,10 +1,11 @@
 package stats
 
 import (
-	"time"
+	"context"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"gorm.io/datatypes"
 )
 
@@ -27,15 +28,15 @@ type ChallengeEntity struct {
 	LastCommitTxnIDs        []string              `json:"last_commit_txn_ids" gorm:"-"`
 	ObjectPathString        datatypes.JSON        `json:"-" gorm:"column:object_path"`
 	ObjectPath              *reference.ObjectPath `json:"object_path" gorm:"-"`
-	CreatedAt               time.Time             `gorm:"created_at"`
-	UpdatedAt               time.Time             `gorm:"updated_at"`
+	CreatedAt               common.Timestamp      `gorm:"created_at"`
+	UpdatedAt               common.Timestamp      `gorm:"updated_at"`
 }
 
 func (ChallengeEntity) TableName() string {
 	return "challenges"
 }
-func getAllFailedChallenges(offset, limit int) ([]ChallengeEntity, int, error) {
-	db := datastore.GetStore().GetDB()
+func getAllFailedChallenges(ctx context.Context, offset, limit int) ([]ChallengeEntity, int, error) {
+	db := datastore.GetStore().GetTransaction(ctx)
 	crs := []ChallengeEntity{}
 	err := db.Offset(offset).Limit(limit).Order("challenge_id DESC").Table(ChallengeEntity{}.TableName()).Find(&crs, ChallengeEntity{Result: 2}).Error
 	if err != nil {

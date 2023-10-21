@@ -55,10 +55,11 @@ const (
 	PreCommitDir    = "precommit"
 	MerkleChunkSize = 64
 	ChunkSize       = 64 * KB
+	BufferSize      = 10 * MB
 )
 
 func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error) {
-	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, encryption.Hash(fileData.Path), conID)
+	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, fileData.FilePathHash, conID)
 	var initialSize int64
 	finfo, err := os.Stat(tempFilePath)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -72,7 +73,7 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 		return nil, common.NewError("dir_creation_error", err.Error())
 	}
 
-	f, err := os.OpenFile(tempFilePath, os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(tempFilePath, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return nil, common.NewError("file_open_error", err.Error())
 	}
@@ -82,8 +83,8 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 	if err != nil {
 		return nil, common.NewError("file_seek_error", err.Error())
 	}
-
-	writtenSize, err := io.Copy(f, infile)
+	buf := make([]byte, BufferSize)
+	writtenSize, err := io.CopyBuffer(f, infile, buf)
 	if err != nil {
 		return nil, common.NewError("file_write_error", err.Error())
 	}
@@ -97,6 +98,17 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 
 	currentSize := finfo.Size()
 	if currentSize > initialSize { // Is chunk new or rewritten
+		if !fileData.IsThumbnail {
+			_, err = f.Seek(fileData.UploadOffset, io.SeekStart)
+			if err != nil {
+				return nil, common.NewError("file_seek_error", err.Error())
+			}
+
+			_, err = io.CopyBuffer(fileData.Hasher, f, buf)
+			if err != nil {
+				return nil, common.NewError("file_read_error", err.Error())
+			}
+		}
 		fileRef.ChunkUploaded = true
 		fs.updateAllocTempFileSize(allocID, currentSize-initialSize)
 	}
@@ -242,26 +254,21 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	}
 
 	fileSize := rStat.Size()
-	hasher := GetNewCommitHasher(fileSize)
-	_, err = io.Copy(hasher, r)
-	if err != nil {
-		return false, common.NewError("read_write_error", err.Error())
+	bufSize := BufferSize
+	if fileSize < BufferSize {
+		bufSize = int(fileSize)
 	}
+	buffer := make([]byte, bufSize)
 
-	err = hasher.Finalize()
-	if err != nil {
-		return false, common.NewError("finalize_error", err.Error())
-	}
-	fmtRootBytes, err := hasher.fmt.CalculateRootAndStoreNodes(f)
+	fmtRootBytes, err := fileData.Hasher.fmt.CalculateRootAndStoreNodes(f)
 	if err != nil {
 		return false, common.NewError("fmt_hash_calculation_error", err.Error())
 	}
 
-	validationRootBytes, err := hasher.vt.CalculateRootAndStoreNodes(f)
+	validationRootBytes, err := fileData.Hasher.vt.CalculateRootAndStoreNodes(f)
 	if err != nil {
 		return false, common.NewError("validation_hash_calculation_error", err.Error())
 	}
-
 	fmtRoot := hex.EncodeToString(fmtRootBytes)
 	validationRoot := hex.EncodeToString(validationRootBytes)
 
@@ -274,12 +281,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 			"calculated validation root does not match with client's validation root")
 	}
 
-	_, err = r.Seek(0, io.SeekStart)
-	if err != nil {
-		return false, common.NewError("seek_error", err.Error())
-	}
-
-	_, err = io.Copy(f, r)
+	_, err = io.CopyBuffer(f, r, buffer)
 	if err != nil {
 		return false, common.NewError("write_error", err.Error())
 	}
@@ -369,6 +371,10 @@ func (fs *FileStore) DeleteFile(allocID, validationRoot string) error {
 }
 
 func (fs *FileStore) DeleteTempFile(allocID, conID string, fd *FileInputData) error {
+	if allocID == "" {
+		logging.Logger.Error("invalid_allocation_id", zap.String("connection_id", conID), zap.Any("file_data", fd))
+		return common.NewError("invalid_allocation_id", "Allocation id cannot be empty")
+	}
 	fileObjectPath := fs.getTempPathForFile(allocID, fd.Name, encryption.Hash(fd.Path), conID)
 
 	finfo, err := os.Stat(fileObjectPath)

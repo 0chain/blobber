@@ -29,3 +29,11 @@ func GetChallengeTimings(ctx context.Context, r *http.Request) (interface{}, err
 
 	return challenge.GetChallengeTimings(from, limit)
 }
+
+func GetChallengeTiming(ctx context.Context, r *http.Request) (interface{}, error) {
+	var (
+		challengeID = r.URL.Query().Get("challenge_id")
+	)
+
+	return challenge.GetChallengeTiming(challengeID)
+}

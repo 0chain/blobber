@@ -64,7 +64,6 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	}
 	sn.Terms.ReadPrice = zcncore.ConvertToValue(readPrice)
 	sn.Terms.WritePrice = zcncore.ConvertToValue(writePrice)
-	sn.Terms.MinLockDemand = config.Configuration.MinLockDemand
 
 	sn.StakePoolSettings.DelegateWallet = config.Configuration.DelegateWallet
 	sn.StakePoolSettings.NumDelegates = config.Configuration.NumDelegates
@@ -75,8 +74,11 @@ func getStorageNode() (*transaction.StorageNode, error) {
 
 // RegisterBlobber register blobber if it is not registered yet
 func RegisterBlobber(ctx context.Context) error {
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		_, e := config.ReloadFromChain(ctx, datastore.GetStore().GetDB())
+		return e
+	})
 
-	_, err := config.ReloadFromChain(ctx, datastore.GetStore().GetDB())
 	if err != nil { // blobber is not registered yet
 		txn, err := sendSmartContractBlobberAdd(ctx)
 		if err != nil {

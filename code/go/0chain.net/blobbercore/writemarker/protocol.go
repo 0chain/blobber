@@ -57,6 +57,10 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 		return common.NewError("write_marker_validation_failed", "Signature exceeds maximum length")
 	}
 
+	if wme.WM.AllocationRoot == dbAllocation.AllocationRoot {
+		return common.NewError("write_marker_validation_failed", "Write Marker allocation root is the same as the allocation root on record")
+	}
+
 	if wme.WM.PreviousAllocationRoot != dbAllocation.AllocationRoot {
 		return common.NewError("invalid_write_marker", "Invalid write marker. Prev Allocation root does not match the allocation root on record")
 	}
@@ -81,10 +85,13 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 	if clientID == "" || clientID != wme.WM.ClientID || clientID != co.ClientID || co.ClientID != wme.WM.ClientID {
 		return common.NewError("write_marker_validation_failed", "Write Marker is not by the same client who uploaded")
 	}
+	if wme.WM.Timestamp < dbAllocation.StartTime {
+		return common.NewError("write_marker_validation_failed", "Write Marker timestamp is before the allocation start time")
+	}
 
 	currTime := common.Now()
-	// blobber clock is allowed to be 10 seconds behing the current time
-	if wme.WM.Timestamp > currTime+10 {
+	// blobber clock is allowed to be 60 seconds behind the current time
+	if wme.WM.Timestamp > currTime+60 {
 		return common.NewError("write_marker_validation_failed", "Write Marker timestamp is in the future")
 	}
 
@@ -102,7 +109,7 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 	return nil
 }
 
-func (wme *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
+func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context) error {
 	if len(wme.CloseTxnID) > 0 {
 		t, err := transaction.VerifyTransaction(wme.CloseTxnID, chain.GetServerChain())
 		if err == nil {
@@ -180,6 +187,10 @@ func (wme *WriteMarkerEntity) VerifyRollbackMarker(ctx context.Context, dbAlloca
 
 	if wme.WM.Size != 0 {
 		return common.NewError("empty write_marker_validation_failed", fmt.Sprintf("Write Marker size is %v but should be 0", wme.WM.Size))
+	}
+
+	if wme.WM.AllocationRoot == dbAllocation.AllocationRoot {
+		return common.NewError("write_marker_validation_failed", "Write Marker allocation root is the same as the allocation root on record")
 	}
 
 	if wme.WM.AllocationRoot != latestWM.WM.PreviousAllocationRoot {

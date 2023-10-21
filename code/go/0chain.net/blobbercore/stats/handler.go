@@ -135,7 +135,6 @@ const tpl = `
                 <tr><td>Capacity</td><td>{{ byte_count_in_string .Capacity }}</td></tr>
                 <tr><td>Read price</td><td>{{ .ReadPrice }}</td></tr>
                 <tr><td>Write price</td><td>{{ .WritePrice }}</td></tr>
-                <tr><td>Min lock demand</td><td>{{ .MinLockDemand }}</td></tr>
             </table>
         </td>
         <td valign='top'>
@@ -434,11 +433,13 @@ const tpl = `
 
 func StatsHandler(w http.ResponseWriter, r *http.Request) {
 	t := template.Must(template.New("diagnostics").Funcs(funcMap).Parse(tpl))
-	ctx := datastore.GetStore().CreateTransaction(r.Context())
-	ctx = setStatsRequestDataInContext(r, ctx)
-	db := datastore.GetStore().GetTransaction(ctx)
-	defer db.Rollback()
-	bs := LoadBlobberStats(ctx)
+	ctx := setStatsRequestDataInContext(context.TODO(), r)
+	ctx = datastore.GetStore().CreateTransaction(ctx)
+	var bs *BlobberStats
+	_ = datastore.GetStore().WithTransaction(ctx, func(ctx context.Context) error {
+		bs = LoadBlobberStats(ctx)
+		return common.NewError("rollback", "read only")
+	})
 
 	err := t.Execute(w, bs)
 	if err != nil {
@@ -446,7 +447,7 @@ func StatsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func setStatsRequestDataInContext(r *http.Request, ctx context.Context) context.Context {
+func setStatsRequestDataInContext(ctx context.Context, r *http.Request) context.Context {
 	ctx = context.WithValue(ctx, HealthDataKey, r.Header.Get(HealthDataKey.String()))
 
 	allocationPage := r.URL.Query().Get("alp")
@@ -479,9 +480,6 @@ func setStatsRequestDataInContext(r *http.Request, ctx context.Context) context.
 }
 
 func StatsJSONHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	ctx = datastore.GetStore().CreateTransaction(ctx)
-	db := datastore.GetStore().GetTransaction(ctx)
-	defer db.Rollback()
 	bs := LoadBlobberStats(ctx)
 	return bs, nil
 }
@@ -489,9 +487,6 @@ func StatsJSONHandler(ctx context.Context, r *http.Request) (interface{}, error)
 func GetStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	q := r.URL.Query()
 	ctx = context.WithValue(ctx, constants.ContextKeyAllocation, q.Get("allocation_id"))
-	ctx = datastore.GetStore().CreateTransaction(ctx)
-	db := datastore.GetStore().GetTransaction(ctx)
-	defer db.Rollback()
 	allocationID := ctx.Value(constants.ContextKeyAllocation).(string)
 	bs := &BlobberStats{}
 	if allocationID != "" {

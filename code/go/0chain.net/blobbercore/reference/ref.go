@@ -32,15 +32,15 @@ type Ref struct {
 	ID                      int64  `gorm:"column:id;primaryKey"`
 	FileID                  string `gorm:"column:file_id" dirlist:"file_id" filelist:"file_id"`
 	Type                    string `gorm:"column:type;size:1" dirlist:"type" filelist:"type"`
-	AllocationID            string `gorm:"column:allocation_id;size:64;not null;index:idx_path_alloc,priority:1;index:idx_lookup_hash_alloc,priority:1;index:idx_validation_alloc,priority:1" dirlist:"allocation_id" filelist:"allocation_id"`
-	LookupHash              string `gorm:"column:lookup_hash;size:64;not null;index:idx_lookup_hash_alloc,priority:2" dirlist:"lookup_hash" filelist:"lookup_hash"`
+	AllocationID            string `gorm:"column:allocation_id;size:64;not null;index:idx_path_alloc,priority:1;index:idx_parent_path_alloc,priority:1;index:idx_validation_alloc,priority:1" dirlist:"allocation_id" filelist:"allocation_id"`
+	LookupHash              string `gorm:"column:lookup_hash;size:64;not null;index:idx_lookup_hash" dirlist:"lookup_hash" filelist:"lookup_hash"`
 	Name                    string `gorm:"column:name;size:100;not null;index:idx_name_gin:gin" dirlist:"name" filelist:"name"`
 	Path                    string `gorm:"column:path;size:1000;not null;index:idx_path_alloc,priority:2;index:path_idx" dirlist:"path" filelist:"path"`
 	FileMetaHash            string `gorm:"column:file_meta_hash;size:64;not null" dirlist:"file_meta_hash" filelist:"file_meta_hash"`
 	Hash                    string `gorm:"column:hash;size:64;not null" dirlist:"hash" filelist:"hash"`
 	NumBlocks               int64  `gorm:"column:num_of_blocks;not null;default:0" dirlist:"num_of_blocks" filelist:"num_of_blocks"`
 	PathHash                string `gorm:"column:path_hash;size:64;not null" dirlist:"path_hash" filelist:"path_hash"`
-	ParentPath              string `gorm:"column:parent_path;size:999"`
+	ParentPath              string `gorm:"column:parent_path;size:999;index:idx_parent_path_alloc,priority:2"`
 	PathLevel               int    `gorm:"column:level;not null;default:0"`
 	CustomMeta              string `gorm:"column:custom_meta;not null" filelist:"custom_meta"`
 	ValidationRoot          string `gorm:"column:validation_root;size:64;not null;index:idx_validation_alloc,priority:2" filelist:"validation_root"`
@@ -59,6 +59,7 @@ type Ref struct {
 	ActualThumbnailSize     int64  `gorm:"column:actual_thumbnail_size;not null;default:0" filelist:"actual_thumbnail_size"`
 	ActualThumbnailHash     string `gorm:"column:actual_thumbnail_hash;size:64;not null" filelist:"actual_thumbnail_hash"`
 	EncryptedKey            string `gorm:"column:encrypted_key;size:64" filelist:"encrypted_key"`
+	EncryptedKeyPoint       string `gorm:"column:encrypted_key_point;size:64" filelist:"encrypted_key_point"`
 	Children                []*Ref `gorm:"-"`
 	childrenLoaded          bool
 	CreatedAt               common.Timestamp `gorm:"column:created_at;index:idx_created_at,sort:desc" dirlist:"created_at" filelist:"created_at"`
@@ -118,6 +119,7 @@ type PaginatedRef struct { //Gorm smart select fields.
 	ActualThumbnailSize     int64  `gorm:"column:actual_thumbnail_size" json:"actual_thumbnail_size,omitempty"`
 	ActualThumbnailHash     string `gorm:"column:actual_thumbnail_hash" json:"actual_thumbnail_hash,omitempty"`
 	EncryptedKey            string `gorm:"column:encrypted_key" json:"encrypted_key,omitempty"`
+	EncryptedKeyPoint       string `gorm:"column:encrypted_key_point" json:"encrypted_key_point,omitempty"`
 
 	CreatedAt common.Timestamp `gorm:"column:created_at" json:"created_at,omitempty"`
 	UpdatedAt common.Timestamp `gorm:"column:updated_at" json:"updated_at,omitempty"`
@@ -193,8 +195,8 @@ func GetReference(ctx context.Context, allocationID, path string) (*Ref, error) 
 // GetLimitedRefFieldsByPath get FileRef selected fields with allocationID and path from postgres
 func GetLimitedRefFieldsByPath(ctx context.Context, allocationID, path string, selectedFields []string) (*Ref, error) {
 	ref := &Ref{}
-	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select(selectedFields)
+	t := datastore.GetStore().GetTransaction(ctx)
+	db := t.Select(selectedFields)
 	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
 	if err != nil {
 		return nil, err
@@ -203,12 +205,13 @@ func GetLimitedRefFieldsByPath(ctx context.Context, allocationID, path string, s
 }
 
 // GetLimitedRefFieldsByLookupHash get FileRef selected fields with allocationID and lookupHash from postgres
-func GetLimitedRefFieldsByLookupHashWith(ctx context.Context, db *gorm.DB, allocationID, lookupHash string, selectedFields []string) (*Ref, error) {
+func GetLimitedRefFieldsByLookupHashWith(ctx context.Context, allocationID, lookupHash string, selectedFields []string) (*Ref, error) {
 	ref := &Ref{}
+	db := datastore.GetStore().GetTransaction(ctx)
 
 	err := db.
 		Select(selectedFields).
-		Where(&Ref{AllocationID: allocationID, LookupHash: lookupHash}).
+		Where(&Ref{LookupHash: lookupHash}).
 		First(ref).Error
 
 	if err != nil {
@@ -220,9 +223,9 @@ func GetLimitedRefFieldsByLookupHashWith(ctx context.Context, db *gorm.DB, alloc
 // GetLimitedRefFieldsByLookupHash get FileRef selected fields with allocationID and lookupHash from postgres
 func GetLimitedRefFieldsByLookupHash(ctx context.Context, allocationID, lookupHash string, selectedFields []string) (*Ref, error) {
 	ref := &Ref{}
-	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select(selectedFields)
-	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: lookupHash}).First(ref).Error
+	t := datastore.GetStore().GetTransaction(ctx)
+	db := t.Select(selectedFields)
+	err := db.Where(&Ref{LookupHash: lookupHash}).First(ref).Error
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +235,7 @@ func GetLimitedRefFieldsByLookupHash(ctx context.Context, allocationID, lookupHa
 func GetReferenceByLookupHash(ctx context.Context, allocationID, pathHash string) (*Ref, error) {
 	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Where(&Ref{AllocationID: allocationID, LookupHash: pathHash}).First(ref).Error
+	err := db.Where(&Ref{LookupHash: pathHash}).First(ref).Error
 	if err != nil {
 		return nil, err
 	}
@@ -244,7 +247,7 @@ func GetReferenceByLookupHashForDownload(ctx context.Context, allocationID, path
 	db := datastore.GetStore().GetTransaction(ctx)
 
 	err := db.Transaction(func(tx *gorm.DB) error {
-		err := tx.Clauses(clause.Locking{Strength: "SHARE"}).Where(&Ref{AllocationID: allocationID, LookupHash: pathHash}).First(ref).Error
+		err := tx.Clauses(clause.Locking{Strength: "SHARE"}).Where(&Ref{LookupHash: pathHash}).First(ref).Error
 		if err != nil {
 			return err
 		}
@@ -272,12 +275,16 @@ func GetReferencesByName(ctx context.Context, allocationID, name string) (refs [
 // IsRefExist checks if ref with given path exists and returns error other than gorm.ErrRecordNotFound
 func IsRefExist(ctx context.Context, allocationID, path string) (bool, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
-	var count int64
-	if err := db.Model(&Ref{}).Where("allocation_id=? AND path=?", allocationID, path).Count(&count).Error; err != nil {
+
+	lookUpHash := GetReferenceLookup(allocationID, path)
+	var Found bool
+
+	err := db.Raw("SELECT EXISTS(SELECT 1 FROM reference_objects WHERE lookup_hash=? AND deleted_at is NULL) AS found", lookUpHash).Scan(&Found).Error
+	if err != nil {
 		return false, err
 	}
 
-	return count > 0, nil
+	return Found, nil
 }
 
 // GetRefsTypeFromPaths Give list of paths it will return refs of respective path with only Type and Path selected in sql query
@@ -286,8 +293,8 @@ func GetRefsTypeFromPaths(ctx context.Context, allocationID string, paths []stri
 		return
 	}
 
-	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Select("path", "type")
+	t := datastore.GetStore().GetTransaction(ctx)
+	db := t.Select("path", "type")
 	for _, p := range paths {
 		db = db.Or(Ref{AllocationID: allocationID, Path: p})
 	}
@@ -314,8 +321,8 @@ func GetSubDirsFromPath(p string) []string {
 
 func GetRefWithChildren(ctx context.Context, allocationID, path string) (*Ref, error) {
 	var refs []Ref
-	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
+	t := datastore.GetStore().GetTransaction(ctx)
+	db := t.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
 	err := db.Order("path").Find(&refs).Error
 	if err != nil {
 		return nil, err
@@ -339,8 +346,8 @@ func GetRefWithChildren(ctx context.Context, allocationID, path string) (*Ref, e
 
 func GetRefWithSortedChildren(ctx context.Context, allocationID, path string) (*Ref, error) {
 	var refs []*Ref
-	db := datastore.GetStore().GetTransaction(ctx)
-	db = db.Where(
+	t := datastore.GetStore().GetTransaction(ctx)
+	db := t.Where(
 		Ref{ParentPath: path, AllocationID: allocationID}).
 		Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
 

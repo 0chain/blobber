@@ -73,15 +73,45 @@ func (store *Mocket) Close() {
 
 func (store *Mocket) CreateTransaction(ctx context.Context) context.Context {
 	db := store.db.Begin()
-	return context.WithValue(ctx, ContextKeyTransaction, db)
+	return context.WithValue(ctx, ContextKeyTransaction, EnhanceDB(db))
 }
 
-func (store *Mocket) GetTransaction(ctx context.Context) *gorm.DB {
+func (store *Mocket) GetTransaction(ctx context.Context) *EnhancedDB {
 	conn := ctx.Value(ContextKeyTransaction)
 	if conn != nil {
-		return conn.(*gorm.DB)
+		return conn.(*EnhancedDB)
 	}
 	Logger.Error("No connection in the context.")
+	return nil
+}
+
+func (store *Mocket) WithNewTransaction(f func(ctx context.Context) error) error {
+	ctx := store.CreateTransaction(context.TODO())
+	defer ctx.Done()
+
+	tx := store.GetTransaction(ctx)
+	err := f(ctx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
+	return nil
+}
+
+func (store *Mocket) WithTransaction(ctx context.Context, f func(ctx context.Context) error) error {
+	tx := store.GetTransaction(ctx)
+	if tx == nil {
+		ctx = store.CreateTransaction(ctx)
+		tx = store.GetTransaction(ctx)
+	}
+
+	err := f(ctx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
 	return nil
 }
 

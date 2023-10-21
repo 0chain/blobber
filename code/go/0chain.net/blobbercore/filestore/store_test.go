@@ -248,23 +248,26 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 			size := 640 * KB
 			validationRoot, fixedMerkleRoot, err := generateRandomData(fPath, int64(size))
 			require.Nil(t, err)
-
+			pathHash := encryption.Hash(test.remotePath)
+			hasher := GetNewCommitHasher(int64(size))
 			fid := &FileInputData{
 				Name:            test.fileName,
 				Path:            test.remotePath,
 				ValidationRoot:  validationRoot,
 				FixedMerkleRoot: fixedMerkleRoot,
 				ChunkSize:       64 * KB,
+				FilePathHash:    pathHash,
+				Hasher:          hasher,
 			}
 
 			f, err := os.Open(fPath)
 			require.Nil(t, err)
 			defer f.Close()
-
 			_, err = fs.WriteFile(test.allocID, test.connID, fid, f)
 			require.Nil(t, err)
+			err = hasher.Finalize()
+			require.Nil(t, err)
 
-			pathHash := encryption.Hash(test.remotePath)
 			tempFilePath := fs.getTempPathForFile(test.allocID, test.fileName, pathHash, test.connID)
 			tF, err := os.Stat(tempFilePath)
 			require.Nil(t, err)
@@ -329,13 +332,16 @@ func TestDeletePreCommitDir(t *testing.T) {
 	size := 640 * KB
 	validationRoot, fixedMerkleRoot, err := generateRandomData(fPath, int64(size))
 	require.Nil(t, err)
-
+	pathHash := encryption.Hash(remotePath)
+	hasher := GetNewCommitHasher(int64(size))
 	fid := &FileInputData{
 		Name:            fileName,
 		Path:            remotePath,
 		ValidationRoot:  validationRoot,
 		FixedMerkleRoot: fixedMerkleRoot,
 		ChunkSize:       64 * KB,
+		FilePathHash:    pathHash,
+		Hasher:          hasher,
 	}
 	// checkc if file to be uploaded exists
 	f, err := os.Open(fPath)
@@ -344,9 +350,9 @@ func TestDeletePreCommitDir(t *testing.T) {
 	_, err = fs.WriteFile(allocID, connID, fid, f)
 	require.Nil(t, err)
 	f.Close()
-
+	err = hasher.Finalize()
+	require.Nil(t, err)
 	// check if file is written to temp location
-	pathHash := encryption.Hash(remotePath)
 	tempFilePath := fs.getTempPathForFile(allocID, fileName, pathHash, connID)
 	tF, err := os.Stat(tempFilePath)
 	require.Nil(t, err)
@@ -368,6 +374,8 @@ func TestDeletePreCommitDir(t *testing.T) {
 
 	fid.ValidationRoot = validationRoot
 	fid.FixedMerkleRoot = fixedMerkleRoot
+	hasher = GetNewCommitHasher(int64(size))
+	fid.Hasher = hasher
 
 	// Write file to temp location
 	f, err = os.Open(fPath)
@@ -378,6 +386,8 @@ func TestDeletePreCommitDir(t *testing.T) {
 	f.Close()
 	tempFilePath = fs.getTempPathForFile(allocID, fileName, pathHash, connID)
 	_, err = os.Stat(tempFilePath)
+	require.Nil(t, err)
+	err = hasher.Finalize()
 	require.Nil(t, err)
 
 	success, err = fs.CommitWrite(allocID, connID, fid)
@@ -422,13 +432,16 @@ func TestStorageUploadUpdate(t *testing.T) {
 	size := 640 * KB
 	validationRoot, fixedMerkleRoot, err := generateRandomData(fPath, int64(size))
 	require.Nil(t, err)
-
+	pathHash := encryption.Hash(remotePath)
+	hasher := GetNewCommitHasher(int64(size))
 	fid := &FileInputData{
 		Name:            fileName,
 		Path:            remotePath,
 		ValidationRoot:  validationRoot,
 		FixedMerkleRoot: fixedMerkleRoot,
 		ChunkSize:       64 * KB,
+		FilePathHash:    pathHash,
+		Hasher:          hasher,
 	}
 	// checkc if file to be uploaded exists
 	f, err := os.Open(fPath)
@@ -437,9 +450,9 @@ func TestStorageUploadUpdate(t *testing.T) {
 	_, err = fs.WriteFile(allocID, connID, fid, f)
 	require.Nil(t, err)
 	f.Close()
-
+	err = hasher.Finalize()
+	require.Nil(t, err)
 	// check if file is written to temp location
-	pathHash := encryption.Hash(remotePath)
 	tempFilePath := fs.getTempPathForFile(allocID, fileName, pathHash, connID)
 	tF, err := os.Stat(tempFilePath)
 	require.Nil(t, err)

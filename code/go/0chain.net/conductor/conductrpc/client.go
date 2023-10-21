@@ -47,3 +47,8 @@ func (c *client) state(me NodeID) (state *State, err error) {
 	}
 	return
 }
+
+func (c *client) blobberCommitted(blobberID string) (err error) {
+	err = c.client.Call("Server.BlobberCommitted", blobberID, nil)
+	return
+}
