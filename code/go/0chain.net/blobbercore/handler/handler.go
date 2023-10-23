@@ -226,8 +226,6 @@ func setupHandlers(r *mux.Router) {
 
 	r.HandleFunc("/_logs", RateLimitByCommmitRL(common.ToJSONResponse(GetLogs)))
 
-	// r.HandleFunc("/_statsJSON", common.AuthenticateAdmin(common.ToJSONResponse(stats.StatsJSONHandler)))
-	r.HandleFunc("/_statsJSON", RateLimitByCommmitRL(common.ToJSONResponse(stats.StatsJSONHandler)))
 	// r.HandleFunc("/_cleanupdisk", common.AuthenticateAdmin(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))
 	// r.HandleFunc("/_cleanupdisk", RateLimitByCommmitRL(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))
 	// r.HandleFunc("/getstats", common.AuthenticateAdmin(common.ToJSONResponse(stats.GetStatsHandler)))
@@ -745,7 +743,7 @@ func StatsHandler(w http.ResponseWriter, r *http.Request) {
 			writeResponse(w, []byte(err.Error()))
 			return
 		}
-
+		w.Header().Set("Content-Type", "application/json")
 		writeResponse(w, statsJson)
 
 		return

@@ -211,13 +211,9 @@ func (bs *BlobberStats) loadStats(ctx context.Context) {
 	const sel = `
 	COALESCE (SUM (reference_objects.size), 0) AS files_size,
 	COALESCE (SUM (reference_objects.thumbnail_size), 0) AS thumbnails_size,
-	COALESCE (SUM (file_stats.num_of_block_downloads), 0) AS num_of_reads,
+	COALESCE (SUM (reference_objects.num_of_block_downloads), 0) AS num_of_reads,
 	COALESCE (SUM (reference_objects.num_of_blocks), 0) AS num_of_block_writes,
 	COUNT (*) AS num_of_writes`
-
-	const join = `
-	INNER JOIN file_stats ON reference_objects.id = file_stats.ref_id
-	WHERE reference_objects.type = 'f'`
 
 	var (
 		db  = datastore.GetStore().GetTransaction(ctx)
@@ -227,7 +223,7 @@ func (bs *BlobberStats) loadStats(ctx context.Context) {
 
 	row = db.Table("reference_objects").
 		Select(sel).
-		Joins(join).
+		Where("reference_objects.type = 'f'").
 		Row()
 
 	err = row.Scan(&bs.FilesSize, &bs.ThumbnailsSize, &bs.NumReads,
@@ -269,13 +265,11 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
             reference_objects.allocation_id,
             SUM(reference_objects.size) as files_size,
             SUM(reference_objects.thumbnail_size) as thumbnails_size,
-            SUM(file_stats.num_of_block_downloads) as num_of_reads,
+            SUM(reference_objects.num_of_block_downloads) as num_of_reads,
             SUM(reference_objects.num_of_blocks) as num_of_block_writes,
             COUNT(*) as num_of_writes,
             allocations.blobber_size AS allocated_size,
             allocations.expiration_date AS expiration_date`).
-		Joins(`INNER JOIN file_stats
-            ON reference_objects.id = file_stats.ref_id`).
 		Joins(`
             INNER JOIN allocations
             ON allocations.id = reference_objects.allocation_id`).
