@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	zLogger "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
@@ -82,8 +81,7 @@ func GetLatestReadMarkerEntityFromChain(clientID, allocID string) (*ReadMarker, 
 	}
 
 	latestRMBytes, err := transaction.MakeSCRestAPICall(
-		transaction.STORAGE_CONTRACT_ADDRESS, "/latestreadmarker", params,
-		chain.GetServerChain())
+		transaction.STORAGE_CONTRACT_ADDRESS, "/latestreadmarker", params)
 
 	if err != nil {
 		return nil, err

@@ -11,7 +11,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
@@ -216,8 +215,7 @@ func requestAllocation(allocID string) (sa *transaction.StorageAllocation, err e
 	b, err = transaction.MakeSCRestAPICall(
 		transaction.STORAGE_CONTRACT_ADDRESS,
 		"/allocation",
-		map[string]string{"allocation": allocID},
-		chain.GetServerChain())
+		map[string]string{"allocation": allocID})
 	if err != nil {
 		return
 	}
@@ -231,8 +229,7 @@ func requestExpiredAllocations() (allocs []string, err error) {
 	b, err = transaction.MakeSCRestAPICall(
 		transaction.STORAGE_CONTRACT_ADDRESS,
 		"/expired-allocations",
-		map[string]string{"blobber_id": node.Self.ID},
-		chain.GetServerChain())
+		map[string]string{"blobber_id": node.Self.ID})
 	if err != nil {
 		return
 	}

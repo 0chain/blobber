@@ -9,7 +9,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
@@ -32,8 +31,7 @@ func redeemReadMarker(ctx context.Context, rmEntity *ReadMarkerEntity) (err erro
 
 	latestRM := ReadMarker{BlobberID: rmEntity.LatestRM.BlobberID, ClientID: rmEntity.LatestRM.ClientID}
 	latestRMBytes, err := transaction.MakeSCRestAPICall(
-		transaction.STORAGE_CONTRACT_ADDRESS, "/latestreadmarker", params,
-		chain.GetServerChain())
+		transaction.STORAGE_CONTRACT_ADDRESS, "/latestreadmarker", params)
 
 	if err != nil {
 		logging.Logger.Error("Error from sc rest api call", zap.Error(err))
