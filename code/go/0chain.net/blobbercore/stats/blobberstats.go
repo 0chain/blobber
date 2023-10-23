@@ -83,17 +83,36 @@ type BlobberStats struct {
 	WriteMarkers WriteMarkersStat `json:"write_markers"`
 }
 
+var fs *BlobberStats
+
+const statsHandlerPeriod = 30 * time.Minute
+
 type AllocationId struct {
 	Id string `json:"id"`
 }
 
+func SetupStatsWorker(ctx context.Context) {
+	fs = &BlobberStats{}
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(statsHandlerPeriod):
+				_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+					fs.loadBasicStats(ctx)
+					fs.loadDetailedStats(ctx)
+					fs.loadFailedChallengeList(ctx)
+					return common.NewError("rollback", "read_only")
+				})
+			}
+		}
+	}()
+}
+
 func LoadBlobberStats(ctx context.Context) *BlobberStats {
-	fs := &BlobberStats{}
-	fs.loadBasicStats(ctx)
-	fs.loadDetailedStats(ctx)
 	fs.loadInfraStats(ctx)
 	fs.loadDBStats()
-	fs.loadFailedChallengeList(ctx)
 	return fs
 }
 
