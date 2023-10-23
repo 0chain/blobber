@@ -453,47 +453,6 @@ func (bs *BlobberStats) loadAllocationChallengeStats(ctx context.Context) {
 	}
 }
 
-func loadAllocationList(ctx context.Context) (interface{}, error) {
-	var (
-		allocations = make([]AllocationId, 0)
-		db          = datastore.GetStore().GetTransaction(ctx)
-		rows        *sql.Rows
-		err         error
-	)
-
-	rows, err = db.Table("reference_objects").
-		Select("reference_objects.allocation_id").
-		Group("reference_objects.allocation_id").
-		Rows()
-
-	if err != nil {
-		Logger.Error("Error in getting the allocation list", zap.Error(err))
-		return nil, common.NewError("get_allocations_list_failed",
-			"Failed to get allocation list from DB")
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var allocationId AllocationId
-		if err = rows.Scan(&allocationId.Id); err != nil {
-			Logger.Error("Error in scanning record for blobber allocations",
-				zap.Error(err))
-			return nil, common.NewError("get_allocations_list_failed",
-				"Failed to scan allocation from DB")
-		}
-		allocations = append(allocations, allocationId)
-	}
-
-	if err = rows.Err(); err != nil && err != sql.ErrNoRows {
-		Logger.Error("Error in scanning record for blobber allocations",
-			zap.Error(err))
-		return nil, common.NewError("get_allocations_list_failed",
-			"Failed to scan allocations from DB")
-	}
-
-	return allocations, nil
-}
-
 type ReadMarkerEntity struct {
 	ReadCounter      int64 `gorm:"column:counter" json:"counter"`
 	LatestRedeemedRC int64 `gorm:"column:latest_redeemed_rc"`
