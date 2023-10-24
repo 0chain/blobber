@@ -94,6 +94,12 @@ type AllocationId struct {
 func SetupStatsWorker(ctx context.Context) {
 	fs = &BlobberStats{}
 	go func() {
+		_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+			fs.loadBasicStats(ctx)
+			fs.loadDetailedStats(ctx)
+			fs.loadFailedChallengeList(ctx)
+			return common.NewError("rollback", "read_only")
+		})
 		for {
 			select {
 			case <-ctx.Done():
