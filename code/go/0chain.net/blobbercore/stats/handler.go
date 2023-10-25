@@ -10,7 +10,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/gosdk/constants"
 	"go.uber.org/zap"
 )
 
@@ -483,28 +482,5 @@ func setStatsRequestDataInContext(ctx context.Context, r *http.Request) context.
 
 func StatsJSONHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	bs := LoadBlobberStats(ctx)
-	return bs, nil
-}
-
-func GetStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-	q := r.URL.Query()
-	ctx = context.WithValue(ctx, constants.ContextKeyAllocation, q.Get("allocation_id"))
-	allocationID := ctx.Value(constants.ContextKeyAllocation).(string)
-	bs := &BlobberStats{}
-	if allocationID != "" {
-		// TODO: Get only the allocation info from DB
-		bs.loadDetailedStats(ctx)
-		for _, allocStat := range bs.AllocationStats {
-			if allocStat.AllocationID == allocationID {
-				return allocStat, nil
-			}
-		}
-		return nil, common.NewError("allocation_stats_not_found", "Stats for allocation not found")
-	}
-	allocations := q.Get("allocations")
-	if allocations != "" {
-		return loadAllocationList(ctx)
-	}
-	bs.loadBasicStats(ctx)
 	return bs, nil
 }

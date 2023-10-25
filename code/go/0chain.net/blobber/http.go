@@ -26,7 +26,7 @@ func startHttpServer() {
 	}
 
 	r := mux.NewRouter()
-	initHandlers(r)
+	initHandlers(r, config.Development())
 
 	var wg sync.WaitGroup
 
@@ -36,7 +36,7 @@ func startHttpServer() {
 	// start https server
 	go startServer(&wg, r, mode, httpsPort, true)
 
-	logging.Logger.Info("Ready to listen to the requests")
+	logging.Logger.Info("Ready to listen to the requests with development mode: " + mode)
 	fmt.Print("> start http server	[OK]\n")
 
 	wg.Wait()
@@ -104,12 +104,12 @@ func startServer(wg *sync.WaitGroup, r *mux.Router, mode string, port int, isTls
 	}
 }
 
-func initHandlers(r *mux.Router) {
+func initHandlers(r *mux.Router, devMode bool) {
 	handler.StartTime = time.Now().UTC()
 	r.HandleFunc("/", handler.HomepageHandler)
 	handler.SetupHandlers(r)
 	handler.SetupSwagger()
-	common.SetAdminCredentials()
+	common.SetAdminCredentials(devMode)
 }
 
 func initProfHandlers(mux *http.ServeMux) {
