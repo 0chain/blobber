@@ -441,7 +441,9 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		zap.Duration("get_response", elapsedResponse),
 		zap.Duration("get_data", elapsedData),
 		zap.Duration("stats", elapsedStats))
-
+	if !dr.VerifyDownload {
+		return chunkData, nil
+	}
 	return fileDownloadResponse, nil
 }
 
