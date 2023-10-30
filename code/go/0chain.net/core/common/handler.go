@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+
+	"github.com/0chain/gosdk/zboxcore/logger"
 )
 
 const (
@@ -77,6 +79,7 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 			}
 		} else if data != nil {
 			rawdata, ok := data.([]byte)
+			logger.Logger.Info("rawdata", len(rawdata), ok)
 			if ok {
 				w.Header().Set("Content-Type", "application/octet-stream")
 				w.Write(rawdata) //nolint:errcheck
