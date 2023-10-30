@@ -466,8 +466,8 @@ ALTER TABLE public.write_markers OWNER TO blobber_user;
 -- Name: write_markers_archive; Type: TABLE; Schema: public; Owner: blobber_user
 --
 
-CREATE TABLE public.write_markers_archive AS TABLE public.write_markers WITH NO DATA OWNER TO blobber_user TABLESPACE hdd_tablespace;
-
+CREATE TABLE public.write_markers_archive AS TABLE public.write_markers WITH NO DATA;
+ALTER TABLE public.write_markers_archive SET TABLESPACE hdd_tablespace;
 
 --
 -- Name: write_markers_sequence_seq; Type: SEQUENCE; Schema: public; Owner: blobber_user
