@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"sort"
 	"strconv"
 	"time"
 
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"go.uber.org/zap"
@@ -56,7 +56,7 @@ func syncOpenChallenges(ctx context.Context) {
 		var challengeIDs []string
 		challenges.Challenges = make([]*ChallengeEntity, 0)
 		apiStart := time.Now()
-		retBytes, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params, chain.GetServerChain())
+		retBytes, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/openchallenges", params)
 		if err != nil {
 			logging.Logger.Error("[challenge]open: ", zap.Error(err))
 			break
