@@ -66,6 +66,10 @@ func setupConfig(configDir string, deploymentMode int) {
 	config.Configuration.DBUserName = viper.GetString("db.user")
 	config.Configuration.DBPassword = viper.GetString("db.password")
 	config.Configuration.DBTablesToKeep = viper.GetStringSlice("db.keep_tables")
+	config.Configuration.ArchiveDBPath = viper.GetString("db.archive_path")
+	if config.Configuration.ArchiveDBPath == "" {
+		config.Configuration.ArchiveDBPath = "/var/lib/postgresql/hdd"
+	}
 
 	config.Configuration.PriceInUSD = viper.GetBool("price_in_usd")
 

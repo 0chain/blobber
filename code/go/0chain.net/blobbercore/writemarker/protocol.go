@@ -116,8 +116,8 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context) error {
 			wme.Status = Committed
 			wme.StatusMessage = t.TransactionOutput
 			wme.CloseTxnID = t.Hash
-			err = wme.UpdateStatus(ctx, Committed, t.TransactionOutput, t.Hash)
-			return err
+			_ = wme.UpdateStatus(ctx, Committed, t.TransactionOutput, t.Hash)
+			return nil
 		}
 	}
 
@@ -165,8 +165,8 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context) error {
 	wme.Status = Committed
 	wme.StatusMessage = t.TransactionOutput
 	wme.CloseTxnID = t.Hash
-	err = wme.UpdateStatus(ctx, Committed, t.TransactionOutput, t.Hash)
-	return err
+	_ = wme.UpdateStatus(ctx, Committed, t.TransactionOutput, t.Hash)
+	return nil
 }
 
 func (wme *WriteMarkerEntity) VerifyRollbackMarker(ctx context.Context, dbAllocation *allocation.Allocation, latestWM *WriteMarkerEntity) error {
