@@ -8,6 +8,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
 	"golang.org/x/sync/semaphore"
@@ -18,6 +19,11 @@ var (
 	writeMarkerChan chan *WriteMarkerEntity
 	writeMarkerMap  map[string]*semaphore.Weighted
 	mut             sync.RWMutex
+)
+
+const (
+	timestampGap          = 30 * 24 * 60 * 60  // 30 days
+	cleanupWorkerInterval = 24 * 7 * time.Hour // 7 days
 )
 
 func SetupWorkers(ctx context.Context) {
@@ -39,6 +45,7 @@ func SetupWorkers(ctx context.Context) {
 	}
 
 	go startRedeem(ctx)
+	go startCleanupWorker(ctx)
 }
 
 func GetLock(allocationID string) *semaphore.Weighted {
@@ -117,7 +124,7 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 			mut.Release(1)
 		}
 	}()
-	err = allocation.Repo.UpdateAllocationRedeem(ctx, wm.WM.AllocationRoot, allocationID, alloc)
+	err = allocation.Repo.UpdateAllocationRedeem(ctx, allocationID, wm.WM.AllocationRoot, alloc)
 	if err != nil {
 		logging.Logger.Error("Error redeeming the write marker. Allocation latest wm redeemed update failed",
 			zap.Any("allocation", allocationID),
@@ -180,5 +187,24 @@ func tryAgain(wm *WriteMarkerEntity) {
 
 // Can add more cases where we don't want to retry
 func retryRedeem(errString string) bool {
-	return strings.Contains(errString, "value not present")
+	return !strings.Contains(errString, "value not present")
+}
+
+func startCleanupWorker(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(cleanupWorkerInterval):
+			_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+				tx := datastore.GetStore().GetTransaction(ctx)
+				timestamp := int64(common.Now()) - timestampGap // 30 days
+				err := tx.Exec("INSERT INTO write_markers_archive (SELECT * from write_markers WHERE timestamp < ? AND latest = )", timestamp, false).Error
+				if err != nil {
+					return err
+				}
+				return tx.Exec("DELETE FROM write_markers WHERE timestamp < ? AND latest = )", timestamp, false).Error
+			})
+		}
+	}
 }

@@ -84,6 +84,7 @@ type Config struct {
 	DBUserName                    string
 	DBPassword                    string
 	DBTablesToKeep                []string
+	ArchiveDBPath                 string
 	OpenConnectionWorkerFreq      int64
 	OpenConnectionWorkerTolerance int64
 	WMRedeemFreq                  int64

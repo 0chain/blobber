@@ -88,7 +88,7 @@ func (sp *ValidatorProtocolImpl) VerifyChallengeTransaction(ctx context.Context,
 	params := make(map[string]string)
 	params["blobber"] = blobberID
 	params["challenge"] = challengeRequest.ChallengeID
-	challengeBytes, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/getchallenge", params, chain.GetServerChain())
+	challengeBytes, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/getchallenge", params)
 
 	if err != nil {
 		return nil, common.NewError("invalid_challenge", "Invalid challenge id. Challenge not found in blockchain. "+err.Error())

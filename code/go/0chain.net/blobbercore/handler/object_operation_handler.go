@@ -533,6 +533,10 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			"Invalid connection id. Connection id was not found: %v", err)
 	}
 	if len(connectionObj.Changes) == 0 {
+		if connectionObj.Status == allocation.NewConnection {
+			return nil, common.NewError("invalid_parameters",
+				"Invalid connection id. Connection not found.")
+		}
 		return nil, common.NewError("invalid_parameters",
 			"Invalid connection id. Connection does not have any changes.")
 	}
@@ -656,7 +660,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	writemarkerEntity.ClientPublicKey = clientKey
 
 	db := datastore.GetStore().GetTransaction(ctx)
-
+	writemarkerEntity.Latest = true
 	if err = db.Create(writemarkerEntity).Error; err != nil {
 		return nil, common.NewError("write_marker_error", "Error persisting the write marker")
 	}
@@ -799,7 +803,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	allocationChange.Size = 0
 	allocationChange.Operation = constants.FileOperationRename
 	dfc := &allocation.RenameFileChange{ConnectionID: connectionObj.ID,
-		AllocationID: connectionObj.AllocationID, Path: objectRef.Path}
+		AllocationID: connectionObj.AllocationID, Path: objectRef.Path, Type: objectRef.Type}
 	dfc.NewName = new_name
 	connectionObj.AddChange(allocationChange, dfc)
 
@@ -1433,6 +1437,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		a.FileMetaRoot = alloc.FileMetaRoot
 		a.IsRedeemRequired = alloc.IsRedeemRequired
 	}
+	writemarkerEntity.Latest = true
 	err = txn.Create(writemarkerEntity).Error
 	if err != nil {
 		txn.Rollback()
