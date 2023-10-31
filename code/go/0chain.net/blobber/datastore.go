@@ -34,7 +34,6 @@ func setupDatabase() error {
 
 		time.Sleep(1 * time.Second)
 	}
-
 	if err := migrateDatabase(pgDB); err != nil {
 		return fmt.Errorf("error while migrating schema: %v", err)
 	}
@@ -49,7 +48,7 @@ func migrateDatabase(db *gorm.DB) error {
 	if err != nil {
 		return err
 	}
-	
+
 	goose.Migrate(sqlDB)
 	return nil
 }

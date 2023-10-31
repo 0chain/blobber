@@ -162,6 +162,7 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		IsFinal:      cmd.fileChanger.IsFinal,
 		FilePathHash: cmd.fileChanger.PathHash,
 		Hasher:       hasher,
+		Size:         cmd.fileChanger.Size,
 	}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionID, fileInputData, cmd.contentFile)
 	if err != nil {

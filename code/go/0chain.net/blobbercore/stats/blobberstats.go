@@ -83,17 +83,42 @@ type BlobberStats struct {
 	WriteMarkers WriteMarkersStat `json:"write_markers"`
 }
 
+var fs *BlobberStats
+
+const statsHandlerPeriod = 30 * time.Minute
+
 type AllocationId struct {
 	Id string `json:"id"`
 }
 
+func SetupStatsWorker(ctx context.Context) {
+	fs = &BlobberStats{}
+	go func() {
+		_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+			fs.loadBasicStats(ctx)
+			fs.loadDetailedStats(ctx)
+			fs.loadFailedChallengeList(ctx)
+			return common.NewError("rollback", "read_only")
+		})
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(statsHandlerPeriod):
+				_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+					fs.loadBasicStats(ctx)
+					fs.loadDetailedStats(ctx)
+					fs.loadFailedChallengeList(ctx)
+					return common.NewError("rollback", "read_only")
+				})
+			}
+		}
+	}()
+}
+
 func LoadBlobberStats(ctx context.Context) *BlobberStats {
-	fs := &BlobberStats{}
-	fs.loadBasicStats(ctx)
-	fs.loadDetailedStats(ctx)
 	fs.loadInfraStats(ctx)
 	fs.loadDBStats()
-	fs.loadFailedChallengeList(ctx)
 	return fs
 }
 
@@ -211,13 +236,9 @@ func (bs *BlobberStats) loadStats(ctx context.Context) {
 	const sel = `
 	COALESCE (SUM (reference_objects.size), 0) AS files_size,
 	COALESCE (SUM (reference_objects.thumbnail_size), 0) AS thumbnails_size,
-	COALESCE (SUM (file_stats.num_of_block_downloads), 0) AS num_of_reads,
+	COALESCE (SUM (reference_objects.num_of_block_downloads), 0) AS num_of_reads,
 	COALESCE (SUM (reference_objects.num_of_blocks), 0) AS num_of_block_writes,
 	COUNT (*) AS num_of_writes`
-
-	const join = `
-	INNER JOIN file_stats ON reference_objects.id = file_stats.ref_id
-	WHERE reference_objects.type = 'f'`
 
 	var (
 		db  = datastore.GetStore().GetTransaction(ctx)
@@ -227,7 +248,7 @@ func (bs *BlobberStats) loadStats(ctx context.Context) {
 
 	row = db.Table("reference_objects").
 		Select(sel).
-		Joins(join).
+		Where("reference_objects.type = 'f'").
 		Row()
 
 	err = row.Scan(&bs.FilesSize, &bs.ThumbnailsSize, &bs.NumReads,
@@ -269,13 +290,11 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
             reference_objects.allocation_id,
             SUM(reference_objects.size) as files_size,
             SUM(reference_objects.thumbnail_size) as thumbnails_size,
-            SUM(file_stats.num_of_block_downloads) as num_of_reads,
+            SUM(reference_objects.num_of_block_downloads) as num_of_reads,
             SUM(reference_objects.num_of_blocks) as num_of_block_writes,
             COUNT(*) as num_of_writes,
             allocations.blobber_size AS allocated_size,
             allocations.expiration_date AS expiration_date`).
-		Joins(`INNER JOIN file_stats
-            ON reference_objects.id = file_stats.ref_id`).
 		Joins(`
             INNER JOIN allocations
             ON allocations.id = reference_objects.allocation_id`).
@@ -438,47 +457,6 @@ func (bs *BlobberStats) loadAllocationChallengeStats(ctx context.Context) {
 			zap.Error(err))
 		return
 	}
-}
-
-func loadAllocationList(ctx context.Context) (interface{}, error) {
-	var (
-		allocations = make([]AllocationId, 0)
-		db          = datastore.GetStore().GetTransaction(ctx)
-		rows        *sql.Rows
-		err         error
-	)
-
-	rows, err = db.Table("reference_objects").
-		Select("reference_objects.allocation_id").
-		Group("reference_objects.allocation_id").
-		Rows()
-
-	if err != nil {
-		Logger.Error("Error in getting the allocation list", zap.Error(err))
-		return nil, common.NewError("get_allocations_list_failed",
-			"Failed to get allocation list from DB")
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var allocationId AllocationId
-		if err = rows.Scan(&allocationId.Id); err != nil {
-			Logger.Error("Error in scanning record for blobber allocations",
-				zap.Error(err))
-			return nil, common.NewError("get_allocations_list_failed",
-				"Failed to scan allocation from DB")
-		}
-		allocations = append(allocations, allocationId)
-	}
-
-	if err = rows.Err(); err != nil && err != sql.ErrNoRows {
-		Logger.Error("Error in scanning record for blobber allocations",
-			zap.Error(err))
-		return nil, common.NewError("get_allocations_list_failed",
-			"Failed to scan allocations from DB")
-	}
-
-	return allocations, nil
 }
 
 type ReadMarkerEntity struct {
