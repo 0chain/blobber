@@ -28,9 +28,6 @@ func setupWorkers(ctx context.Context) {
 	challenge.SetupChallengeCleanUpWorker(ctx)
 	challenge.SetupChallengeTimingsCleanupWorker(ctx)
 	stats.SetupStatsWorker(ctx)
-
-	logging.Logger.Info("Jayash setupWorkers: starting refresh settings worker")
-
 	updateMaxFileSizeWorker(ctx)
 	updateCCTWorker(ctx)
 }

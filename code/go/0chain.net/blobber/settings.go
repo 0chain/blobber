@@ -125,58 +125,63 @@ func setMaxFileSizeFromChain() error {
 }
 
 func updateCCTWorker(ctx context.Context) {
-	interval := time.Hour
-	if config.Development() {
-		interval = time.Second
-	}
+	go func() {
+		logging.Logger.Info("Jayash updateCCTWorker", zap.Int64("cct", config.StorageSCConfig.ChallengeCompletionTime))
+		interval := time.Hour
+		if config.Development() {
+			interval = time.Second
+		}
 
-	logging.Logger.Info("Jayash updateCCTWorker", zap.Duration("interval", interval))
+		logging.Logger.Info("Jayash updateCCTWorker", zap.Duration("interval", interval))
 
-	ticker := time.NewTicker(interval)
+		ticker := time.NewTicker(interval)
 
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			// We'd panic if err occurred when calling setCCTFromChain from
-			// main.go file because cct would be initially 0 and we cannot
-			// work with 0 value.
-			// Upon updating cct, we only log error because cct is not 0
-			// We should try to submit challenge as soon as possible regardless
-			// of cct value.
-			err := setCCTFromChain()
-			if err != nil {
-				logging.Logger.Error(err.Error())
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				// We'd panic if err occurred when calling setCCTFromChain from
+				// main.go file because cct would be initially 0 and we cannot
+				// work with 0 value.
+				// Upon updating cct, we only log error because cct is not 0
+				// We should try to submit challenge as soon as possible regardless
+				// of cct value.
+				err := setCCTFromChain()
+				if err != nil {
+					logging.Logger.Error(err.Error())
+				}
 			}
 		}
-	}
+	}()
 }
 
 func updateMaxFileSizeWorker(ctx context.Context) {
-	logging.Logger.Info("Jayash updateMaxFileSizeWorker", zap.Int64("max_file_size", config.StorageSCConfig.MaxFileSize))
-	interval := time.Hour
-	if config.Development() {
-		interval = time.Second
-	}
+	go func() {
+		logging.Logger.Info("Jayash updateMaxFileSizeWorker", zap.Int64("max_file_size", config.StorageSCConfig.MaxFileSize))
+		interval := time.Hour
+		if config.Development() {
+			interval = time.Second
+		}
 
-	logging.Logger.Info("Jayash updateMaxFileSizeWorker", zap.Duration("interval", interval))
+		logging.Logger.Info("Jayash updateMaxFileSizeWorker", zap.Duration("interval", interval))
 
-	ticker := time.NewTicker(interval)
+		ticker := time.NewTicker(interval)
 
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			// We'd panic if err occurred when calling setMaxFileSizeFromChain from
-			// main.go file because mfs would be initially 0 and we cannot
-			// work with 0 value.
-			// Upon updating mfs, we only log error because mfs is not 0
-			err := setMaxFileSizeFromChain()
-			if err != nil {
-				logging.Logger.Error(err.Error())
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				// We'd panic if err occurred when calling setMaxFileSizeFromChain from
+				// main.go file because mfs would be initially 0 and we cannot
+				// work with 0 value.
+				// Upon updating mfs, we only log error because mfs is not 0
+				err := setMaxFileSizeFromChain()
+				if err != nil {
+					logging.Logger.Error(err.Error())
+				}
 			}
 		}
-	}
+	}()
 }
