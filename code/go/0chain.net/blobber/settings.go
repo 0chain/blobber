@@ -105,8 +105,6 @@ func setCCTFromChain() error {
 }
 
 func setMaxFileSizeFromChain() error {
-	logging.Logger.Info("getting max file size from chain")
-
 	cb := &maxFileSizeCB{
 		done: make(chan struct{}),
 	}
@@ -146,6 +144,8 @@ func updateCCTWorker(ctx context.Context) {
 }
 
 func updateMaxFileSizeWorker(ctx context.Context) {
+	logging.Logger.Info("updateMaxFileSizeWorker", zap.Duration("interval", config.Configuration.StorageScConfigUpdateInterval), zap.Int64("max_file_size", config.StorageSCConfig.MaxFileSize))
+
 	ticker := time.NewTicker(config.Configuration.StorageScConfigUpdateInterval)
 
 	for {
