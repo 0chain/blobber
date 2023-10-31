@@ -124,7 +124,7 @@ func setMaxFileSizeFromChain() error {
 }
 
 func updateCCTWorker(ctx context.Context) {
-	ticker := time.NewTicker(time.Hour)
+	ticker := time.NewTicker(config.Configuration.StorageScConfigUpdateInterval)
 
 	for {
 		select {
@@ -146,7 +146,7 @@ func updateCCTWorker(ctx context.Context) {
 }
 
 func updateMaxFileSizeWorker(ctx context.Context) {
-	ticker := time.NewTicker(time.Hour)
+	ticker := time.NewTicker(config.Configuration.StorageScConfigUpdateInterval)
 
 	for {
 		select {
@@ -157,8 +157,6 @@ func updateMaxFileSizeWorker(ctx context.Context) {
 			// main.go file because mfs would be initially 0 and we cannot
 			// work with 0 value.
 			// Upon updating mfs, we only log error because mfs is not 0
-			// We should try to submit challenge as soon as possible regardless
-			// of mfs value.
 			err := setMaxFileSizeFromChain()
 			if err != nil {
 				logging.Logger.Error(err.Error())

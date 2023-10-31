@@ -44,6 +44,7 @@ func SetupDefaultConfig() {
 
 	viper.SetDefault("update_allocations_interval", time.Duration(-1))
 	viper.SetDefault("finalize_allocations_interval", time.Duration(-1))
+	viper.SetDefault("storage_sc_config_update_interval", 1*time.Hour)
 }
 
 /*SetupConfig - setup the configuration system */
@@ -112,6 +113,8 @@ type Config struct {
 
 	UpdateAllocationsInterval   time.Duration
 	FinalizeAllocationsInterval time.Duration
+
+	StorageScConfigUpdateInterval time.Duration
 
 	MaxAllocationDirFiles int
 

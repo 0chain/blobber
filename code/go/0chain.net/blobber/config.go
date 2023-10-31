@@ -77,6 +77,9 @@ func setupConfig(configDir string, deploymentMode int) {
 	config.Configuration.FinalizeAllocationsInterval =
 		viper.GetDuration("finalize_allocations_interval")
 
+	config.Configuration.StorageScConfigUpdateInterval =
+		viper.GetDuration("storage_sc_config_update_interval")
+
 	config.Configuration.MaxAllocationDirFiles =
 		viper.GetInt("max_dirs_files")
 	if config.Configuration.MaxAllocationDirFiles < 50000 {
