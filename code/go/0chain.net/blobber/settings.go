@@ -119,20 +119,15 @@ func setMaxFileSizeFromChain() error {
 
 	config.StorageSCConfig.MaxFileSize = cb.mfs
 
-	logging.Logger.Info("Jayash max file size from chain", zap.Int64("max_file_size", cb.mfs))
-
 	return nil
 }
 
 func updateCCTWorker(ctx context.Context) {
 	go func() {
-		logging.Logger.Info("Jayash updateCCTWorker", zap.Int64("cct", config.StorageSCConfig.ChallengeCompletionTime))
 		interval := time.Hour
 		if config.Development() {
 			interval = time.Second
 		}
-
-		logging.Logger.Info("Jayash updateCCTWorker", zap.Duration("interval", interval))
 
 		ticker := time.NewTicker(interval)
 
@@ -158,13 +153,10 @@ func updateCCTWorker(ctx context.Context) {
 
 func updateMaxFileSizeWorker(ctx context.Context) {
 	go func() {
-		logging.Logger.Info("Jayash updateMaxFileSizeWorker", zap.Int64("max_file_size", config.StorageSCConfig.MaxFileSize))
 		interval := time.Hour
 		if config.Development() {
 			interval = time.Second
 		}
-
-		logging.Logger.Info("Jayash updateMaxFileSizeWorker", zap.Duration("interval", interval))
 
 		ticker := time.NewTicker(interval)
 

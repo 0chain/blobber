@@ -2,6 +2,8 @@ package handler
 
 import (
 	"context"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 	"sync"
 	"time"
 
@@ -139,6 +141,8 @@ func startBlackListWorker(ctx context.Context) {
 	if config.Development() {
 		BlackListWorkerTime = 10 * time.Second
 	}
+
+	logging.Logger.Info("Jayash test startBlackListWorker", zap.Any("BlackListWorkerTime", BlackListWorkerTime))
 
 	for {
 		select {
