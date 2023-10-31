@@ -342,10 +342,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 
 	isReadFree := alloc.IsReadFree(blobberID)
 	var dq *DownloadQuota
-
+	Logger.Info("freeRead", zap.Bool("isReadFree", isReadFree), zap.String("clientID", clientID), zap.String("connectionID", dr.ConnectionID))
 	if !isReadFree {
 		dq = quotaManager.getDownloadQuota(dr.ConnectionID)
 		if dq == nil {
+			Logger.Error("failDownload", zap.String("connectionID", dr.ConnectionID))
 			return nil, common.NewError("download_file", fmt.Sprintf("no download quota for %v", dr.ConnectionID))
 		}
 		if dq.Quota < dr.NumBlocks {

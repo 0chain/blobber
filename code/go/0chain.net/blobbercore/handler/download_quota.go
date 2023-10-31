@@ -76,7 +76,7 @@ func (qm *QuotaManager) getDownloadQuota(key string) *DownloadQuota {
 func (qm *QuotaManager) createOrUpdateQuota(numBlocks int64, key string) {
 	qm.mux.Lock()
 	defer qm.mux.Unlock()
-	logging.Logger.Info("createOrUpdateQuota", zap.String("connectionID", key))
+	logging.Logger.Info("createOrUpdateQuota", zap.String("connectionID", key), zap.Int64("numBlocks", numBlocks))
 	if dq, ok := qm.m[key]; ok {
 		dq.Lock()
 		dq.Quota += numBlocks

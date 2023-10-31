@@ -399,7 +399,13 @@ func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error)
 func downloadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
-	return storageHandler.DownloadFile(ctx, r)
+	data, err := storageHandler.DownloadFile(ctx, r)
+	if err != nil {
+		_, ok := data.([]byte)
+		_, isString := data.(string)
+		Logger.Error("downloadHandler", zap.Error(err), zap.Bool("isByte", ok), zap.Bool("isString", isString))
+	}
+	return data, err
 }
 
 func redeemHandler(ctx context.Context, r *http.Request) (interface{}, error) {
