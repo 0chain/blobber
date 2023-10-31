@@ -53,11 +53,6 @@ func main() {
 		panic(err)
 	}
 
-	if err := setMaxFileSizeFromChain(); err != nil {
-		logging.Logger.Error("Error setMaxFileSizeFromChain" + err.Error())
-		panic(err)
-	}
-
 	// todo: activate this when gRPC functionalities are implemented
 	// go startGRPCServer()
 
