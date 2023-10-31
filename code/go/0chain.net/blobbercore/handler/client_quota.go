@@ -2,8 +2,6 @@ package handler
 
 import (
 	"context"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"go.uber.org/zap"
 	"sync"
 	"time"
 
@@ -120,14 +118,6 @@ func saveClientStats() {
 		tx.Create(&dbStats)
 		return nil
 	})
-
-	logging.Logger.Info("Jayash test saveClientStats",
-		zap.Any("UploadLimitMonthly", config.Configuration.UploadLimitMonthly),
-		zap.Any("BlockLimitMonthly", config.Configuration.BlockLimitMonthly),
-		zap.Any("CommitLimitMonthly", config.Configuration.CommitLimitMonthly),
-		zap.Any("blackListMap", blackListMap),
-		zap.Any("dbStats", dbStats))
-
 	var blackList []string
 	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		tx := datastore.GetStore().GetTransaction(ctx)
@@ -150,8 +140,6 @@ func startBlackListWorker(ctx context.Context) {
 	if config.Development() {
 		BlackListWorkerTime = 10 * time.Second
 	}
-
-	logging.Logger.Info("Jayash test startBlackListWorker", zap.Any("BlackListWorkerTime", BlackListWorkerTime))
 
 	for {
 		select {
