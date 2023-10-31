@@ -22,9 +22,6 @@ update_allocations_interval: 60m
 #finalize_allocations_interval used to get and finalize empty allocations
 finalize_allocations_interval: 24h
 
-#storage_sc_config_update_interval used to update storage sc configs
-storage_sc_config_update_interval: 1h
-
 # maximum limit on the number of combined directories and files on each allocation
 max_dirs_files: 50000
 
