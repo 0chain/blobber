@@ -28,8 +28,7 @@ func setupWorkers(ctx context.Context) {
 	challenge.SetupChallengeCleanUpWorker(ctx)
 	challenge.SetupChallengeTimingsCleanupWorker(ctx)
 	stats.SetupStatsWorker(ctx)
-	updateMaxFileSizeWorker(ctx)
-	updateCCTWorker(ctx)
+	updateStorageScConfigWorker(ctx)
 }
 
 // startRefreshSettings sync settings from blockchain
