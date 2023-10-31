@@ -122,6 +122,8 @@ func setMaxFileSizeFromChain() error {
 }
 
 func updateCCTWorker(ctx context.Context) {
+	logging.Logger.Info("updateCCTWorker", zap.Duration("interval", config.Configuration.StorageScConfigUpdateInterval), zap.Int64("max_file_size", config.StorageSCConfig.MaxFileSize))
+
 	ticker := time.NewTicker(config.Configuration.StorageScConfigUpdateInterval)
 
 	for {
