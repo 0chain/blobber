@@ -120,10 +120,19 @@ func saveClientStats() {
 		tx.Create(&dbStats)
 		return nil
 	})
+
+	logging.Logger.Info("Jayash test saveClientStats",
+		zap.Any("UploadLimitMonthly", config.Configuration.UploadLimitMonthly),
+		zap.Any("BlockLimitMonthly", config.Configuration.BlockLimitMonthly),
+		zap.Any("CommitLimitMonthly", config.Configuration.CommitLimitMonthly),
+		zap.Any("blackListMap", blackListMap),
+		zap.Any("dbStats", dbStats))
+
 	var blackList []string
 	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		tx := datastore.GetStore().GetTransaction(ctx)
-		err := tx.Raw("SELECT client_id as blackList from (SELECT client_id,sum(total_upload) as upload,sum(total_download) as download, sum(total_write_marker) as writemarker from client_stats where created_at > ? group by client_id) as stats where stats.upload > ? or stats.download > ? or stats.writemarker > ?", common.Now()-Period, config.Configuration.UploadLimitMonthly, config.Configuration.BlockLimitMonthly, config.Configuration.CommitLimitMonthly).Scan(&blackList).Error
+		err := tx.Raw("SELECT client_id as blackList from (SELECT client_id,sum(total_upload) as upload,sum(total_download) as download, sum(total_write_marker) "+
+			"as writemarker from client_stats where created_at > ? group by client_id) as stats where stats.upload > ? or stats.download > ? or stats.writemarker > ?", common.Now()-Period, config.Configuration.UploadLimitMonthly, config.Configuration.BlockLimitMonthly, config.Configuration.CommitLimitMonthly).Scan(&blackList).Error
 		return err
 	})
 	if err == nil {
