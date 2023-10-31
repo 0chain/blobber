@@ -127,6 +127,8 @@ func updateCCTWorker(ctx context.Context) {
 		interval = time.Second
 	}
 
+	logging.Logger.Info("Jayash updateCCTWorker", zap.Duration("interval", interval))
+
 	ticker := time.NewTicker(interval)
 
 	for {
@@ -153,6 +155,8 @@ func updateMaxFileSizeWorker(ctx context.Context) {
 	if config.Development() {
 		interval = time.Second
 	}
+
+	logging.Logger.Info("Jayash updateMaxFileSizeWorker", zap.Duration("interval", interval))
 
 	ticker := time.NewTicker(interval)
 
