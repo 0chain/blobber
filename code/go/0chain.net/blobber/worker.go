@@ -31,8 +31,8 @@ func setupWorkers(ctx context.Context) {
 
 	logging.Logger.Info("Jayash setupWorkers: starting refresh settings worker")
 
-	updateCCTWorker(ctx)
 	updateMaxFileSizeWorker(ctx)
+	updateCCTWorker(ctx)
 }
 
 // startRefreshSettings sync settings from blockchain
