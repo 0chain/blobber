@@ -67,6 +67,7 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		data, err := handler(ctx, r)
+		logger.Logger.Info("ToByteStream", data != nil, err)
 		if err != nil {
 			if cerr, ok := err.(*Error); ok {
 				w.Header().Set(AppErrorHeader, cerr.Code)
