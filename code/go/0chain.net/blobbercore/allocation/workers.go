@@ -3,13 +3,14 @@ package allocation
 import (
 	"context"
 	"encoding/json"
-	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+	"math"
 	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
@@ -49,10 +50,12 @@ func UpdateWorker(ctx context.Context, interval time.Duration) {
 	for {
 		select {
 		case <-tick:
-			_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+			updateCtx := datastore.GetStore().CreateTransaction(context.TODO())
+			_ = datastore.GetStore().WithTransaction(updateCtx, func(ctx context.Context) error {
 				updateWork(ctx)
 				return nil
 			})
+			updateCtx.Done()
 		case <-quit:
 			return
 		}
@@ -212,8 +215,7 @@ func requestAllocation(allocID string) (sa *transaction.StorageAllocation, err e
 	b, err = transaction.MakeSCRestAPICall(
 		transaction.STORAGE_CONTRACT_ADDRESS,
 		"/allocation",
-		map[string]string{"allocation": allocID},
-		chain.GetServerChain())
+		map[string]string{"allocation": allocID})
 	if err != nil {
 		return
 	}
@@ -227,8 +229,7 @@ func requestExpiredAllocations() (allocs []string, err error) {
 	b, err = transaction.MakeSCRestAPICall(
 		transaction.STORAGE_CONTRACT_ADDRESS,
 		"/expired-allocations",
-		map[string]string{"blobber_id": node.Self.ID},
-		chain.GetServerChain())
+		map[string]string{"blobber_id": node.Self.ID})
 	if err != nil {
 		return
 	}
@@ -239,17 +240,42 @@ func requestExpiredAllocations() (allocs []string, err error) {
 func updateAllocationInDB(ctx context.Context, a *Allocation, sa *transaction.StorageAllocation) (ua *Allocation, err error) {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 	var changed bool = a.Tx != sa.Tx
+	if !changed {
+		return a, nil
+	}
 
 	// transaction
 	a.Tx = sa.Tx
 	a.OwnerID = sa.OwnerID
 	a.OwnerPublicKey = sa.OwnerPublicKey
 
-	// update fields
+	// // update fields
 	a.Expiration = sa.Expiration
 	a.TotalSize = sa.Size
 	a.Finalized = sa.Finalized
 	a.FileOptions = sa.FileOptions
+	a.BlobberSize = int64(math.Ceil(float64(sa.Size) / float64(sa.DataShards)))
+
+	updateMap := make(map[string]interface{})
+	updateMap["tx"] = a.Tx
+	updateMap["owner_id"] = a.OwnerID
+	updateMap["owner_public_key"] = a.OwnerPublicKey
+	updateMap["expiration_date"] = a.Expiration
+	updateMap["size"] = a.TotalSize
+	updateMap["finalized"] = a.Finalized
+	updateMap["file_options"] = a.FileOptions
+	updateMap["blobber_size"] = a.BlobberSize
+
+	updateOption := func(alloc *Allocation) {
+		alloc.Tx = a.Tx
+		alloc.OwnerID = a.OwnerID
+		alloc.OwnerPublicKey = a.OwnerPublicKey
+		alloc.Expiration = a.Expiration
+		alloc.TotalSize = a.TotalSize
+		alloc.Finalized = a.Finalized
+		alloc.FileOptions = a.FileOptions
+		alloc.BlobberSize = a.BlobberSize
+	}
 
 	// update terms
 	a.Terms = make([]*Terms, 0, len(sa.BlobberDetails))
@@ -263,12 +289,8 @@ func updateAllocationInDB(ctx context.Context, a *Allocation, sa *transaction.St
 	}
 
 	// save allocations
-	if err := Repo.Save(ctx, a); err != nil {
+	if err := Repo.UpdateAllocation(ctx, a, updateMap, updateOption); err != nil {
 		return nil, err
-	}
-
-	if !changed {
-		return a, nil
 	}
 
 	// save allocation terms

@@ -51,49 +51,47 @@ func (fs *FileStore) removeAllocation(ID string) {
 }
 
 func (fs *FileStore) initMap() error {
-	ctx, cnCl := context.WithCancel(context.Background())
-	defer cnCl()
-
-	ctx = datastore.GetStore().CreateTransaction(ctx)
-	db := datastore.GetStore().GetTransaction(ctx)
-	if db == nil {
-		return errors.New("could not get db client")
-	}
-
-	limitCh := make(chan struct{}, 50)
-	wg := &sync.WaitGroup{}
-	var dbAllocations []*dbAllocation
-
-	err := db.Model(&dbAllocation{}).FindInBatches(&dbAllocations, 1000, func(tx *gorm.DB, batch int) error {
-		allocsMap := make(map[string]*allocation)
-
-		for _, dbAlloc := range dbAllocations {
-			a := allocation{
-				allocatedSize: uint64(dbAlloc.BlobberSize),
-				mu:            &sync.Mutex{},
-				tmpMU:         &sync.Mutex{},
-			}
-
-			allocsMap[dbAlloc.ID] = &a
-
-			err := getStorageDetails(ctx, &a, dbAlloc.ID)
-
-			if err != nil {
-				return err
-			}
-
-			limitCh <- struct{}{}
-			wg.Add(1)
-			go fs.getTemporaryStorageDetails(ctx, &a, dbAlloc.ID, limitCh, wg)
-
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		db := datastore.GetStore().GetTransaction(ctx)
+		if db == nil {
+			return errors.New("could not get db client")
 		}
 
-		fs.setAllocations(allocsMap)
-		return nil
-	}).Error
+		limitCh := make(chan struct{}, 50)
+		wg := &sync.WaitGroup{}
+		var dbAllocations []*dbAllocation
 
-	wg.Wait()
-	db.Commit()
+		err := db.Model(&dbAllocation{}).FindInBatches(&dbAllocations, 1000, func(tx *gorm.DB, batch int) error {
+			allocsMap := make(map[string]*allocation)
+
+			for _, dbAlloc := range dbAllocations {
+				a := allocation{
+					allocatedSize: uint64(dbAlloc.BlobberSize),
+					mu:            &sync.Mutex{},
+					tmpMU:         &sync.Mutex{},
+				}
+
+				allocsMap[dbAlloc.ID] = &a
+
+				err := getStorageDetails(ctx, &a, dbAlloc.ID)
+
+				if err != nil {
+					return err
+				}
+
+				limitCh <- struct{}{}
+				wg.Add(1)
+				go fs.getTemporaryStorageDetails(ctx, &a, dbAlloc.ID, limitCh, wg)
+
+			}
+
+			fs.setAllocations(allocsMap)
+			return nil
+		}).Error
+
+		wg.Wait()
+		return err
+	})
 	return err
 }
 

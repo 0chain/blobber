@@ -2,14 +2,15 @@ package challenge
 
 import (
 	"context"
-	"github.com/0chain/gosdk/zboxcore/sdk"
-	"github.com/0chain/gosdk/zcncore"
 	"sync"
 	"time"
+
+	"github.com/0chain/gosdk/zcncore"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/emirpasic/gods/maps/treemap"
 	"go.uber.org/zap"
 	"golang.org/x/sync/semaphore"
@@ -86,8 +87,7 @@ func getRoundWorker(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			network := zcncore.GetNetwork()
-			currentRound, _ := sdk.GetRoundFromSharders(network.Sharders)
+			currentRound, _ := zcncore.GetRoundFromSharders()
 
 			if roundInfo.LastRoundDiff == 0 {
 				roundInfo.LastRoundDiff = 1000
@@ -146,7 +146,9 @@ func processChallenge(ctx context.Context, it *ChallengeEntity) {
 	logging.Logger.Info("processing_challenge",
 		zap.String("challenge_id", it.ChallengeID))
 
-	validateOnValidators(it)
+	_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		return validateOnValidators(ctx, it)
+	})
 }
 
 func commitOnChainWorker(ctx context.Context) {
@@ -174,7 +176,15 @@ func commitOnChainWorker(ctx context.Context) {
 
 		for _, challenge := range challenges {
 			chall := challenge
-			txn, _ := chall.getCommitTransaction()
+			var (
+				txn *transaction.Transaction
+				err error
+			)
+			_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+				txn, err = chall.getCommitTransaction(ctx)
+				return err
+			})
+
 			if txn != nil {
 				wg.Add(1)
 				go func(challenge *ChallengeEntity) {
@@ -184,10 +194,13 @@ func commitOnChainWorker(ctx context.Context) {
 							logging.Logger.Error("verifyChallengeTransaction", zap.Any("err", r))
 						}
 					}()
-					err := challenge.VerifyChallengeTransaction(txn)
-					if err == nil || err != ErrEntityNotFound {
-						deleteChallenge(challenge.RoundCreatedAt)
-					}
+					_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+						err := challenge.VerifyChallengeTransaction(ctx, txn)
+						if err == nil || err != ErrEntityNotFound {
+							deleteChallenge(challenge.RoundCreatedAt)
+						}
+						return nil
+					})
 				}(&chall)
 			}
 		}

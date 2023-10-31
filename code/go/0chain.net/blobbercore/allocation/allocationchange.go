@@ -141,6 +141,7 @@ func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clien
 		cc.ComputeProperties()
 		// Load connection Obj size from memory
 		cc.Size = GetConnectionObjSize(connectionID)
+		cc.Status = InProgressConnection
 		return cc, nil
 	}
 
@@ -171,6 +172,12 @@ func (cc *AllocationChangeCollector) Save(ctx context.Context) error {
 	return db.Save(cc).Error
 }
 
+func (cc *AllocationChangeCollector) Create(ctx context.Context) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+	cc.Status = NewConnection
+	return db.Create(cc).Error
+}
+
 // ComputeProperties unmarshal all ChangeProcesses from postgres
 func (cc *AllocationChangeCollector) ComputeProperties() {
 	cc.AllocationChanges = make([]AllocationChangeProcessor, 0, len(cc.Changes))
@@ -196,7 +203,6 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 		if acp == nil {
 			continue // unknown operation (impossible case?)
 		}
-
 		if err := acp.Unmarshal(change.Input); err != nil { // error is not handled
 			logging.Logger.Error("AllocationChangeCollector_unmarshal", zap.Error(err))
 		}

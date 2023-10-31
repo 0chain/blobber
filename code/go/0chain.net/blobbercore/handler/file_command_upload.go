@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
+
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"go.uber.org/zap"
@@ -59,6 +62,11 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 	if err != nil {
 		return common.NewError("invalid_parameters",
 			"Invalid parameters. Error parsing the meta data for upload."+err.Error())
+	}
+
+	if fileChanger.Size > config.StorageSCConfig.MaxFileSize {
+		return common.NewError("max_file_size",
+			fmt.Sprintf("file size %d should not be greater than %d", fileChanger.Size, config.StorageSCConfig.MaxFileSize))
 	}
 
 	if fileChanger.Path == "/" {
@@ -135,6 +143,7 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		return result, common.NewError("invalid_parameters", "Invalid parameters. Size cannot be zero")
 	}
 	if cmd.fileChanger.UploadOffset == 0 {
+		result.UpdateChange = true
 		hasher = filestore.GetNewCommitHasher(cmd.fileChanger.Size)
 		allocation.UpdateConnectionObjWithHasher(connectionID, cmd.fileChanger.PathHash, hasher)
 	} else {
@@ -153,6 +162,7 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		IsFinal:      cmd.fileChanger.IsFinal,
 		FilePathHash: cmd.fileChanger.PathHash,
 		Hasher:       hasher,
+		Size:         cmd.fileChanger.Size,
 	}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionID, fileInputData, cmd.contentFile)
 	if err != nil {
@@ -210,7 +220,7 @@ func (cmd *UploadFileCommand) ProcessThumbnail(allocationObj *allocation.Allocat
 		cmd.fileChanger.ThumbnailFilename = thumbInputData.Name
 		return allocation.SaveFileChanger(connectionID, &cmd.fileChanger.BaseFileChanger)
 	}
-	return nil
+	return common.ErrNoThumbnail
 }
 
 func (cmd *UploadFileCommand) reloadChange() {
@@ -224,6 +234,33 @@ func (cmd *UploadFileCommand) reloadChange() {
 
 // UpdateChange replace AddFileChange in db
 func (cmd *UploadFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
+	cmd.fileChanger.AllocationID = connectionObj.AllocationID
+	for _, c := range connectionObj.Changes {
+		filePath, _ := c.GetOrParseAffectedFilePath()
+		if c.Operation != constants.FileOperationInsert || cmd.fileChanger.Path != filePath {
+			continue
+		}
+		c.Size = connectionObj.Size
+		c.Input, _ = cmd.fileChanger.Marshal()
+
+		//c.ModelWithTS.UpdatedAt = time.Now()
+		err := connectionObj.Save(ctx)
+		if err != nil {
+			return err
+		}
+
+		return c.Save(ctx)
+	}
+
+	//NOT FOUND
 	connectionObj.AddChange(cmd.allocationChange, cmd.fileChanger)
+
 	return connectionObj.Save(ctx)
+}
+
+func (cmd *UploadFileCommand) GetNumBlocks() int64 {
+	if cmd.fileChanger.IsFinal {
+		return int64(math.Ceil(float64(cmd.fileChanger.Size*1.0) / float64(cmd.fileChanger.ChunkSize)))
+	}
+	return 0
 }

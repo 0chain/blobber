@@ -9,7 +9,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
@@ -161,7 +160,7 @@ func RequestReadPoolStat(clientID string) (*ReadPool, error) {
 	params := map[string]string{
 		"client_id": clientID,
 	}
-	resp, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/getReadPoolStat", params, chain.GetServerChain())
+	resp, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/getReadPoolStat", params)
 	if err != nil {
 		return nil, fmt.Errorf("requesting read pools stat: %v", err)
 	}
@@ -188,7 +187,7 @@ func RequestWritePool(allocationID string) (wps *WritePool, err error) {
 	params := map[string]string{
 		"allocation": allocationID,
 	}
-	resp, err = transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/allocation", params, chain.GetServerChain())
+	resp, err = transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/allocation", params)
 	if err != nil {
 		return nil, fmt.Errorf("requesting write pools stat: %v", err)
 	}

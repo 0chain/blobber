@@ -10,7 +10,6 @@ import (
 	"net/http/httptest"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -135,8 +134,8 @@ func TestDownloadFile(t *testing.T) {
 		}
 	}
 
-	makeMockMakeSCRestAPICall := func(t *testing.T, p parameters) func(scAddress string, relativePath string, params map[string]string, chain *chain.Chain) ([]byte, error) {
-		return func(scAddress string, relativePath string, params map[string]string, chain *chain.Chain) ([]byte, error) {
+	makeMockMakeSCRestAPICall := func(t *testing.T, p parameters) func(scAddress string, relativePath string, params map[string]string) ([]byte, error) {
+		return func(scAddress string, relativePath string, params map[string]string) ([]byte, error) {
 			require.New(t)
 			require.EqualValues(t, scAddress, transaction.STORAGE_CONTRACT_ADDRESS)
 			switch relativePath {
@@ -460,6 +459,7 @@ func TestDownloadFile(t *testing.T) {
 				datastore.MocketTheStore(t, mocketLogging)
 				setupInMock(t, test.parameters)
 				setupOutMock(t, test.parameters)
+				allocation.Repo.DeleteAllocation(mockAllocationId)
 
 				ctx := setupCtx(test.parameters)
 				ctx = context.WithValue(ctx, constants.ContextKeyAllocationID, mockAllocationId)

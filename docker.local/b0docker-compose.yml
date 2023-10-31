@@ -8,10 +8,13 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: secret
       POSTGRES_HOST_AUTH_METHOD: trust
+      SLOW_TABLESPACE_PATH: /var/lib/postgresql/hdd # this should match with archive_path in 0chain_blobber.yaml
+      SLOW_TABLESPACE: hdd_tablespace # this should match with the dbs.events.slowtablespace in 0chain.yaml
 #expose_ci_port
     volumes:
       - ./blobber${BLOBBER}/data/postgresql:/var/lib/postgresql/data
       - ./sql_init:/docker-entrypoint-initdb.d
+      - ../blobber${SHARDER}/data/postgresql2:/var/lib/postgresql/hdd_ts
     networks:
       default:
   validator:

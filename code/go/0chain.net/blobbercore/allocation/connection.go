@@ -17,7 +17,7 @@ var (
 	// ConnectionObjCleanInterval start to clean the connectionObjMap
 	ConnectionObjCleanInterval = 10 * time.Minute
 	// ConnectionObjTimout after which connectionObj entry should be invalid
-	ConnectionObjTimeout = 10 * time.Minute
+	ConnectionObjTimeout = 20 * time.Minute
 )
 
 var (
@@ -329,10 +329,24 @@ func processCommand(ctx context.Context, processorChan chan FileCommand, allocat
 				return
 			}
 			err = cmd.ProcessThumbnail(allocationObj)
-			if err != nil {
+			if err != nil && err != common.ErrNoThumbnail {
 				logging.Logger.Error("Error processing command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()), zap.Error(err))
 				SetError(connectionID, pathHash, err)
 				return
+			}
+			if res.UpdateChange {
+				err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+					connectionObj, err := GetAllocationChanges(ctx, connectionID, allocationObj.ID, clientID)
+					if err != nil {
+						return err
+					}
+					return cmd.UpdateChange(ctx, connectionObj)
+				})
+				if err != nil {
+					logging.Logger.Error("Error processing command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()), zap.Error(err))
+					SetError(connectionID, pathHash, err)
+					return
+				}
 			}
 			if res.IsFinal {
 				err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {

@@ -49,6 +49,7 @@ func setupConfig(configDir string, deploymentMode int) {
 	config.Configuration.ChallengeResolveFreq = viper.GetInt64("challenge_response.frequency")
 	config.Configuration.ChallengeResolveNumWorkers = viper.GetInt("challenge_response.num_workers")
 	config.Configuration.ChallengeMaxRetires = viper.GetInt("challenge_response.max_retries")
+	config.Configuration.ChallengeCleanupGap = viper.GetInt64("challenge_response.cleanup_gap")
 
 	config.Configuration.AutomaticUpdate = viper.GetBool("disk_update.automatic_update")
 	blobberUpdateIntrv := viper.GetDuration("disk_update.blobber_update_interval")
@@ -65,6 +66,10 @@ func setupConfig(configDir string, deploymentMode int) {
 	config.Configuration.DBUserName = viper.GetString("db.user")
 	config.Configuration.DBPassword = viper.GetString("db.password")
 	config.Configuration.DBTablesToKeep = viper.GetStringSlice("db.keep_tables")
+	config.Configuration.ArchiveDBPath = viper.GetString("db.archive_path")
+	if config.Configuration.ArchiveDBPath == "" {
+		config.Configuration.ArchiveDBPath = "/var/lib/postgresql/hdd"
+	}
 
 	config.Configuration.PriceInUSD = viper.GetBool("price_in_usd")
 
@@ -102,6 +107,9 @@ func setupConfig(configDir string, deploymentMode int) {
 
 	config.Configuration.BlockLimitDaily = viper.GetInt64("rate_limiters.block_limit_daily")
 	config.Configuration.BlockLimitRequest = viper.GetInt64("rate_limiters.block_limit_request")
+	config.Configuration.BlockLimitMonthly = viper.GetInt64("rate_limiters.block_limit_monthly")
+	config.Configuration.UploadLimitMonthly = viper.GetInt64("rate_limiters.upload_limit_monthly")
+	config.Configuration.CommitLimitMonthly = viper.GetInt64("rate_limiters.commit_limit_monthly")
 
 	transaction.MinConfirmation = config.Configuration.MinConfirmation
 

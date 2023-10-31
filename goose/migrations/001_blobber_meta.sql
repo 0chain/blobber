@@ -448,6 +448,7 @@ CREATE TABLE public.write_markers (
     client_id character varying(64),
     signature character varying(64),
     status bigint DEFAULT 0 NOT NULL,
+    latest bool DEFAULT true NOT NULL,
     status_message text,
     redeem_retries bigint DEFAULT 0 NOT NULL,
     close_txn_id character varying(64),
@@ -460,6 +461,13 @@ CREATE TABLE public.write_markers (
 
 
 ALTER TABLE public.write_markers OWNER TO blobber_user;
+
+--
+-- Name: write_markers_archive; Type: TABLE; Schema: public; Owner: blobber_user
+--
+
+CREATE TABLE public.write_markers_archive AS TABLE public.write_markers WITH NO DATA;
+ALTER TABLE public.write_markers_archive SET TABLESPACE hdd_tablespace;
 
 --
 -- Name: write_markers_sequence_seq; Type: SEQUENCE; Schema: public; Owner: blobber_user

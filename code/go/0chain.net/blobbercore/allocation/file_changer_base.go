@@ -75,6 +75,7 @@ type UploadResult struct {
 	// Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
 	UploadOffset int64 `json:"upload_offset"`
 	IsFinal      bool  `json:"-"`
+	UpdateChange bool  `json:"-"`
 }
 
 type FileCommand interface {
@@ -95,6 +96,9 @@ type FileCommand interface {
 
 	// UpdateChange update AllocationChangeProcessor. It will be president in db for committing transcation
 	UpdateChange(ctx context.Context, connectionObj *AllocationChangeCollector) error
+
+	//NumBlocks return number of blocks uploaded by the client
+	GetNumBlocks() int64
 }
 
 func (fc *BaseFileChanger) DeleteTempFile() error {
@@ -133,6 +137,7 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context, mut *sync.Mute
 	fileInputData.ValidationRoot = fc.ValidationRoot
 	fileInputData.FixedMerkleRoot = fc.FixedMerkleRoot
 	fileInputData.ChunkSize = fc.ChunkSize
+	fileInputData.Size = fc.Size
 	fileInputData.Hasher = GetHasher(fc.ConnectionID, encryption.Hash(fc.Path))
 	if fileInputData.Hasher == nil {
 		return common.NewError("invalid_parameters", "Invalid parameters. Error getting hasher for commit.")
