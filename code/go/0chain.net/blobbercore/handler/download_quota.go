@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 )
 
 type DownloadQuota struct {
@@ -65,6 +67,7 @@ func newQuotaManager() *QuotaManager {
 }
 
 func (qm *QuotaManager) getDownloadQuota(key string) *DownloadQuota {
+	logging.Logger.Info("getDownloadQuota", zap.String("connectionID", key))
 	qm.mux.RLock()
 	defer qm.mux.RUnlock()
 	return qm.m[key]
@@ -73,7 +76,7 @@ func (qm *QuotaManager) getDownloadQuota(key string) *DownloadQuota {
 func (qm *QuotaManager) createOrUpdateQuota(numBlocks int64, key string) {
 	qm.mux.Lock()
 	defer qm.mux.Unlock()
-
+	logging.Logger.Info("createOrUpdateQuota", zap.String("connectionID", key))
 	if dq, ok := qm.m[key]; ok {
 		dq.Lock()
 		dq.Quota += numBlocks
