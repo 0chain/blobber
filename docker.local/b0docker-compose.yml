@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: blobber
       POSTGRES_HOST_AUTH_METHOD: trust
       SLOW_TABLESPACE_PATH: /var/lib/postgresql/hdd # this should match with archive_path in 0chain_blobber.yaml
-      SLOW_TABLESPACE: hddtablespace # this should match with the dbs.events.slowtablespace in 0chain.yaml
+      SLOW_TABLESPACE: hdd_tablespace # this should match with the dbs.events.slowtablespace in 0chain.yaml
     volumes:
       - ../config/postgresql.conf:/etc/postgresql/postgresql.conf
       - ./blobber${BLOBBER}/data/postgresql:/var/lib/postgresql/data
