@@ -15,6 +15,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
+	"golang.org/x/net/http2"
 )
 
 func startHttpServer() {
@@ -96,6 +97,7 @@ func startServer(wg *sync.WaitGroup, r *mux.Router, mode string, port int, isTls
 	handler.HandleShutdown(common.GetRootContext())
 
 	if isTls {
+		http2.ConfigureServer(server, nil)
 		err := server.ListenAndServeTLS(httpsCertFile, httpsKeyFile)
 		logging.Logger.Fatal("validator failed", zap.Error(err))
 	} else {
