@@ -18,8 +18,7 @@ var (
 )
 
 const (
-	BlackListWorkerTime = 6 * time.Hour
-	Period              = 60 * 60 * 24 * 30 // 30 days
+	Period = 60 * 60 * 24 * 30 // 30 days
 )
 
 type ClientStats struct {
@@ -136,6 +135,11 @@ func saveClientStats() {
 }
 
 func startBlackListWorker(ctx context.Context) {
+	BlackListWorkerTime := 6 * time.Hour
+	if config.Development() {
+		BlackListWorkerTime = 10 * time.Second
+	}
+
 	for {
 		select {
 		case <-ctx.Done():

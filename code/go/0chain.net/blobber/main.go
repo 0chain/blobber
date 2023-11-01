@@ -48,13 +48,8 @@ func main() {
 		panic(err)
 	}
 
-	if err := setCCTFromChain(); err != nil {
-		logging.Logger.Error("Error setCCTFromChain" + err.Error())
-		panic(err)
-	}
-
-	if err := setMaxFileSizeFromChain(); err != nil {
-		logging.Logger.Error("Error setMaxFileSizeFromChain" + err.Error())
+	if err := setStorageScConfigFromChain(); err != nil {
+		logging.Logger.Error("Error setStorageScConfigFromChain" + err.Error())
 		panic(err)
 	}
 
