@@ -1,12 +1,12 @@
 version: "3"
 services:
   postgres:
-    container_name: postgres-blob${BLOBBER}
+    container_name: postgres-blob-${BLOBBER}
     image: postgres:14
     environment:
       POSTGRES_DB: blobber_meta
       POSTGRES_PORT: 5432
-      POSTGRES_HOST: postgres-blob${BLOBBER}
+      POSTGRES_HOST: postgres-blob-${BLOBBER}
       POSTGRES_USER: blobber_user
       POSTGRES_PASSWORD: blobber
       POSTGRES_HOST_AUTH_METHOD: trust
@@ -23,10 +23,10 @@ services:
       default:
 
   validator:
-    container_name: validator${BLOBBER}
+    container_name: validator-${BLOBBER}
     image: validator
     environment:
-      - DOCKER= true
+      - DOCKER=true
     depends_on:
       - postgres
     volumes:
@@ -44,10 +44,15 @@ services:
         ipv4_address: 198.18.0.6${BLOBBER}
 
   blobber:
-    container_name: blobber${BLOBBER}
+    container_name: blobber-${BLOBBER}
     image: blobber
     environment:
       - DOCKER=true
+      - DB_HOST=postgres-blob-${BLOBBER}
+      - DB_NAME=blobber_meta
+      - DB_USER=blobber_user
+      - DB_PASSWORD=blobber
+      - DB_PORT=5432
     depends_on:
       - validator
       - postgres
