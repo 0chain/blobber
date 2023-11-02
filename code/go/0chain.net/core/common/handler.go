@@ -84,6 +84,7 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 			if ok {
 				w.Header().Set("Content-Type", "application/octet-stream")
 				w.Header().Set("Content-Length", fmt.Sprintf("%v", len(rawdata)))
+				w.Header().Set("Transfer-Encoding", "identity")
 				w.Write(rawdata) //nolint:errcheck
 			} else {
 				w.Header().Set("Content-Type", "application/json")
@@ -93,6 +94,7 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 					return
 				}
 				w.Header().Set("Content-Length", fmt.Sprintf("%v", len(byteData)))
+				w.Header().Set("Transfer-Encoding", "identity")
 				json.NewEncoder(w).Encode(byteData) //nolint:errcheck
 			}
 		}
