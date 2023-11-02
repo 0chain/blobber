@@ -89,7 +89,7 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 					return
 				}
 				w.Header().Set("Content-Length", fmt.Sprintf("%v", len(byteData)))
-				json.NewEncoder(w).Encode(byteData) //nolint:errcheck
+				w.Write(byteData) //nolint:errcheck
 			}
 		}
 	}
