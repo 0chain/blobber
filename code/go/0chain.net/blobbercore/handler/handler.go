@@ -404,6 +404,10 @@ func downloadHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 		_, ok := data.([]byte)
 		_, isString := data.(string)
 		Logger.Error("downloadHandler", zap.Error(err), zap.Bool("isByte", ok), zap.Bool("isString", isString))
+	} else {
+		_, ok := data.([]byte)
+		_, isString := data.(string)
+		Logger.Info("downloadHandler", zap.Error(err), zap.Bool("isByte", ok), zap.Bool("isString", isString))
 	}
 	return data, err
 }
