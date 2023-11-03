@@ -95,7 +95,12 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 				}
 				w.Header().Set("Content-Length", fmt.Sprintf("%v", len(byteData)))
 				w.Header().Set("Transfer-Encoding", "identity")
-				json.NewEncoder(w).Encode(byteData) //nolint:errcheck
+				n, err := w.Write(byteData) //nolint:errcheck
+				if n != len(byteData) {
+					http.Error(w, "failed to write all data", 400)
+				} else if err != nil {
+					http.Error(w, err.Error(), 400)
+				}
 			}
 		}
 	}
