@@ -442,10 +442,10 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		zap.Duration("get_response", elapsedResponse),
 		zap.Duration("get_data", elapsedData),
 		zap.Duration("stats", elapsedStats))
-	if !dr.VerifyDownload {
-		Logger.Info("returning chunk as slice of bytes")
-		return fileDownloadResponse.Data, nil
-	}
+	// if !dr.VerifyDownload {
+	// 	Logger.Info("returning chunk as slice of bytes")
+	// 	return fileDownloadResponse.Data, nil
+	// }
 	return fileDownloadResponse, nil
 }
 
