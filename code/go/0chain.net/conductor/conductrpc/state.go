@@ -66,6 +66,7 @@ type State struct {
 	StopWMCommit         *bool
 	FailRenameCommit     []string
 	GetFileMetaRoot      bool
+	MissUpDownload       bool
 }
 
 // Name returns NodeName by given NodeID.
