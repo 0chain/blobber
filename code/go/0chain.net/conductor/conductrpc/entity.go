@@ -112,6 +112,12 @@ func (e *Entity) BlobberCommitted(blobberID string) {
 	}
 }
 
+func (e *Entity) ValidatorTicket(ticket ValidtorTicket) {
+	err := e.client.validationTicketGenerated(ticket)
+	if err != nil {
+		log.Println(err)
+	}
+}
 
 func (e *Entity) SendFileMetaRoot(blobberID, fileMetaRoot string, ctxCncl context.CancelFunc) {
 	m := map[string]string{
