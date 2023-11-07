@@ -105,10 +105,12 @@ func SetupStatsWorker(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			case <-time.After(statsHandlerPeriod):
+				newFs := &BlobberStats{}
 				_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-					fs.loadBasicStats(ctx)
-					fs.loadDetailedStats(ctx)
-					fs.loadFailedChallengeList(ctx)
+					newFs.loadBasicStats(ctx)
+					newFs.loadDetailedStats(ctx)
+					newFs.loadFailedChallengeList(ctx)
+					fs = newFs
 					return common.NewError("rollback", "read_only")
 				})
 			}
