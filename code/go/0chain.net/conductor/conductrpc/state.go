@@ -64,6 +64,7 @@ type State struct {
 	AdversarialValidator AdversarialValidator
 	StopWMCommit         *bool
 	FailRenameCommit     []string
+	FailUploadCommit     []string
 	GetFileMetaRoot      bool
 }
 
