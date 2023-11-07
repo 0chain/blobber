@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -8,8 +9,6 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
-
-	"github.com/0chain/gosdk/zboxcore/logger"
 )
 
 const (
@@ -67,7 +66,6 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		data, err := handler(ctx, r)
-		logger.Logger.Info("ToByteStream", data != nil, err)
 		if err != nil {
 			if cerr, ok := err.(*Error); ok {
 				w.Header().Set(AppErrorHeader, cerr.Code)
@@ -80,12 +78,15 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 			}
 		} else if data != nil {
 			rawdata, ok := data.([]byte)
-			logger.Logger.Info("rawdata", len(rawdata), ok)
 			if ok {
 				w.Header().Set("Content-Type", "application/octet-stream")
 				w.Header().Set("Content-Length", fmt.Sprintf("%v", len(rawdata)))
 				w.Header().Set("Transfer-Encoding", "identity")
-				w.Write(rawdata) //nolint:errcheck
+				buf := bufio.NewWriterSize(w, len(rawdata))
+				buf.Write(rawdata) //nolint:errcheck
+				if buf.Buffered() > 0 {
+					buf.Flush()
+				}
 			} else {
 				w.Header().Set("Content-Type", "application/json")
 				byteData, err := json.Marshal(data)
@@ -95,11 +96,10 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 				}
 				w.Header().Set("Content-Length", fmt.Sprintf("%v", len(byteData)))
 				w.Header().Set("Transfer-Encoding", "identity")
-				n, err := w.Write(byteData) //nolint:errcheck
-				if n != len(byteData) {
-					http.Error(w, "failed to write all data", 400)
-				} else if err != nil {
-					http.Error(w, err.Error(), 400)
+				buf := bufio.NewWriterSize(w, len(byteData))
+				buf.Write(byteData) //nolint:errcheck
+				if buf.Buffered() > 0 {
+					buf.Flush()
 				}
 			}
 		}
