@@ -16,3 +16,7 @@ type (
 	RoundName = config.RoundName
 	Number    = config.Number
 )
+
+type ValidtorTicket struct {
+	ValidatorId string
+}

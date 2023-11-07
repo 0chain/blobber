@@ -225,7 +225,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		cr.ValidationTickets = make([]*ValidationTicket, len(cr.Validators))
 	}
 
-	accessMu := sync.Mutex{}
+	accessMu := sync.RWMutex{}
 	updateMapAndSlice := func(validatorID string, i int, vt *ValidationTicket) {
 		accessMu.Lock()
 		cr.ValidationTickets[i] = vt
@@ -306,7 +306,9 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		}
 	}
 
+	accessMu.RLock()
 	logging.Logger.Info("[challenge]validator response stats", zap.Any("challenge_id", cr.ChallengeID), zap.Any("validator_responses", responses), zap.Any("num_success", numSuccess), zap.Any("num_failed", numFailed))
+	accessMu.RUnlock()
 	if numSuccess > (len(cr.Validators) / 2) {
 		cr.Result = ChallengeSuccess
 		cr.Status = Processed
