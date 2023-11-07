@@ -1,7 +1,6 @@
 package common
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -80,13 +79,7 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 			rawdata, ok := data.([]byte)
 			if ok {
 				w.Header().Set("Content-Type", "application/octet-stream")
-				w.Header().Set("Content-Length", fmt.Sprintf("%v", len(rawdata)))
-				w.Header().Set("Transfer-Encoding", "identity")
-				buf := bufio.NewWriterSize(w, len(rawdata))
-				buf.Write(rawdata) //nolint:errcheck
-				if buf.Buffered() > 0 {
-					buf.Flush()
-				}
+				w.Write(rawdata) //nolint:errcheck
 			} else {
 				w.Header().Set("Content-Type", "application/json")
 				byteData, err := json.Marshal(data)
@@ -94,13 +87,7 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 					http.Error(w, err.Error(), 400)
 					return
 				}
-				w.Header().Set("Content-Length", fmt.Sprintf("%v", len(byteData)))
-				w.Header().Set("Transfer-Encoding", "identity")
-				buf := bufio.NewWriterSize(w, len(byteData))
-				buf.Write(byteData) //nolint:errcheck
-				if buf.Buffered() > 0 {
-					buf.Flush()
-				}
+				w.Write(byteData) //nolint:errcheck
 			}
 		}
 	}
