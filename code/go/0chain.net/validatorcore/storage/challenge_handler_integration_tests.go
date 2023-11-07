@@ -49,5 +49,11 @@ func ChallengeHandler(ctx context.Context, r *http.Request) (interface{}, error,
 
 	res, err := challengeHandler(ctx, r)
 
+	if state.NotifyOnValidationTicketGeneration {
+		conductrpc.Client().ValidatorTicket(conductrpc.ValidtorTicket{
+			ValidatorId: node.Self.ID,
+		})
+	}
+
 	return res, err, true
 }
