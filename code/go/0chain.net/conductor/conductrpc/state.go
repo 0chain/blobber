@@ -62,8 +62,10 @@ type State struct {
 	BlobberUpload        BlobberUpload
 	BlobberDelete        BlobberDelete
 	AdversarialValidator AdversarialValidator
+	NotifyOnValidationTicketGeneration bool
 	StopWMCommit         *bool
 	FailRenameCommit     []string
+	FailUploadCommit     []string
 	GetFileMetaRoot      bool
 }
 
