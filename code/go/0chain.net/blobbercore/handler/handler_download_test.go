@@ -4,6 +4,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -300,6 +301,7 @@ func TestHandlers_Download(t *testing.T) {
 					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
 					r.Header.Set("X-Connection-ID", connectionID)
 					r.Header.Set("X-Mode", DownloadContentFull)
+					r.Header.Set("X-Verify-Download", fmt.Sprint(true))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
 					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
@@ -477,7 +479,7 @@ func TestHandlers_Download(t *testing.T) {
 					r.Header.Set("X-Path-Hash", pathHash)
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
 					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
-					r.Header.Set("X-Verify-Download", fmt.Sprint(false))
+					r.Header.Set("X-Verify-Download", fmt.Sprint(true))
 					r.Header.Set("X-Connection-ID", connectionID)
 					r.Header.Set("X-Mode", DownloadContentFull)
 					r.Header.Set("X-Auth-Token", authTicket)
@@ -558,7 +560,7 @@ func TestHandlers_Download(t *testing.T) {
 					r.Header.Set("X-Path-Hash", pathHash)
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
 					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
-					r.Header.Set("X-Verify-Download", fmt.Sprint(false))
+					r.Header.Set("X-Verify-Download", fmt.Sprint(true))
 					r.Header.Set("X-Connection-ID", connectionID)
 					r.Header.Set("X-Mode", DownloadContentFull)
 					r.Header.Set("X-Auth-Token", authTicket)
@@ -672,7 +674,7 @@ func TestHandlers_Download(t *testing.T) {
 					r.Header.Set("X-Path-Hash", filePathHash)
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
 					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
-					r.Header.Set("X-Verify-Download", fmt.Sprint(false))
+					r.Header.Set("X-Verify-Download", fmt.Sprint(true))
 					r.Header.Set("X-Connection-ID", connectionID)
 					r.Header.Set("X-Mode", DownloadContentFull)
 					r.Header.Set("X-Auth-Token", authTicket)
@@ -792,7 +794,7 @@ func TestHandlers_Download(t *testing.T) {
 					r.Header.Set("X-Path-Hash", filePathHash)
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
 					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
-					r.Header.Set("X-Verify-Download", fmt.Sprint(false))
+					r.Header.Set("X-Verify-Download", fmt.Sprint(true))
 					r.Header.Set("X-Connection-ID", connectionID)
 					r.Header.Set("X-Mode", DownloadContentFull)
 					r.Header.Set("X-Auth-Token", authTicket)
@@ -911,7 +913,7 @@ func TestHandlers_Download(t *testing.T) {
 					r.Header.Set("X-Path-Hash", filePathHash)
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
 					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
-					r.Header.Set("X-Verify-Download", fmt.Sprint(false))
+					r.Header.Set("X-Verify-Download", fmt.Sprint(true))
 					r.Header.Set("X-Connection-ID", connectionID)
 					r.Header.Set("X-Mode", DownloadContentFull)
 					r.Header.Set("X-Auth-Token", authTicket)
@@ -1001,15 +1003,13 @@ func TestHandlers_Download(t *testing.T) {
 
 			assert.Equal(t, test.wantCode, test.args.w.Result().StatusCode)
 			data := test.args.w.Body.Bytes()
-			x := test.args.w.Header().Get("Content-Length")
-			fmt.Println("data ", len(data), len(test.wantBody), x)
-			data = data[1 : len(data)-1]
+			m := make(map[string]interface{})
+			err = json.Unmarshal(data, &m)
+			require.NoError(t, err)
 			if test.wantCode != http.StatusOK || test.wantBody != "" {
-				fmt.Println("fprint", test.args.w.Body.String())
 				var body string
-				if data != nil {
-					body = string(data)
-					fmt.Println("body", string(body[0]), string(data[0]))
+				if m["Data"] != nil {
+					body = m["Data"].(string)
 					assert.Equal(t, test.wantBody, body)
 				} else {
 					assert.Equal(t, test.wantBody, test.args.w.Body.String())
