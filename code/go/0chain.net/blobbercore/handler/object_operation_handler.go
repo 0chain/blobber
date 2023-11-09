@@ -436,6 +436,9 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		addDailyBlocks(clientID, dr.NumBlocks)
 		AddDownloadedData(clientID, dr.NumBlocks)
 	}()
+	if !dr.VerifyDownload {
+		return fileDownloadResponse.Data, nil
+	}
 	return fileDownloadResponse, nil
 }
 
