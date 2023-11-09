@@ -1,7 +1,7 @@
 version: "1.0"
 
 logging:
-  level: "info"
+  level: "debug"
   console: true # printing log to console is only supported in development mode
 
 info:
