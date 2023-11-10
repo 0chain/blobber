@@ -53,6 +53,11 @@ func (c *client) blobberCommitted(blobberID string) (err error) {
 	return
 }
 
+func (c *client) validationTicketGenerated(ticket ValidtorTicket) (err error) {
+	err = c.client.Call("Server.ValidatorTicket", &ticket, nil)
+	return
+}
+
 func (c *client) sendFileMetaRoot(m map[string]string) (err error) {
 	err = c.client.Call("Server.GetFileMetaRoot", m, nil)
 	return
