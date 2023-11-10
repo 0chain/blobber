@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.10.1-0.20231031062218-5a85b2b91102
+	github.com/0chain/gosdk v1.10.1-0.20231109152515-7c8549873ea5
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.2
 	github.com/go-openapi/runtime v0.26.0
