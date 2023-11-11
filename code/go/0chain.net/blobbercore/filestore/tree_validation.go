@@ -12,7 +12,7 @@ import (
 	"sync"
 
 	"github.com/0chain/gosdk/core/util"
-	"github.com/minio/sha256-simd"
+	"github.com/zeebo/blake3"
 )
 
 const (
@@ -66,7 +66,7 @@ func (ft *fixedMerkleTree) CalculateRootAndStoreNodes(f io.Writer) (merkleRoot [
 
 	buffer := make([]byte, FMTSize)
 	var bufLen int
-	h := sha256.New()
+	h := blake3.New()
 
 	for i := 0; i < util.FixedMTDepth; i++ {
 		if len(nodes) == 1 {
@@ -228,7 +228,7 @@ func (v *validationTree) CalculateRootAndStoreNodes(f io.WriteSeeker) (merkleRoo
 	nodes := make([][]byte, len(v.GetLeaves()))
 	copy(nodes, v.GetLeaves())
 
-	h := sha256.New()
+	h := blake3.New()
 	depth := v.CalculateDepth()
 
 	s := getNodesSize(v.GetDataSize(), util.MaxMerkleLeavesSize)
