@@ -253,6 +253,7 @@ func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error
 		go func(change AllocationChangeProcessor) {
 			err := change.CommitToFileStore(ctx, mut)
 			if err != nil && !errors.Is(common.ErrFileWasDeleted, err) {
+				logging.Logger.Error("AllocationChangeCollector_CommitToFileStore", zap.Error(err))
 				cancel()
 				errorMutex.Lock()
 				commitError = err

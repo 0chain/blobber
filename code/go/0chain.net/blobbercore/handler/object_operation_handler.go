@@ -25,6 +25,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
 	"go.uber.org/zap"
@@ -380,6 +381,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			IsPrecommit:   fromPreCommit,
 		}
 
+		logging.Logger.Info("calling GetFileBlock for thumb", zap.Any("rbi", rbi))
 		fileDownloadResponse, err = filestore.GetFileStore().GetFileBlock(rbi)
 		if err != nil {
 			return nil, common.NewErrorf("download_file", "couldn't get thumbnail block: %v", err)
@@ -399,6 +401,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			VerifyDownload: dr.VerifyDownload,
 			IsPrecommit:    fromPreCommit,
 		}
+		logging.Logger.Info("calling GetFileBlock", zap.Any("rbi", rbi))
 		fileDownloadResponse, err = filestore.GetFileStore().GetFileBlock(rbi)
 		if err != nil {
 			return nil, common.NewErrorf("download_file", "couldn't get file block: %v", err)
@@ -706,9 +709,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
-		if !errors.Is(common.ErrFileWasDeleted, err) {
-			return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
-		}
+		return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 	}
 	elapsedCommitStore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem - elapsedApplyChanges - elapsedSaveAllocation
 	err = writemarkerEntity.SendToChan(ctx)

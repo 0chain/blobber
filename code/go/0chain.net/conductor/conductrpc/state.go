@@ -65,7 +65,9 @@ type State struct {
 	NotifyOnValidationTicketGeneration bool
 	StopWMCommit         *bool
 	FailRenameCommit     []string
+	FailUploadCommit     []string
 	GetFileMetaRoot      bool
+	MissUpDownload       bool
 }
 
 // Name returns NodeName by given NodeID.

@@ -12,7 +12,7 @@ import (
 	"sync"
 
 	"github.com/0chain/gosdk/core/util"
-	"golang.org/x/crypto/sha3"
+	"github.com/minio/sha256-simd"
 )
 
 const (
@@ -66,7 +66,7 @@ func (ft *fixedMerkleTree) CalculateRootAndStoreNodes(f io.Writer) (merkleRoot [
 
 	buffer := make([]byte, FMTSize)
 	var bufLen int
-	h := sha3.New256()
+	h := sha256.New()
 
 	for i := 0; i < util.FixedMTDepth; i++ {
 		if len(nodes) == 1 {
@@ -228,7 +228,7 @@ func (v *validationTree) CalculateRootAndStoreNodes(f io.WriteSeeker) (merkleRoo
 	nodes := make([][]byte, len(v.GetLeaves()))
 	copy(nodes, v.GetLeaves())
 
-	h := sha3.New256()
+	h := sha256.New()
 	depth := v.CalculateDepth()
 
 	s := getNodesSize(v.GetDataSize(), util.MaxMerkleLeavesSize)
@@ -288,7 +288,7 @@ type validationTreeProof struct {
 // If endInd - startInd is whole file then no proof is required at all.
 // startInd and endInd is taken as closed interval. So to get proof for data at index 0 both startInd
 // and endInd would be 0.
-func (v *validationTreeProof) GetMerkleProofOfMultipleIndexes(r io.ReadSeeker, nodesSize int64, startInd, endInd int) (
+func (v *validationTreeProof) getMerkleProofOfMultipleIndexes(r io.ReadSeeker, nodesSize int64, startInd, endInd int) (
 	[][][]byte, [][]int, error) {
 
 	if startInd < 0 || endInd < 0 {

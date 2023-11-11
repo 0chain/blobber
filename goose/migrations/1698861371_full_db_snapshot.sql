@@ -1,6 +1,5 @@
 -- +goose Up
 -- +goose StatementBegin
-
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
@@ -11,12 +10,27 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+--
+-- Name: pg_trgm; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION pg_trgm; Type: COMMENT; Schema: -; Owner: 
+--
+
+COMMENT ON EXTENSION pg_trgm IS 'text similarity measurement and index searching based on trigrams';
+
+
+SET default_table_access_method = heap;
 
 --
 -- Name: allocation_changes; Type: TABLE; Schema: public; Owner: blobber_user
 --
 
-CREATE TABLE public.allocation_changes (
+CREATE TABLE allocation_changes (
     id bigint NOT NULL,
     size bigint DEFAULT 0 NOT NULL,
     operation character varying(20) NOT NULL,
@@ -27,13 +41,13 @@ CREATE TABLE public.allocation_changes (
 );
 
 
-ALTER TABLE public.allocation_changes OWNER TO blobber_user;
+ALTER TABLE allocation_changes OWNER TO blobber_user;
 
 --
 -- Name: allocation_changes_id_seq; Type: SEQUENCE; Schema: public; Owner: blobber_user
 --
 
-CREATE SEQUENCE public.allocation_changes_id_seq
+CREATE SEQUENCE allocation_changes_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -41,20 +55,20 @@ CREATE SEQUENCE public.allocation_changes_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.allocation_changes_id_seq OWNER TO blobber_user;
+ALTER TABLE allocation_changes_id_seq OWNER TO blobber_user;
 
 --
 -- Name: allocation_changes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: blobber_user
 --
 
-ALTER SEQUENCE public.allocation_changes_id_seq OWNED BY public.allocation_changes.id;
+ALTER SEQUENCE allocation_changes_id_seq OWNED BY allocation_changes.id;
 
 
 --
 -- Name: allocation_connections; Type: TABLE; Schema: public; Owner: blobber_user
 --
 
-CREATE TABLE public.allocation_connections (
+CREATE TABLE allocation_connections (
     id text NOT NULL,
     allocation_id character varying(64) NOT NULL,
     client_id character varying(64) NOT NULL,
@@ -65,13 +79,13 @@ CREATE TABLE public.allocation_connections (
 );
 
 
-ALTER TABLE public.allocation_connections OWNER TO blobber_user;
+ALTER TABLE allocation_connections OWNER TO blobber_user;
 
 --
 -- Name: allocations; Type: TABLE; Schema: public; Owner: blobber_user
 --
 
-CREATE TABLE public.allocations (
+CREATE TABLE allocations (
     id character varying(64) NOT NULL,
     tx character varying(64) NOT NULL,
     size bigint DEFAULT 0 NOT NULL,
@@ -94,13 +108,13 @@ CREATE TABLE public.allocations (
 );
 
 
-ALTER TABLE public.allocations OWNER TO blobber_user;
+ALTER TABLE allocations OWNER TO blobber_user;
 
 --
 -- Name: challenge_timing; Type: TABLE; Schema: public; Owner: blobber_user
 --
 
-CREATE TABLE public.challenge_timing (
+CREATE TABLE challenge_timing (
     challenge_id character varying(64) NOT NULL,
     created_at_chain bigint,
     created_at_blobber bigint,
@@ -116,13 +130,13 @@ CREATE TABLE public.challenge_timing (
 );
 
 
-ALTER TABLE public.challenge_timing OWNER TO blobber_user;
+ALTER TABLE challenge_timing OWNER TO blobber_user;
 
 --
 -- Name: challenges; Type: TABLE; Schema: public; Owner: blobber_user
 --
 
-CREATE TABLE public.challenges (
+CREATE TABLE challenges (
     challenge_id character varying(64) NOT NULL,
     prev_challenge_id character varying(64),
     seed bigint DEFAULT 0 NOT NULL,
@@ -147,13 +161,13 @@ CREATE TABLE public.challenges (
 );
 
 
-ALTER TABLE public.challenges OWNER TO blobber_user;
+ALTER TABLE challenges OWNER TO blobber_user;
 
 --
 -- Name: challenges_sequence_seq; Type: SEQUENCE; Schema: public; Owner: blobber_user
 --
 
-CREATE SEQUENCE public.challenges_sequence_seq
+CREATE SEQUENCE challenges_sequence_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -161,20 +175,35 @@ CREATE SEQUENCE public.challenges_sequence_seq
     CACHE 1;
 
 
-ALTER TABLE public.challenges_sequence_seq OWNER TO blobber_user;
+ALTER TABLE challenges_sequence_seq OWNER TO blobber_user;
 
 --
 -- Name: challenges_sequence_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: blobber_user
 --
 
-ALTER SEQUENCE public.challenges_sequence_seq OWNED BY public.challenges.sequence;
+ALTER SEQUENCE challenges_sequence_seq OWNED BY challenges.sequence;
 
+
+--
+-- Name: client_stats; Type: TABLE; Schema: public; Owner: blobber_user
+--
+
+CREATE TABLE client_stats (
+    client_id character varying(64) NOT NULL,
+    created_at bigint DEFAULT 0 NOT NULL,
+    total_upload bigint DEFAULT 0 NOT NULL,
+    total_download bigint DEFAULT 0 NOT NULL,
+    total_write_marker bigint DEFAULT 0 NOT NULL
+);
+
+
+ALTER TABLE client_stats OWNER TO blobber_user;
 
 --
 -- Name: file_stats; Type: TABLE; Schema: public; Owner: blobber_user
 --
 
-CREATE TABLE public.file_stats (
+CREATE TABLE file_stats (
     id bigint NOT NULL,
     ref_id bigint,
     num_of_updates bigint,
@@ -188,13 +217,13 @@ CREATE TABLE public.file_stats (
 );
 
 
-ALTER TABLE public.file_stats OWNER TO blobber_user;
+ALTER TABLE file_stats OWNER TO blobber_user;
 
 --
 -- Name: file_stats_id_seq; Type: SEQUENCE; Schema: public; Owner: blobber_user
 --
 
-CREATE SEQUENCE public.file_stats_id_seq
+CREATE SEQUENCE file_stats_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -202,20 +231,19 @@ CREATE SEQUENCE public.file_stats_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.file_stats_id_seq OWNER TO blobber_user;
+ALTER TABLE file_stats_id_seq OWNER TO blobber_user;
 
 --
 -- Name: file_stats_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: blobber_user
 --
 
-ALTER SEQUENCE public.file_stats_id_seq OWNED BY public.file_stats.id;
-
+ALTER SEQUENCE file_stats_id_seq OWNED BY file_stats.id;
 
 --
 -- Name: marketplace_share_info; Type: TABLE; Schema: public; Owner: blobber_user
 --
 
-CREATE TABLE public.marketplace_share_info (
+CREATE TABLE marketplace_share_info (
     id bigint NOT NULL,
     owner_id character varying(64) NOT NULL,
     client_id character varying(64) NOT NULL,
@@ -228,13 +256,13 @@ CREATE TABLE public.marketplace_share_info (
 );
 
 
-ALTER TABLE public.marketplace_share_info OWNER TO blobber_user;
+ALTER TABLE marketplace_share_info OWNER TO blobber_user;
 
 --
 -- Name: marketplace_share_info_id_seq; Type: SEQUENCE; Schema: public; Owner: blobber_user
 --
 
-CREATE SEQUENCE public.marketplace_share_info_id_seq
+CREATE SEQUENCE marketplace_share_info_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -242,32 +270,32 @@ CREATE SEQUENCE public.marketplace_share_info_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.marketplace_share_info_id_seq OWNER TO blobber_user;
+ALTER TABLE marketplace_share_info_id_seq OWNER TO blobber_user;
 
 --
 -- Name: marketplace_share_info_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: blobber_user
 --
 
-ALTER SEQUENCE public.marketplace_share_info_id_seq OWNED BY public.marketplace_share_info.id;
+ALTER SEQUENCE marketplace_share_info_id_seq OWNED BY marketplace_share_info.id;
 
 
 --
 -- Name: pendings; Type: TABLE; Schema: public; Owner: blobber_user
 --
 
-CREATE TABLE public.pendings (
+CREATE TABLE pendings (
     id text NOT NULL,
     pending_write bigint DEFAULT 0 NOT NULL
 );
 
 
-ALTER TABLE public.pendings OWNER TO blobber_user;
+ALTER TABLE pendings OWNER TO blobber_user;
 
 --
 -- Name: read_markers; Type: TABLE; Schema: public; Owner: blobber_user
 --
 
-CREATE TABLE public.read_markers (
+CREATE TABLE read_markers (
     client_id character varying(64) NOT NULL,
     allocation_id character varying(64) NOT NULL,
     client_public_key character varying(128),
@@ -282,25 +310,25 @@ CREATE TABLE public.read_markers (
 );
 
 
-ALTER TABLE public.read_markers OWNER TO blobber_user;
+ALTER TABLE read_markers OWNER TO blobber_user;
 
 --
 -- Name: read_pools; Type: TABLE; Schema: public; Owner: blobber_user
 --
 
-CREATE TABLE public.read_pools (
+CREATE TABLE read_pools (
     client_id character varying(64) NOT NULL,
     balance bigint NOT NULL
 );
 
 
-ALTER TABLE public.read_pools OWNER TO blobber_user;
+ALTER TABLE read_pools OWNER TO blobber_user;
 
 --
 -- Name: reference_objects; Type: TABLE; Schema: public; Owner: blobber_user
 --
 
-CREATE TABLE public.reference_objects (
+CREATE TABLE reference_objects (
     id bigint NOT NULL,
     file_id text,
     type character varying(1),
@@ -343,13 +371,13 @@ CREATE TABLE public.reference_objects (
 );
 
 
-ALTER TABLE public.reference_objects OWNER TO blobber_user;
+ALTER TABLE reference_objects OWNER TO blobber_user;
 
 --
 -- Name: reference_objects_id_seq; Type: SEQUENCE; Schema: public; Owner: blobber_user
 --
 
-CREATE SEQUENCE public.reference_objects_id_seq
+CREATE SEQUENCE reference_objects_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -357,20 +385,20 @@ CREATE SEQUENCE public.reference_objects_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.reference_objects_id_seq OWNER TO blobber_user;
+ALTER TABLE reference_objects_id_seq OWNER TO blobber_user;
 
 --
 -- Name: reference_objects_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: blobber_user
 --
 
-ALTER SEQUENCE public.reference_objects_id_seq OWNED BY public.reference_objects.id;
+ALTER SEQUENCE reference_objects_id_seq OWNED BY reference_objects.id;
 
 
 --
 -- Name: settings; Type: TABLE; Schema: public; Owner: blobber_user
 --
 
-CREATE TABLE public.settings (
+CREATE TABLE settings (
     id character varying(10) NOT NULL,
     capacity bigint DEFAULT 0 NOT NULL,
     min_lock_demand numeric DEFAULT 0.000000 NOT NULL,
@@ -382,13 +410,13 @@ CREATE TABLE public.settings (
 );
 
 
-ALTER TABLE public.settings OWNER TO blobber_user;
+ALTER TABLE settings OWNER TO blobber_user;
 
 --
 -- Name: terms; Type: TABLE; Schema: public; Owner: blobber_user
 --
 
-CREATE TABLE public.terms (
+CREATE TABLE terms (
     id bigint NOT NULL,
     blobber_id character varying(64) NOT NULL,
     allocation_id character varying(64) NOT NULL,
@@ -397,13 +425,13 @@ CREATE TABLE public.terms (
 );
 
 
-ALTER TABLE public.terms OWNER TO blobber_user;
+ALTER TABLE terms OWNER TO blobber_user;
 
 --
 -- Name: terms_id_seq; Type: SEQUENCE; Schema: public; Owner: blobber_user
 --
 
-CREATE SEQUENCE public.terms_id_seq
+CREATE SEQUENCE terms_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -411,33 +439,33 @@ CREATE SEQUENCE public.terms_id_seq
     CACHE 1;
 
 
-ALTER TABLE public.terms_id_seq OWNER TO blobber_user;
+ALTER TABLE terms_id_seq OWNER TO blobber_user;
 
 --
 -- Name: terms_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: blobber_user
 --
 
-ALTER SEQUENCE public.terms_id_seq OWNED BY public.terms.id;
+ALTER SEQUENCE terms_id_seq OWNED BY terms.id;
 
 
 --
 -- Name: write_locks; Type: TABLE; Schema: public; Owner: blobber_user
 --
 
-CREATE TABLE public.write_locks (
+CREATE TABLE write_locks (
     allocation_id character varying(64) NOT NULL,
     connection_id character varying(64),
     created_at timestamp with time zone
 );
 
 
-ALTER TABLE public.write_locks OWNER TO blobber_user;
+ALTER TABLE write_locks OWNER TO blobber_user;
 
 --
 -- Name: write_markers; Type: TABLE; Schema: public; Owner: blobber_user
 --
 
-CREATE TABLE public.write_markers (
+CREATE TABLE write_markers (
     allocation_root character varying(64) NOT NULL,
     prev_allocation_root character varying(64),
     file_meta_root character varying(64),
@@ -448,7 +476,7 @@ CREATE TABLE public.write_markers (
     client_id character varying(64),
     signature character varying(64),
     status bigint DEFAULT 0 NOT NULL,
-    latest bool DEFAULT true NOT NULL,
+    latest boolean DEFAULT true NOT NULL,
     status_message text,
     redeem_retries bigint DEFAULT 0 NOT NULL,
     close_txn_id character varying(64),
@@ -460,20 +488,44 @@ CREATE TABLE public.write_markers (
 );
 
 
-ALTER TABLE public.write_markers OWNER TO blobber_user;
+ALTER TABLE write_markers OWNER TO blobber_user;
+
+SET default_tablespace = hdd_tablespace;
 
 --
--- Name: write_markers_archive; Type: TABLE; Schema: public; Owner: blobber_user
+-- Name: write_markers_archive; Type: TABLE; Schema: public; Owner: blobber_user; Tablespace: hdd_tablespace
 --
 
-CREATE TABLE public.write_markers_archive AS TABLE public.write_markers WITH NO DATA;
-ALTER TABLE public.write_markers_archive SET TABLESPACE hdd_tablespace;
+CREATE TABLE write_markers_archive (
+    allocation_root character varying(64),
+    prev_allocation_root character varying(64),
+    file_meta_root character varying(64),
+    allocation_id character varying(64),
+    size bigint,
+    blobber_id character varying(64),
+    "timestamp" bigint,
+    client_id character varying(64),
+    signature character varying(64),
+    status bigint,
+    latest boolean,
+    status_message text,
+    redeem_retries bigint,
+    close_txn_id character varying(64),
+    connection_id character varying(64),
+    client_key character varying(256),
+    sequence bigint,
+    created_at timestamp with time zone,
+    updated_at timestamp with time zone
+);
+
+
+ALTER TABLE write_markers_archive OWNER TO blobber_user;
 
 --
 -- Name: write_markers_sequence_seq; Type: SEQUENCE; Schema: public; Owner: blobber_user
 --
 
-CREATE SEQUENCE public.write_markers_sequence_seq
+CREATE SEQUENCE write_markers_sequence_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -481,81 +533,82 @@ CREATE SEQUENCE public.write_markers_sequence_seq
     CACHE 1;
 
 
-ALTER TABLE public.write_markers_sequence_seq OWNER TO blobber_user;
+ALTER TABLE write_markers_sequence_seq OWNER TO blobber_user;
 
 --
 -- Name: write_markers_sequence_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: blobber_user
 --
 
-ALTER SEQUENCE public.write_markers_sequence_seq OWNED BY public.write_markers.sequence;
+ALTER SEQUENCE write_markers_sequence_seq OWNED BY write_markers.sequence;
 
+
+SET default_tablespace = '';
 
 --
 -- Name: write_pools; Type: TABLE; Schema: public; Owner: blobber_user
 --
 
-CREATE TABLE public.write_pools (
+CREATE TABLE write_pools (
     allocation_id character varying(64) NOT NULL,
     balance bigint NOT NULL
 );
 
 
-ALTER TABLE public.write_pools OWNER TO blobber_user;
+ALTER TABLE write_pools OWNER TO blobber_user;
 
 --
 -- Name: allocation_changes id; Type: DEFAULT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.allocation_changes ALTER COLUMN id SET DEFAULT nextval('public.allocation_changes_id_seq'::regclass);
+ALTER TABLE ONLY allocation_changes ALTER COLUMN id SET DEFAULT nextval('allocation_changes_id_seq'::regclass);
 
 
 --
 -- Name: challenges sequence; Type: DEFAULT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.challenges ALTER COLUMN sequence SET DEFAULT nextval('public.challenges_sequence_seq'::regclass);
+ALTER TABLE ONLY challenges ALTER COLUMN sequence SET DEFAULT nextval('challenges_sequence_seq'::regclass);
 
 
 --
 -- Name: file_stats id; Type: DEFAULT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.file_stats ALTER COLUMN id SET DEFAULT nextval('public.file_stats_id_seq'::regclass);
-
+ALTER TABLE ONLY file_stats ALTER COLUMN id SET DEFAULT nextval('file_stats_id_seq'::regclass);
 
 --
 -- Name: marketplace_share_info id; Type: DEFAULT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.marketplace_share_info ALTER COLUMN id SET DEFAULT nextval('public.marketplace_share_info_id_seq'::regclass);
+ALTER TABLE ONLY marketplace_share_info ALTER COLUMN id SET DEFAULT nextval('marketplace_share_info_id_seq'::regclass);
 
 
 --
 -- Name: reference_objects id; Type: DEFAULT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.reference_objects ALTER COLUMN id SET DEFAULT nextval('public.reference_objects_id_seq'::regclass);
+ALTER TABLE ONLY reference_objects ALTER COLUMN id SET DEFAULT nextval('reference_objects_id_seq'::regclass);
 
 
 --
 -- Name: terms id; Type: DEFAULT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.terms ALTER COLUMN id SET DEFAULT nextval('public.terms_id_seq'::regclass);
+ALTER TABLE ONLY terms ALTER COLUMN id SET DEFAULT nextval('terms_id_seq'::regclass);
 
 
 --
 -- Name: write_markers sequence; Type: DEFAULT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.write_markers ALTER COLUMN sequence SET DEFAULT nextval('public.write_markers_sequence_seq'::regclass);
+ALTER TABLE ONLY write_markers ALTER COLUMN sequence SET DEFAULT nextval('write_markers_sequence_seq'::regclass);
 
 
 --
 -- Name: allocation_changes allocation_changes_pkey; Type: CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.allocation_changes
+ALTER TABLE ONLY allocation_changes
     ADD CONSTRAINT allocation_changes_pkey PRIMARY KEY (id);
 
 
@@ -563,7 +616,7 @@ ALTER TABLE ONLY public.allocation_changes
 -- Name: allocation_connections allocation_connections_pkey; Type: CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.allocation_connections
+ALTER TABLE ONLY allocation_connections
     ADD CONSTRAINT allocation_connections_pkey PRIMARY KEY (id);
 
 
@@ -571,7 +624,7 @@ ALTER TABLE ONLY public.allocation_connections
 -- Name: allocations allocations_pkey; Type: CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.allocations
+ALTER TABLE ONLY allocations
     ADD CONSTRAINT allocations_pkey PRIMARY KEY (id);
 
 
@@ -579,7 +632,7 @@ ALTER TABLE ONLY public.allocations
 -- Name: allocations allocations_tx_key; Type: CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.allocations
+ALTER TABLE ONLY allocations
     ADD CONSTRAINT allocations_tx_key UNIQUE (tx);
 
 
@@ -587,7 +640,7 @@ ALTER TABLE ONLY public.allocations
 -- Name: challenge_timing challenge_timing_pkey; Type: CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.challenge_timing
+ALTER TABLE ONLY challenge_timing
     ADD CONSTRAINT challenge_timing_pkey PRIMARY KEY (challenge_id);
 
 
@@ -595,7 +648,7 @@ ALTER TABLE ONLY public.challenge_timing
 -- Name: challenges challenges_pkey; Type: CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.challenges
+ALTER TABLE ONLY challenges
     ADD CONSTRAINT challenges_pkey PRIMARY KEY (challenge_id);
 
 
@@ -603,15 +656,23 @@ ALTER TABLE ONLY public.challenges
 -- Name: challenges challenges_sequence_key; Type: CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.challenges
+ALTER TABLE ONLY challenges
     ADD CONSTRAINT challenges_sequence_key UNIQUE (sequence);
+
+
+--
+-- Name: client_stats client_stats_pkey; Type: CONSTRAINT; Schema: public; Owner: blobber_user
+--
+
+ALTER TABLE ONLY client_stats
+    ADD CONSTRAINT client_stats_pkey PRIMARY KEY (client_id, created_at);
 
 
 --
 -- Name: file_stats file_stats_pkey; Type: CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.file_stats
+ALTER TABLE ONLY file_stats
     ADD CONSTRAINT file_stats_pkey PRIMARY KEY (id);
 
 
@@ -619,15 +680,14 @@ ALTER TABLE ONLY public.file_stats
 -- Name: file_stats file_stats_ref_id_key; Type: CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.file_stats
+ALTER TABLE ONLY file_stats
     ADD CONSTRAINT file_stats_ref_id_key UNIQUE (ref_id);
-
 
 --
 -- Name: marketplace_share_info marketplace_share_info_pkey; Type: CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.marketplace_share_info
+ALTER TABLE ONLY marketplace_share_info
     ADD CONSTRAINT marketplace_share_info_pkey PRIMARY KEY (id);
 
 
@@ -635,7 +695,7 @@ ALTER TABLE ONLY public.marketplace_share_info
 -- Name: pendings pendings_pkey; Type: CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.pendings
+ALTER TABLE ONLY pendings
     ADD CONSTRAINT pendings_pkey PRIMARY KEY (id);
 
 
@@ -643,7 +703,7 @@ ALTER TABLE ONLY public.pendings
 -- Name: read_markers read_markers_pkey; Type: CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.read_markers
+ALTER TABLE ONLY read_markers
     ADD CONSTRAINT read_markers_pkey PRIMARY KEY (client_id, allocation_id);
 
 
@@ -651,7 +711,7 @@ ALTER TABLE ONLY public.read_markers
 -- Name: read_pools read_pools_pkey; Type: CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.read_pools
+ALTER TABLE ONLY read_pools
     ADD CONSTRAINT read_pools_pkey PRIMARY KEY (client_id);
 
 
@@ -659,7 +719,7 @@ ALTER TABLE ONLY public.read_pools
 -- Name: reference_objects reference_objects_pkey; Type: CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.reference_objects
+ALTER TABLE ONLY reference_objects
     ADD CONSTRAINT reference_objects_pkey PRIMARY KEY (id);
 
 
@@ -667,7 +727,7 @@ ALTER TABLE ONLY public.reference_objects
 -- Name: settings settings_pkey; Type: CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.settings
+ALTER TABLE ONLY settings
     ADD CONSTRAINT settings_pkey PRIMARY KEY (id);
 
 
@@ -675,7 +735,7 @@ ALTER TABLE ONLY public.settings
 -- Name: terms terms_pkey; Type: CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.terms
+ALTER TABLE ONLY terms
     ADD CONSTRAINT terms_pkey PRIMARY KEY (id);
 
 
@@ -683,7 +743,7 @@ ALTER TABLE ONLY public.terms
 -- Name: write_locks write_locks_pkey; Type: CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.write_locks
+ALTER TABLE ONLY write_locks
     ADD CONSTRAINT write_locks_pkey PRIMARY KEY (allocation_id);
 
 
@@ -691,7 +751,7 @@ ALTER TABLE ONLY public.write_locks
 -- Name: write_markers write_markers_pkey; Type: CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.write_markers
+ALTER TABLE ONLY write_markers
     ADD CONSTRAINT write_markers_pkey PRIMARY KEY (allocation_root, "timestamp");
 
 
@@ -699,7 +759,7 @@ ALTER TABLE ONLY public.write_markers
 -- Name: write_markers write_markers_sequence_key; Type: CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.write_markers
+ALTER TABLE ONLY write_markers
     ADD CONSTRAINT write_markers_sequence_key UNIQUE (sequence);
 
 
@@ -707,125 +767,132 @@ ALTER TABLE ONLY public.write_markers
 -- Name: idx_closed_at; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX idx_closed_at ON public.challenge_timing USING btree (closed_at DESC);
+CREATE INDEX idx_closed_at ON challenge_timing USING btree (closed_at DESC);
 
 
 --
 -- Name: idx_created_at; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX idx_created_at ON public.reference_objects USING btree (created_at DESC);
+CREATE INDEX idx_created_at ON reference_objects USING btree (created_at DESC);
 
 
 --
 -- Name: idx_lookup_hash; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX idx_lookup_hash ON public.reference_objects USING btree (lookup_hash);
-
---
--- Name: idx_parent_path_alloc; Type: INDEX; Schema: public; Owner: blobber_user
---
-
-CREATE INDEX idx_parent_path_alloc ON public.reference_objects USING btree (allocation_id, parent_path);
+CREATE INDEX idx_lookup_hash ON reference_objects USING btree (lookup_hash);
 
 
 --
 -- Name: idx_marketplace_share_info_for_client; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX idx_marketplace_share_info_for_client ON public.marketplace_share_info USING btree (client_id, file_path_hash);
+CREATE INDEX idx_marketplace_share_info_for_client ON marketplace_share_info USING btree (client_id, file_path_hash);
 
 
 --
 -- Name: idx_marketplace_share_info_for_owner; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX idx_marketplace_share_info_for_owner ON public.marketplace_share_info USING btree (owner_id, file_path_hash);
+CREATE INDEX idx_marketplace_share_info_for_owner ON marketplace_share_info USING btree (owner_id, file_path_hash);
 
 
 --
--- Name: idx_name_gin:gin; Type: INDEX; Schema: public; Owner: blobber_user
+-- Name: idx_name_gin; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX "idx_name_gin:gin" ON public.reference_objects USING btree (name);
+CREATE INDEX idx_name_gin ON reference_objects USING gin (to_tsvector('english'::regconfig, (name)::text));
+
+
+--
+-- Name: idx_parent_path_alloc; Type: INDEX; Schema: public; Owner: blobber_user
+--
+
+CREATE INDEX idx_parent_path_alloc ON reference_objects USING btree (allocation_id, parent_path);
 
 
 --
 -- Name: idx_path_alloc; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX idx_path_alloc ON public.reference_objects USING btree (allocation_id, path);
+CREATE INDEX idx_path_alloc ON reference_objects USING btree (allocation_id, path);
+
+
+--
+-- Name: idx_path_gin_trgm; Type: INDEX; Schema: public; Owner: blobber_user
+--
+
+CREATE INDEX idx_path_gin_trgm ON reference_objects USING gin (path gin_trgm_ops);
 
 
 --
 -- Name: idx_seq; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE UNIQUE INDEX idx_seq ON public.write_markers USING btree (allocation_id, sequence);
+CREATE UNIQUE INDEX idx_seq ON write_markers USING btree (allocation_id, sequence);
 
 
 --
 -- Name: idx_status; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX idx_status ON public.challenges USING btree (status);
+CREATE INDEX idx_status ON challenges USING btree (status);
 
 
 --
 -- Name: idx_unique_allocations_tx; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE UNIQUE INDEX idx_unique_allocations_tx ON public.allocations USING btree (tx);
+CREATE UNIQUE INDEX idx_unique_allocations_tx ON allocations USING btree (tx);
 
 
 --
 -- Name: idx_updated_at; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX idx_updated_at ON public.reference_objects USING btree (updated_at DESC);
+CREATE INDEX idx_updated_at ON reference_objects USING btree (updated_at DESC);
 
 
 --
 -- Name: idx_write_pools_cab; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX idx_write_pools_cab ON public.write_pools USING btree (allocation_id);
+CREATE INDEX idx_write_pools_cab ON write_pools USING btree (allocation_id);
 
 
 --
 -- Name: path_idx; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX path_idx ON public.reference_objects USING btree (path);
+CREATE INDEX path_idx ON reference_objects USING btree (path);
 
 
 --
 -- Name: allocation_changes fk_allocation_connections_changes; Type: FK CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.allocation_changes
-    ADD CONSTRAINT fk_allocation_connections_changes FOREIGN KEY (connection_id) REFERENCES public.allocation_connections(id) ON DELETE CASCADE;
+ALTER TABLE ONLY allocation_changes
+    ADD CONSTRAINT fk_allocation_connections_changes FOREIGN KEY (connection_id) REFERENCES allocation_connections(id) ON DELETE CASCADE;
 
 
 --
 -- Name: file_stats fk_file_stats_ref; Type: FK CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.file_stats
-    ADD CONSTRAINT fk_file_stats_ref FOREIGN KEY (ref_id) REFERENCES public.reference_objects(id) ON DELETE CASCADE;
+ALTER TABLE ONLY file_stats
+    ADD CONSTRAINT fk_file_stats_ref FOREIGN KEY (ref_id) REFERENCES reference_objects(id) ON DELETE CASCADE;
 
 
 --
 -- Name: terms fk_terms_allocation; Type: FK CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
-ALTER TABLE ONLY public.terms
-    ADD CONSTRAINT fk_terms_allocation FOREIGN KEY (allocation_id) REFERENCES public.allocations(id);
+ALTER TABLE ONLY terms
+    ADD CONSTRAINT fk_terms_allocation FOREIGN KEY (allocation_id) REFERENCES allocations(id);
+-- +goose StatementEnd
 
-
---
--- PostgreSQL database dump complete
---
+-- +goose Down
+-- +goose StatementBegin
 
 -- +goose StatementEnd
