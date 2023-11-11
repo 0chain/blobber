@@ -627,7 +627,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	// Move preCommitDir to finalDir
-	err = connectionObj.MoveToFilestore(ctx)
+	err = connectionObj.MoveToFilestore()
 	if err != nil {
 		return nil, common.NewError("move_to_filestore_error", fmt.Sprintf("Error while moving to filestore: %s", err.Error()))
 	}

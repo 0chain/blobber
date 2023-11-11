@@ -239,10 +239,14 @@ func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error
 	// Can be configured at runtime, this number will depend on the number of active allocations
 	swg := sizedwaitgroup.New(5)
 	mut := &sync.Mutex{}
+	var (
+		commitError error
+		errorMutex  sync.Mutex
+	)
 	for _, change := range a.AllocationChanges {
 		select {
 		case <-commitCtx.Done():
-			return fmt.Errorf("commit to filestore failed")
+			return fmt.Errorf("commit to filestore failed: %s", commitError.Error())
 		default:
 		}
 		swg.Add()
@@ -250,12 +254,15 @@ func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error
 			err := change.CommitToFileStore(ctx, mut)
 			if err != nil && !errors.Is(common.ErrFileWasDeleted, err) {
 				cancel()
+				errorMutex.Lock()
+				commitError = err
+				errorMutex.Unlock()
 			}
 			swg.Done()
 		}(change)
 	}
 	swg.Wait()
-	return nil
+	return commitError
 }
 
 func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context) {
@@ -275,7 +282,7 @@ type Result struct {
 }
 
 // TODO: Need to speed up this function
-func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) (err error) {
+func (a *AllocationChangeCollector) MoveToFilestore() (err error) {
 
 	logging.Logger.Info("Move to filestore", zap.String("allocation_id", a.AllocationID))
 
@@ -353,10 +360,10 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) (err er
 		return e
 	}
 
-	return deleteFromFileStore(ctx, a.AllocationID)
+	return deleteFromFileStore(a.AllocationID)
 }
 
-func deleteFromFileStore(ctx context.Context, allocationID string) error {
+func deleteFromFileStore(allocationID string) error {
 	limitCh := make(chan struct{}, 10)
 	wg := &sync.WaitGroup{}
 	var results []Result
