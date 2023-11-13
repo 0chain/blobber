@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -106,6 +107,7 @@ type ChallengeEntity struct {
 	RoundCreatedAt int64            `gorm:"round_created_at" json:"round_created_at"`
 	CreatedAt      common.Timestamp `gorm:"created_at" json:"created"`
 	UpdatedAt      time.Time        `gorm:"updated_at;type:timestamp without time zone;not null;default:current_timestamp" json:"-"`
+	statusMutex    *sync.Mutex      `gorm:"-" json:"-"`
 }
 
 func (ChallengeEntity) TableName() string {
