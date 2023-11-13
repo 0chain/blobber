@@ -250,7 +250,7 @@ func (bs *BlobberStats) loadStats(ctx context.Context) {
 
 	row = db.Table("reference_objects").
 		Select(sel).
-		Where("reference_objects.type = 'f'").
+		Where("reference_objects.type = 'f' AND reference_object.deleted_at is NULL").
 		Row()
 
 	err = row.Scan(&bs.FilesSize, &bs.ThumbnailsSize, &bs.NumReads,
@@ -300,7 +300,7 @@ func (bs *BlobberStats) loadAllocationStats(ctx context.Context) {
 		Joins(`
             INNER JOIN allocations
             ON allocations.id = reference_objects.allocation_id`).
-		Where(`reference_objects.type = 'f' AND allocations.finalized = 'f'`).
+		Where(`reference_objects.type = 'f' AND allocations.finalized = 'f' AND reference_objects.deleted_at is NULL`).
 		Group(`reference_objects.allocation_id, allocations.expiration_date`).
 		Group(`reference_objects.allocation_id, allocations.blobber_size`).
 		Rows()
