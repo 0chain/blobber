@@ -273,8 +273,3 @@ func deleteChallenge(key int64) {
 	challengeMap.Remove(key)
 	challengeMapLock.Unlock()
 }
-
-func checkExpiry(roundCreatedAt int64) bool {
-	currentRound := roundInfo.CurrentRound + int64(float64(roundInfo.LastRoundDiff)*(float64(time.Since(roundInfo.CurrentRoundCaptureTime).Milliseconds())/float64(GetRoundInterval.Milliseconds())))
-	return currentRound-roundCreatedAt > config.StorageSCConfig.ChallengeCompletionTime
-}
