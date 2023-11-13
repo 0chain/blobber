@@ -210,8 +210,9 @@ func commitOnChainWorker(ctx context.Context) {
 
 func getBatch(batchSize int) (chall []ChallengeEntity) {
 	challengeMapLock.RLock()
+	defer challengeMapLock.RUnlock()
+
 	if challengeMap.Size() == 0 {
-		challengeMapLock.RUnlock()
 		return
 	}
 
@@ -235,18 +236,13 @@ func getBatch(batchSize int) (chall []ChallengeEntity) {
 		case Processed:
 		default:
 		}
-		if ticket.Status != Processed {
-			if checkExpiry(ticket.RoundCreatedAt) {
-				toClean = append(toClean, ticket.RoundCreatedAt)
-			}
-			continue
-		}
-		ticket.statusMutex.Unlock()
 		chall = append(chall, *ticket)
+		ticket.statusMutex.Unlock()
 	}
 	for _, r := range toClean {
 		challengeMap.Remove(r)
 	}
+
 	return
 }
 
