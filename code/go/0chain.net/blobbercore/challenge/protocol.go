@@ -49,7 +49,9 @@ func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error)
 	cancellation := time.Now()
 	db := datastore.GetStore().GetTransaction(ctx)
 	deleteChallenge(cr.RoundCreatedAt)
+	cr.statusMutex.Lock()
 	cr.Status = Cancelled
+	cr.statusMutex.Unlock()
 	cr.StatusMessage = errReason.Error()
 	cr.UpdatedAt = cancellation.UTC()
 	if err := db.Save(cr).Error; err != nil {
@@ -225,7 +227,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		cr.ValidationTickets = make([]*ValidationTicket, len(cr.Validators))
 	}
 
-	accessMu := sync.Mutex{}
+	accessMu := sync.RWMutex{}
 	updateMapAndSlice := func(validatorID string, i int, vt *ValidationTicket) {
 		accessMu.Lock()
 		cr.ValidationTickets[i] = vt
@@ -306,10 +308,14 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		}
 	}
 
+	accessMu.RLock()
 	logging.Logger.Info("[challenge]validator response stats", zap.Any("challenge_id", cr.ChallengeID), zap.Any("validator_responses", responses), zap.Any("num_success", numSuccess), zap.Any("num_failed", numFailed))
+	accessMu.RUnlock()
 	if numSuccess > (len(cr.Validators) / 2) {
 		cr.Result = ChallengeSuccess
+		cr.statusMutex.Lock()
 		cr.Status = Processed
+		cr.statusMutex.Unlock()
 		cr.UpdatedAt = time.Now().UTC()
 	} else {
 		cr.CancelChallenge(ctx, ErrNoConsensusChallenge)
@@ -376,7 +382,9 @@ func IsEntityNotFoundError(err error) bool {
 }
 
 func (cr *ChallengeEntity) SaveChallengeResult(ctx context.Context, t *transaction.Transaction, toAdd bool) {
+	cr.statusMutex.Lock()
 	cr.Status = Committed
+	cr.statusMutex.Unlock()
 	cr.StatusMessage = t.TransactionOutput
 	cr.CommitTxnID = t.Hash
 	cr.UpdatedAt = time.Now().UTC()

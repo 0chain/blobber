@@ -210,9 +210,8 @@ func commitOnChainWorker(ctx context.Context) {
 
 func getBatch(batchSize int) (chall []ChallengeEntity) {
 	challengeMapLock.RLock()
-	defer challengeMapLock.RUnlock()
-
 	if challengeMap.Size() == 0 {
+		challengeMapLock.RUnlock()
 		return
 	}
 
@@ -223,6 +222,7 @@ func getBatch(batchSize int) (chall []ChallengeEntity) {
 			break
 		}
 		ticket := it.Value().(*ChallengeEntity)
+		ticket.statusMutex.Lock()
 		switch ticket.Status {
 		case Committed:
 		case Cancelled:
@@ -235,6 +235,13 @@ func getBatch(batchSize int) (chall []ChallengeEntity) {
 		case Processed:
 		default:
 		}
+		if ticket.Status != Processed {
+			if checkExpiry(ticket.RoundCreatedAt) {
+				toDel = append(toDel, ticket.RoundCreatedAt)
+			}
+			continue
+		}
+		ticket.statusMutex.Unlock()
 		chall = append(chall, *ticket)
 	}
 	for _, r := range toClean {
@@ -260,6 +267,7 @@ func (it *ChallengeEntity) createChallenge(ctx context.Context) bool {
 		logging.Logger.Info("createChallenge", zap.String("challenge_id", it.ChallengeID), zap.String("status", "already exists"))
 		return false
 	}
+	it.statusMutex = &sync.Mutex{}
 	challengeMap.Put(it.RoundCreatedAt, it)
 	return true
 }
@@ -268,4 +276,9 @@ func deleteChallenge(key int64) {
 	challengeMapLock.Lock()
 	challengeMap.Remove(key)
 	challengeMapLock.Unlock()
+}
+
+func checkExpiry(roundCreatedAt int64) bool {
+	currentRound := roundInfo.CurrentRound + int64(float64(roundInfo.LastRoundDiff)*(float64(time.Since(roundInfo.CurrentRoundCaptureTime).Milliseconds())/float64(GetRoundInterval.Milliseconds())))
+	return currentRound-roundCreatedAt > config.StorageSCConfig.ChallengeCompletionTime
 }
