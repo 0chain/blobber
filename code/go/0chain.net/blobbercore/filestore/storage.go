@@ -528,6 +528,7 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 			dataSize: readBlockIn.FileSize,
 		}
 
+		logging.Logger.Debug("calling GetMerkleProofOfMultipleIndexes", zap.Any("readBlockIn", readBlockIn), zap.Any("vmp", vmp))
 		nodes, indexes, err := vp.GetMerkleProofOfMultipleIndexes(file, nodesSize, startBlock, endBlock)
 		if err != nil {
 			return nil, common.NewError("get_merkle_proof_error", err.Error())

@@ -239,10 +239,14 @@ func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error
 	// Can be configured at runtime, this number will depend on the number of active allocations
 	swg := sizedwaitgroup.New(5)
 	mut := &sync.Mutex{}
+	var (
+		commitError error
+		errorMutex  sync.Mutex
+	)
 	for _, change := range a.AllocationChanges {
 		select {
 		case <-commitCtx.Done():
-			return fmt.Errorf("commit to filestore failed")
+			return fmt.Errorf("commit to filestore failed: %s", commitError.Error())
 		default:
 		}
 		swg.Add()
@@ -250,12 +254,15 @@ func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error
 			err := change.CommitToFileStore(ctx, mut)
 			if err != nil && !errors.Is(common.ErrFileWasDeleted, err) {
 				cancel()
+				errorMutex.Lock()
+				commitError = err
+				errorMutex.Unlock()
 			}
 			swg.Done()
 		}(change)
 	}
 	swg.Wait()
-	return nil
+	return commitError
 }
 
 func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context) {
