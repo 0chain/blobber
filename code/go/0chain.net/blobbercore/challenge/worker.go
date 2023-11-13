@@ -237,7 +237,7 @@ func getBatch(batchSize int) (chall []ChallengeEntity) {
 		}
 		if ticket.Status != Processed {
 			if checkExpiry(ticket.RoundCreatedAt) {
-				toDel = append(toDel, ticket.RoundCreatedAt)
+				toClean = append(toClean, ticket.RoundCreatedAt)
 			}
 			continue
 		}
