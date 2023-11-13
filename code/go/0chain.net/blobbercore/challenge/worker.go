@@ -154,7 +154,7 @@ func processChallenge(ctx context.Context, it *ChallengeEntity) {
 func commitOnChainWorker(ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {
-			logging.Logger.Error("[commitWorker]challenge", zap.Any("err", r))
+			logging.Logger.Error("[commitWorker]challenge recovery", zap.Any("err", r))
 		}
 	}()
 	wg := sync.WaitGroup{}
@@ -216,17 +216,33 @@ func getBatch(batchSize int) (chall []ChallengeEntity) {
 		return
 	}
 
+	var toClean []int64
 	it := challengeMap.Iterator()
 	for it.Next() {
 		if len(chall) >= batchSize {
 			break
 		}
 		ticket := it.Value().(*ChallengeEntity)
-		if ticket.Status != Processed {
+		ticket.statusMutex.Lock()
+		switch ticket.Status {
+		case Committed:
+		case Cancelled:
+			logging.Logger.Warn("committing_challenge_tickets: ticket with the final status, ignore it", zap.String("challenge_id", ticket.ChallengeID))
+			toClean = append(toClean, ticket.RoundCreatedAt)
+			continue
+		case Accepted:
+			//reached the tail of challenges
 			break
+		case Processed:
+		default:
 		}
 		chall = append(chall, *ticket)
+		ticket.statusMutex.Unlock()
 	}
+	for _, r := range toClean {
+		challengeMap.Remove(r)
+	}
+
 	return
 }
 
@@ -247,6 +263,7 @@ func (it *ChallengeEntity) createChallenge(ctx context.Context) bool {
 		logging.Logger.Info("createChallenge", zap.String("challenge_id", it.ChallengeID), zap.String("status", "already exists"))
 		return false
 	}
+	it.statusMutex = &sync.Mutex{}
 	challengeMap.Put(it.RoundCreatedAt, it)
 	return true
 }
