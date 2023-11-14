@@ -83,7 +83,7 @@ func (ft *fixedMerkleTree) CalculateRootAndStoreNodes(f io.Writer) (merkleRoot [
 			bufLen += copy(buffer[bufLen:bufLen+HashSize], nodes[j])
 			bufLen += copy(buffer[bufLen:bufLen+HashSize], nodes[j+1])
 
-			h.Write(buffer[prevBufLen:bufLen])
+			_, _ = h.Write(buffer[prevBufLen:bufLen])
 			newNodes[nodeInd] = h.Sum(nil)
 			nodeInd++
 		}

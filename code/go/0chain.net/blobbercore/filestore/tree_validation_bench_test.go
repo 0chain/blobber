@@ -82,7 +82,7 @@ func runFixedMPBench(b *testing.B, size int64, filename string) {
 		}
 
 		h := blake3.New()
-		h.Write(proofByte)
+		_, _ = h.Write(proofByte)
 
 		fp := util.FixedMerklePath{
 			LeafHash: h.Sum(nil),
