@@ -258,6 +258,12 @@ func (bs *BlobberStats) loadStats(ctx context.Context) {
 		return
 	}
 
+	err = row.Err()
+	if err != nil {
+		Logger.Error("Error in getting the blobber stats", zap.Error(err))
+		return
+	}
+
 	err = row.Scan(&bs.FilesSize, &bs.ThumbnailsSize, &bs.NumReads,
 		&bs.BlockWrites, &bs.NumWrites)
 	if err != nil && err != sql.ErrNoRows {
