@@ -250,8 +250,13 @@ func (bs *BlobberStats) loadStats(ctx context.Context) {
 
 	row = db.Table("reference_objects").
 		Select(sel).
-		Where("reference_objects.type = 'f' AND reference_object.deleted_at is NULL").
+		Where("reference_objects.type = 'f' AND reference_objects.deleted_at is NULL").
 		Row()
+
+	if row == nil {
+		Logger.Info("No rows found for blobber stats")
+		return
+	}
 
 	err = row.Scan(&bs.FilesSize, &bs.ThumbnailsSize, &bs.NumReads,
 		&bs.BlockWrites, &bs.NumWrites)
