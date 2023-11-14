@@ -48,7 +48,7 @@ func BlakeHash(data interface{}) []byte {
 		panic("unknown type")
 	}
 	hash := blake3.New()
-	hash.Write(databuf)
+	_, _ = hash.Write(databuf)
 	return hash.Sum(nil)
 }
 

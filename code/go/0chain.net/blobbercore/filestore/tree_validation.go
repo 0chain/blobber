@@ -246,7 +246,7 @@ func (v *validationTree) CalculateRootAndStoreNodes(f io.WriteSeeker) (merkleRoo
 				bufInd += copy(buffer[bufInd:], nodes[j])
 				bufInd += copy(buffer[bufInd:], nodes[j+1])
 
-				h.Write(buffer[prevBufInd:bufInd])
+				_, _ = h.Write(buffer[prevBufInd:bufInd])
 				newNodes = append(newNodes, h.Sum(nil))
 			}
 		} else {
@@ -256,13 +256,13 @@ func (v *validationTree) CalculateRootAndStoreNodes(f io.WriteSeeker) (merkleRoo
 				bufInd += copy(buffer[bufInd:], nodes[j])
 				bufInd += copy(buffer[bufInd:], nodes[j+1])
 
-				h.Write(buffer[prevBufInd:bufInd])
+				_, _ = h.Write(buffer[prevBufInd:bufInd])
 				newNodes = append(newNodes, h.Sum(nil))
 			}
 			h.Reset()
 			prevBufInd := bufInd
 			bufInd += copy(buffer[bufInd:], nodes[len(nodes)-1])
-			h.Write(buffer[prevBufInd:bufInd])
+			_, _ = h.Write(buffer[prevBufInd:bufInd])
 			newNodes = append(newNodes, h.Sum(nil))
 		}
 
