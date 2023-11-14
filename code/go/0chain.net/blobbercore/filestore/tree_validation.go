@@ -12,7 +12,7 @@ import (
 	"sync"
 
 	"github.com/0chain/gosdk/core/util"
-	"golang.org/x/crypto/sha3"
+	"github.com/zeebo/blake3"
 )
 
 const (
@@ -66,7 +66,7 @@ func (ft *fixedMerkleTree) CalculateRootAndStoreNodes(f io.Writer) (merkleRoot [
 
 	buffer := make([]byte, FMTSize)
 	var bufLen int
-	h := sha3.New256()
+	h := blake3.New()
 
 	for i := 0; i < util.FixedMTDepth; i++ {
 		if len(nodes) == 1 {
@@ -228,7 +228,7 @@ func (v *validationTree) CalculateRootAndStoreNodes(f io.WriteSeeker) (merkleRoo
 	nodes := make([][]byte, len(v.GetLeaves()))
 	copy(nodes, v.GetLeaves())
 
-	h := sha3.New256()
+	h := blake3.New()
 	depth := v.CalculateDepth()
 
 	s := getNodesSize(v.GetDataSize(), util.MaxMerkleLeavesSize)
