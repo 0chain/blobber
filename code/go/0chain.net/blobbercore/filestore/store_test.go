@@ -22,7 +22,6 @@ import (
 	"github.com/0chain/gosdk/core/util"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
-	"github.com/zeebo/blake3"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/sha3"
 )
@@ -801,10 +800,8 @@ func TestGetMerkleTree(t *testing.T) {
 			require.Nil(t, err)
 
 			rootHash, _ := hex.DecodeString(fixedMerkleRoot)
-			hasher := blake3.New()
-			hasher.Write(challengeProof.Data)
 			fmp := &util.FixedMerklePath{
-				LeafHash: hasher.Sum(nil),
+				LeafHash: encryption.BlakeHash(challengeProof.Data),
 				RootHash: rootHash,
 				Nodes:    challengeProof.Proof,
 				LeafInd:  test.blockOffset,

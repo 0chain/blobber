@@ -12,7 +12,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/validatorcore/storage/writemarker"
 	"github.com/0chain/gosdk/core/util"
-	"github.com/zeebo/blake3"
 
 	"github.com/mitchellh/mapstructure"
 
@@ -357,9 +356,7 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 	}
 
 	logging.Logger.Info("Verifying data block and merkle path", zap.String("challenge_id", challengeObj.ID))
-	hasher := blake3.New()
-	hasher.Write(cr.ChallengeProof.Data)
-	fHash := hasher.Sum(nil)
+	fHash := encryption.BlakeHash(cr.ChallengeProof.Data)
 	fixedMerkleRoot, _ := hex.DecodeString(cr.ObjPath.Meta.FixedMerkleRoot)
 	fmp := &util.FixedMerklePath{
 		LeafHash: fHash,

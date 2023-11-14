@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 
+	"github.com/zeebo/blake3"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -30,6 +31,23 @@ func RawHash(data interface{}) []byte {
 		panic("unknown type")
 	}
 	hash := sha3.New256()
+	hash.Write(databuf)
+	return hash.Sum(nil)
+}
+
+func BlakeHash(data interface{}) []byte {
+	var databuf []byte
+	switch dataImpl := data.(type) {
+	case []byte:
+		databuf = dataImpl
+	case HashBytes:
+		databuf = dataImpl[:]
+	case string:
+		databuf = []byte(dataImpl)
+	default:
+		panic("unknown type")
+	}
+	hash := blake3.New()
 	hash.Write(databuf)
 	return hash.Sum(nil)
 }
