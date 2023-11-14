@@ -210,9 +210,9 @@ func commitOnChainWorker(ctx context.Context) {
 
 func getBatch(batchSize int) (chall []ChallengeEntity) {
 	challengeMapLock.RLock()
-	defer challengeMapLock.RUnlock()
 
 	if challengeMap.Size() == 0 {
+		challengeMapLock.RUnlock()
 		return
 	}
 
@@ -226,21 +226,29 @@ func getBatch(batchSize int) (chall []ChallengeEntity) {
 		ticket.statusMutex.Lock()
 		switch ticket.Status {
 		case Committed:
+			logging.Logger.Warn("committing_challenge_tickets: ticket with the commit status, ignore it", zap.String("challenge_id", ticket.ChallengeID))
+			toClean = append(toClean, ticket.RoundCreatedAt)
+			ticket.statusMutex.Unlock()
+			continue
 		case Cancelled:
 			logging.Logger.Warn("committing_challenge_tickets: ticket with the final status, ignore it", zap.String("challenge_id", ticket.ChallengeID))
 			toClean = append(toClean, ticket.RoundCreatedAt)
+			ticket.statusMutex.Unlock()
 			continue
 		case Accepted:
 			//reached the tail of challenges
-			break
+			ticket.statusMutex.Unlock()
+			goto breakLoop
 		case Processed:
 		default:
 		}
 		chall = append(chall, *ticket)
 		ticket.statusMutex.Unlock()
 	}
+breakLoop:
+	challengeMapLock.RUnlock()
 	for _, r := range toClean {
-		challengeMap.Remove(r)
+		deleteChallenge(r)
 	}
 
 	return
