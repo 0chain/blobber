@@ -225,27 +225,17 @@ func getBatch(batchSize int) (chall []ChallengeEntity) {
 		ticket := it.Value().(*ChallengeEntity)
 		ticket.statusMutex.Lock()
 		switch ticket.Status {
-		case Committed:
-			logging.Logger.Warn("committing_challenge_tickets: ticket with the commit status, ignore it", zap.String("challenge_id", ticket.ChallengeID))
-			toClean = append(toClean, ticket.RoundCreatedAt)
-			ticket.statusMutex.Unlock()
-			continue
-		case Cancelled:
-			logging.Logger.Warn("committing_challenge_tickets: ticket with the final status, ignore it", zap.String("challenge_id", ticket.ChallengeID))
-			toClean = append(toClean, ticket.RoundCreatedAt)
-			ticket.statusMutex.Unlock()
-			continue
 		case Accepted:
-			//reached the tail of challenges
 			ticket.statusMutex.Unlock()
-			goto breakLoop
+			goto brekLoop
 		case Processed:
+			chall = append(chall, *ticket)
 		default:
+			toClean = append(toClean, ticket.RoundCreatedAt)
 		}
-		chall = append(chall, *ticket)
 		ticket.statusMutex.Unlock()
 	}
-breakLoop:
+brekLoop:
 	challengeMapLock.RUnlock()
 	for _, r := range toClean {
 		deleteChallenge(r)
@@ -272,6 +262,7 @@ func (it *ChallengeEntity) createChallenge(ctx context.Context) bool {
 		return false
 	}
 	it.statusMutex = &sync.Mutex{}
+	it.Status = Accepted
 	challengeMap.Put(it.RoundCreatedAt, it)
 	return true
 }
