@@ -226,16 +226,16 @@ func getBatch(batchSize int) (chall []ChallengeEntity) {
 		ticket.statusMutex.Lock()
 		switch ticket.Status {
 		case Accepted:
+			ticket.statusMutex.Unlock()
+			goto brekLoop
 		case Processed:
 			chall = append(chall, *ticket)
 		default:
 			toClean = append(toClean, ticket.RoundCreatedAt)
 		}
 		ticket.statusMutex.Unlock()
-		if ticket.Status == Accepted {
-			break
-		}
 	}
+brekLoop:
 	challengeMapLock.RUnlock()
 	for _, r := range toClean {
 		deleteChallenge(r)
