@@ -224,28 +224,19 @@ func getBatch(batchSize int) (chall []ChallengeEntity) {
 		}
 		ticket := it.Value().(*ChallengeEntity)
 		ticket.statusMutex.Lock()
-		switch ticket.Status {
-		case Committed:
-			logging.Logger.Warn("committing_challenge_tickets: ticket with the commit status, ignore it", zap.String("challenge_id", ticket.ChallengeID))
-			toClean = append(toClean, ticket.RoundCreatedAt)
-			ticket.statusMutex.Unlock()
-			continue
-		case Cancelled:
-			logging.Logger.Warn("committing_challenge_tickets: ticket with the final status, ignore it", zap.String("challenge_id", ticket.ChallengeID))
-			toClean = append(toClean, ticket.RoundCreatedAt)
-			ticket.statusMutex.Unlock()
-			continue
-		case Accepted:
-			//reached the tail of challenges
-			ticket.statusMutex.Unlock()
-			goto breakLoop
-		case Processed:
-		default:
+		if ticket.Status == Accepted {
+			break
 		}
-		chall = append(chall, *ticket)
+		if ticket.Status != Processed {
+			logging.Logger.Warn("committing_challenge_tickets: ticket with the final status, ignore it", zap.String("challenge_id", ticket.ChallengeID), zap.Int("status", int(ticket.Status)))
+			if checkExpiry(ticket.RoundCreatedAt) {
+				toClean = append(toClean, ticket.RoundCreatedAt)
+			}
+			continue
+		}
 		ticket.statusMutex.Unlock()
+		chall = append(chall, *ticket)
 	}
-breakLoop:
 	challengeMapLock.RUnlock()
 	for _, r := range toClean {
 		deleteChallenge(r)
@@ -280,4 +271,9 @@ func deleteChallenge(key int64) {
 	challengeMapLock.Lock()
 	challengeMap.Remove(key)
 	challengeMapLock.Unlock()
+}
+
+func checkExpiry(roundCreatedAt int64) bool {
+	currentRound := roundInfo.CurrentRound + int64(float64(roundInfo.LastRoundDiff)*(float64(time.Since(roundInfo.CurrentRoundCaptureTime).Milliseconds())/float64(GetRoundInterval.Milliseconds())))
+	return currentRound-roundCreatedAt > config.StorageSCConfig.ChallengeCompletionTime
 }
