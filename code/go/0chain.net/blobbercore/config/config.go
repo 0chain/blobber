@@ -68,14 +68,13 @@ func SetupConfig(configPath string) {
 		panic(fmt.Errorf("fatal error config file: %s", err))
 	}
 
+	Configuration.Config = &config.Configuration
 	viper.OnConfigChange(func(e fsnotify.Event) {
 		fmt.Println("Config file changed:", e.Name)
 		ReadConfig(int(Configuration.DeploymentMode))
 	})
 
 	viper.WatchConfig()
-
-	Configuration.Config = &config.Configuration
 }
 
 const (
