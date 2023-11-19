@@ -45,7 +45,7 @@ Other apps are [Bolt](https://bolt.holdings/), a wallet that is very secure with
 
  - Linux (Ubuntu Preferred) Version: 20.04 and Above
  - Mac(Apple Silicon or Intel) Version: Big Sur and Above
- - Windows(Requires WSL ) Version: Windows 11 or 10 version 2004 and above
+ - Windows Version: Windows 11 or 10 version 2004 and later requires WSL2. Instructions for installing WSL can be found [here](https://learn.microsoft.com/en-us/windows/wsl/install).
  - Docker is available for Linux, macOS and Windows platforms. Find instructions for the preferred operating system [here](https://docs.docker.com/engine/install/#supported-platforms).
 
 ### Directory Setup for Blobbers
@@ -107,20 +107,20 @@ DOCKER_BUILD=build ./docker.local/bin/build.validator.sh.
 
 ```
 
-5. Now create a wallet using zwalletcli and install zboxcli to perform storage operations on blobbers.Instructions for [creating wallet](https://github.com/0chain/zwalletcli#creating-wallet---any-command) and installing zboxcli are available [here](https://github.com/0chain/zboxcli#installation-guides)
+5. Begin by installing [zwalletcli](https://github.com/0chain/zwalletcli/wiki/Install-zwalletcli) , [configure network](https://github.com/0chain/zwalletcli/wiki/Configure-network) and then proceed to install [zboxcli](https://github.com/0chain/zwalletcli/wiki/Install-zwalletcli) for performing storage operations on blobbers. Detailed instructions for creating a wallet using zwalletcli can be found [here](https://github.com/0chain/zwalletcli#creating-wallet---any-command).
 
-6. Once the wallet is created, the wallet information will be stored in wallet.json located in the .zcn folder of the Linux home directory. Now navigate to the .zcn folder (this is created during zbox build) 
+6. Once the wallet is created, the wallet information will be stored in `wallet.json` located in the .zcn folder of the linux or mac `$HOME` directory. Now navigate to the .zcn folder 
 ```
 cd $HOME/.zcn/
 ```
-7. Open the wallet.json file. It should be similar to the similar to the output below:
+7. Open the wallet.json file. It should be similar to the output below:
 ```
 {"client_id":"4af719e1fdb6244159f17922382f162387bae3708250cab6bc1c20cd85fb594c",
 "client_key":"da1769bd0203b9c84dc19846ed94155b58d1ffeb3bbe35d38db5bf2fddf5a91c91b22bc7c89dd87e1f1fecbb17ef0db93517dd3886a64274997ea46824d2c119","keys":[{"public_key":"da1769bd0203b9c84dc19846ed94155b58d1ffeb3bbe35d38db5bf2fddf5a91c91b22bc7c89dd87e1f1fecbb17ef0db93517dd3886a64274997ea46824d2c1>
 "private_key":"542f6be49108f52203ce75222601397aad32e554451371581ba0eca56b093d19"}],"mnemonics":"butter whisper wheat hope duck mention bird half wedding aim good regret maximum illegal much inch immune unlock resource congress drift>
 "version":"1.0","date_created":"2021-09-09T20:22:56+05:30"}
 ```
-8. Copy the client_id value and paste it into blobbers and validators settings. The files can be found in `blobber/config` directory.
+8. Copy the client_id value and paste it into blobbers and validators settings. These files can be found in `blobber/config` directory.
   
 9. Open both the `blobber/config/0chain_validator.yaml` and `blobber/config/0chain_blobber.yaml` and edit the `delegate_wallet` value with your `client_id` value.
 
@@ -136,9 +136,30 @@ cd $HOME/.zcn/
 ```
 **_Note: Replace the localhost form `docker.local/p0docker-compose.yml` to your public IP if you are trying to connect to another network ._**
 
-If you are facing `insufficient balance to pay fee` errors when starting blobbers, you can turn 
-off fees in [0chain.yaml.server_chain.smart_contract.miner](https://github.com/0chain/0chain/blob/3c38dfd0920675d86876a5b8895272cb66ded9ad/docker.local/config/0chain.yaml#LL96C3-L96C16)
-by adjusting true to false.
+If you are facing `insufficient balance to pay fee` errors when starting blobbers, you can turn  off fees in [0chain.yaml.server_chain.smart_contract.miner](https://github.com/0chain/0chain/blob/3c38dfd0920675d86876a5b8895272cb66ded9ad/docker.local/config/0chain.yaml#LL96C3-L96C16) by adjusting true to false.
+
+
+ 11. Now you can create allocations on blobber and store files. For creating allocations you need tokens into your wallet, follow the guide below to get tokens:
+
+- [Get Tokens](https://github.com/0chain/zwalletcli#getting-tokens-with-faucet-smart-contract---faucet)
+
+ 12. Then create new allocation using the command below:
+
+```
+./zbox newallocation --lock 0.5
+```
+Note: If unable to create new allocations as shown below.
+
+```
+./zbox newallocation --lock 0.5
+Error creating allocation: transaction_not_found: Transaction was not found on any of the sharders
+```
+
+To fix this issue you must lock some tokens on the blobber.Get the local blobber id using the `./zbox ls-blobbers` and use the following command 
+
+```
+./zbox sp-lock --blobber_id $BLOBBER_ID --tokens 1
+```
 
 ## Troubleshooting
 
@@ -150,7 +171,7 @@ docker ps
 ```
 This should display the container image blobber_blobber and should have the ports mapped like "0.0.0.0:5050->5050/tcp"
 
-2. Now check whether the blobber has registered to the blockchain by running the following zbox command
+2. To check whether the blobber has registered to the blockchain by running the following zbox command
 
 ```
 ./zbox ls-blobbers
@@ -160,7 +181,7 @@ In the response you should see the local blobbers mentioned with their urls for 
 Sample Response:
 ```
 - id:                    0bf5ae461d6474ca1bebba028ea57d646043bbfb6a4188348fd649f0deec5df2
-  url:                   http://beta.0chain.net:31304
+  url:                   http://demo.zus.network:31304
   used / total capacity: 14.0 GiB / 100.0 GiB
   last_health_check:	  1635347306
   terms:
@@ -190,7 +211,7 @@ Sample Response:
     cct:                 2m0s
     max_offer_duration:  744h0m0s
 - id:                    f8dc4aaf3bb32ae0f4ed575dd6931a42b75e546e07cb37a6e1c6aaf1225891c5
-  url:                   http://beta.0chain.net:31305
+  url:                   http://demo.zus.network:31305
   used / total capacity: 13.3 GiB / 100.0 GiB
   last_health_check:	  1635347346
   terms:
@@ -205,23 +226,7 @@ Note: When starting multiple blobbers, it could happen that blobbers are not bei
    
 Blobber registration takes some time and adding at least 5 second wait before starting the next blobber usually avoids the issue.
   
-3. Now you can create allocations on blobber and store files. 
-
-Note: If unable to create new allocations as shown below.
-
-```
-./zbox newallocation --lock 0.5
-Error creating allocation: transaction_not_found: Transaction was not found on any of the sharders
-```
-
-To fix this issue you must lock some tokens on the blobber.Get the local blobber id using the `./zbox ls-blobbers` and use the following command 
-
-```
-zbox sp-lock --blobber_id f65af5d64000c7cd2883f4910eb69086f9d6e6635c744e62afcfab58b938ee25 --tokens 0.5
-```
-
 ## Connect to other network
-
 
 - Your network connection depends on the block_worker url you give in the `config/0chain_blobber/validator.yaml` and `0chain_blobber.yaml` config file.
  
