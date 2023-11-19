@@ -6,7 +6,7 @@
 
 # Blobber - A storage provider in Züs network
 
-This readme provides instructions on how to setup and register blobber to the Züs network .
+A blobber serves as a storage provider within the Züs network, comprising decentralized servers scattered across the globe, all interconnected to the Züs network to cater to our users' storage requirements.This readme provides instructions on how to setup and register blobber to the Züs network .
 
 ## Table of Contents  
 
@@ -47,12 +47,14 @@ Other apps are [Bolt](https://bolt.holdings/), a wallet that is very secure with
  - Mac(Apple Silicon or Intel) Version: Big Sur and Above
  - Windows Version: Windows 11 or 10 version 2004 and later requires WSL2. Instructions for installing WSL can be found [here](https://learn.microsoft.com/en-us/windows/wsl/install).
  - Docker is available for Linux, macOS and Windows platforms. Find instructions for the preferred operating system [here](https://docs.docker.com/engine/install/#supported-platforms).
+ - Setting up Docker Desktop for Windows with WSL 2 (Windows Subsystem for Linux, version 2) requires additional steps. Instructions can be found [here](https://learn.microsoft.com/en-us/windows/wsl/tutorials/wsl-containers).
 
 ### Directory Setup for Blobbers
 
-1. Clone the Blobber repository using the command
+1. Clone the Blobber repository and navigate to blobber directory.
 ```
 git clone https://github.com/0chain/blobber.git
+cd blobber
 ```
 2. In the git/blobber run the following command
   
@@ -72,17 +74,19 @@ chmod +x ./docker.local/bin/blobber.init.setup-mac.sh
  ```
 docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.0.255 testnet0
 ```
-Note: Run all scripts as sudo  
+Note: Run all scripts as sudo .  
 
 2. Set up the block_worker URL
 
-A block worker URL is a field in the `blobber/config/0chain_validator.yaml` and `blobber/config/0chain_blobber.yaml` configuration files that require the URL of blockchain network you want to connect to. For testing purposes we will connect to the beta 0chain network and replace the default URL in blobber/config/0chain_validator.yaml and 0chain_blobber.yaml with the below-mentioned URL.
+A block worker URL is a field in the `blobber/config/0chain_validator.yaml` and `blobber/config/0chain_blobber.yaml` configuration files that require the URL of blockchain network you want to connect to. For testing purposes we will connect to the demo Züs network and replace the default URL in blobber/config/0chain_validator.yaml and 0chain_blobber.yaml with the below-mentioned URL.
 ```
 block_worker: https://demo.zus.network/dns
 ```
+**Note:** Change the default value of block_worker field with the following: `http://198.18.0.98:9091/` for the local testnet.
+
 ### Building on standard hardware
 
-3. Go back to the blobber directory and build blobber containers using the scripts below
+3. Go back to the blobber directory and build blobber containers using the scripts below:
 ```
 ./docker.local/bin/build.base.sh
 ./docker.local/bin/build.blobber.sh
@@ -107,7 +111,7 @@ DOCKER_BUILD=build ./docker.local/bin/build.validator.sh.
 
 ```
 
-5. Begin by installing [zwalletcli](https://github.com/0chain/zwalletcli/wiki/Install-zwalletcli) , [configure network](https://github.com/0chain/zwalletcli/wiki/Configure-network) and then proceed to install [zboxcli](https://github.com/0chain/zwalletcli/wiki/Install-zwalletcli) for performing storage operations on blobbers. Detailed instructions for creating a wallet using zwalletcli can be found [here](https://github.com/0chain/zwalletcli#creating-wallet---any-command).
+5. Begin by creating wallet by installing [zwalletcli](https://github.com/0chain/zwalletcli/wiki/Install-zwalletcli) , [configure network](https://github.com/0chain/zwalletcli/wiki/Configure-network) and then proceed to install [zboxcli](https://github.com/0chain/zwalletcli/wiki/Install-zwalletcli) for performing storage operations on blobbers. Detailed instructions for creating a wallet using zwalletcli can be found [here](https://github.com/0chain/zwalletcli#creating-wallet---any-command).
 
 6. Once the wallet is created, the wallet information will be stored in `wallet.json` located in the .zcn folder of the linux or mac `$HOME` directory. Now navigate to the .zcn folder 
 ```
@@ -138,8 +142,7 @@ cd $HOME/.zcn/
 
 If you are facing `insufficient balance to pay fee` errors when starting blobbers, you can turn  off fees in [0chain.yaml.server_chain.smart_contract.miner](https://github.com/0chain/0chain/blob/3c38dfd0920675d86876a5b8895272cb66ded9ad/docker.local/config/0chain.yaml#LL96C3-L96C16) by adjusting true to false.
 
-
- 11. Now you can create allocations on blobber and store files. For creating allocations you need tokens into your wallet, follow the guide below to get tokens:
+ 11. Now you can create allocations on blobber and store files. For creating allocations you need tokens into your wallet, follow the guide below to get tokens into wallet using zwalletcli:
 
 - [Get Tokens](https://github.com/0chain/zwalletcli#getting-tokens-with-faucet-smart-contract---faucet)
 
