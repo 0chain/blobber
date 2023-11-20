@@ -401,7 +401,6 @@ ALTER SEQUENCE reference_objects_id_seq OWNED BY reference_objects.id;
 CREATE TABLE settings (
     id character varying(10) NOT NULL,
     capacity bigint DEFAULT 0 NOT NULL,
-    min_lock_demand numeric DEFAULT 0.000000 NOT NULL,
     num_delegates bigint DEFAULT 100 NOT NULL,
     read_price numeric DEFAULT 0.000000 NOT NULL,
     write_price numeric DEFAULT 0.000000 NOT NULL,

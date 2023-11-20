@@ -36,7 +36,6 @@ func SetupDefaultConfig() {
 	viper.SetDefault("capacity", -1)
 	viper.SetDefault("read_price", 0.0)
 	viper.SetDefault("write_price", 0.0)
-	viper.SetDefault("min_lock_demand", 0.0)
 
 	viper.SetDefault("write_marker_lock_timeout", time.Second*30)
 
