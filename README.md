@@ -45,9 +45,8 @@ Other apps are [Bolt](https://bolt.holdings/), a wallet that is very secure with
 
  - Linux (Ubuntu Preferred) Version: 20.04 and Above
  - Mac(Apple Silicon or Intel) Version: Big Sur and Above
- - Windows Version: Windows 11 or 10 version 2004 and later requires WSL2. Instructions for installing WSL can be found [here](https://learn.microsoft.com/en-us/windows/wsl/install).
- - Docker is available for Linux, macOS and Windows platforms. Find instructions for the preferred operating system [here](https://docs.docker.com/engine/install/#supported-platforms).
- - Setting up Docker Desktop for Windows with WSL 2 (Windows Subsystem for Linux, version 2) requires additional steps. Instructions can be found [here](https://learn.microsoft.com/en-us/windows/wsl/tutorials/wsl-containers).
+ - Windows Version: Windows 11 or 10 version 2004 and later requires WSL2. Instructions for installing WSL with docker can be found [here](https://github.com/0chain/0chain/blob/hm90121-patch-1/standalone_guides.md#install-wsl-with-docker).
+ - Docker is required to run blobber containers. Instructions for installing Docker can be found [here](https://github.com/0chain/0chain/blob/hm90121-patch-1/standalone_guides.md#install-docker-desktop).
 
 ### Directory Setup for Blobbers
 
