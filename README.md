@@ -51,18 +51,18 @@ Other apps are [Bolt](https://bolt.holdings/), a wallet that is very secure with
 
 ### Directory Setup for Blobbers
 
-1. Clone the Blobber repository and navigate to blobber directory.
+1. Clone the Blobber repository and go to blobber directory.
 ```
 git clone https://github.com/0chain/blobber.git
 cd blobber
 ```
-2. In the git/blobber run the following command
+2. In the blobber directory run the following command for linux/wsl :
   
 ```
 chmod +x ./docker.local/bin/blobber.init.setup.sh
 ./docker.local/bin/blobber.init.setup.sh
 ```
-**NOTE**: For mac user please run below:
+**NOTE**: For mac user please run the command below:
 ```
 chmod +x ./docker.local/bin/blobber.init.setup-mac.sh
 ./docker.local/bin/blobber.init.setup-mac.sh
@@ -87,7 +87,7 @@ block_worker: https://demo.zus.network/dns
 
 ### Building on standard hardware
 
-3. Go back to the blobber directory in terminal(`cd blobber`) and build blobber containers using the scripts below:
+3. Go back to the blobber directory in terminal(`cd -`) and build blobber containers using the scripts below:
 
 ```
 ./docker.local/bin/build.base.sh
@@ -100,17 +100,17 @@ Note: Run all scripts as sudo. This would take few minutes.
 
 4. Sometimes in Apple Silicon devices (m1/m2 macbooks), build might fail using the scripts above. To force a regular blobber build, run the scripts above in Rosetta from Terminal on apple silicon devices. To open the Terminal on a Mac with Apple Silicon (M1 or later) under Rosetta, you can do so by following these steps:
 
-  4.1) Click on the Finder icon in your dock, or open a new Finder window.
+  - 4.1) Click on the Finder icon in your dock, or open a new Finder window.
 
-  4.2) Navigate to the "Applications" folder. You can usually find this on the left sidebar of a Finder window.
+  - 4.2) Navigate to the "Applications" folder. You can usually find this on the left sidebar of a Finder window.
 
-  4.3) Open the "Utilities" folder within "Applications."
+  - 4.3) Open the "Utilities" folder within "Applications."
 
-  4.4) Look for the "Terminal" application. Right-Click Terminal > Get Info > Check Open using Rosetta.
+  - 4.4) Look for the "Terminal" application. Right-Click Terminal > Get Info > Check Open using Rosetta.
 
-  4.5) Double-click on the Terminal application to open it under Rosetta.
+  - 4.5) Double-click on the Terminal application to open it under Rosetta.
 
-  4.6) Now to go to blobber directory and build blobber containers use the commands below:
+  - 4.6) Now to go to blobber directory and build blobber containers use the commands below:
 
       ```
        cd blobber
@@ -118,7 +118,7 @@ Note: Run all scripts as sudo. This would take few minutes.
       ./docker.local/bin/build.blobber.sh
       ./docker.local/bin/build.validator.sh
       ```
-  4.7) To link to local gosdk so that the changes are reflected on the blobber build please use the below command(optional)
+  - 4.7) To link to local gosdk so that the changes are reflected on the blobber build please use the below command(optional)
 
      ```
      ./docker.local/bin/build.blobber.dev.sh
@@ -159,16 +159,38 @@ If you are facing `insufficient balance to pay fee` errors when starting blobber
 
 ## Creating Allocation on Blobbers
 
-1. Now you can create allocations on blobber and store files. For creating allocations you need tokens into your wallet, follow the guide below to get tokens into wallet using zwalletcli:
+1. Now you can create allocations on blobber and store files. For creating allocations you need tokens into your wallet, Running the command below in zwallet will give 1 token to wallet.
 
-- [Get Tokens](https://github.com/0chain/zwalletcli#getting-tokens-with-faucet-smart-contract---faucet)
+```sh
+./zwallet faucet --methodName pour --input "need token"
+```
 
- 2. Then open zbox in another terminal tab and create new allocation using the command below:
+You can specify the number of tokens required using the following command  for adding 5 tokens:
+
+```sh
+./zwallet faucet --methodName pour --input "need token" --tokens 5
+```
+
+Sample output from `faucet` prints the transaction.
+
+```
+Execute faucet smart contract success with txn:  d25acd4a339f38a9ce4d1fa91b287302fab713ef4385522e16d18fd147b2ebaf
+```
+To check wallet balance run `./zwallet getbalance` command
+
+Response:
+```
+Balance: 5 ZCN (4.2299999999999995 USD)
+```
+
+ 2. Then open zbox in another terminal window and create new allocation using the command below:
 
 ```
 ./zbox newallocation --lock 0.5
 ```
-Now, you have the capability to store files in allocated space and execute a variety of operations using zboxcli. For a comprehensive list of commands and their respective functionalities, please refer to the documentation [here](https://github.com/0chain/zboxcli/tree/hm90121-patch-1-1#commands-table).
+Note: Atleast have 1 ZCN balance in your wallet before running the command above.
+
+Now, you can store files in allocated space and execute a variety of operations using zboxcli. For a comprehensive list of zbox commands and their respective functionalities, please refer to the documentation [here](https://github.com/0chain/zboxcli/tree/hm90121-patch-1-1#commands-table).
 
 Note: If unable to create new allocations as shown below.
 
@@ -181,7 +203,7 @@ To fix this issue you must lock some tokens on the blobber stake pool. Get the b
 ```
 ./zbox sp-lock --blobber_id $BLOBBER_ID --tokens 1
 ```
-Note: At least have 1 ZCN token balance in your wallet before locking tokens into stake pool.To know how to get tokens check [Get Tokens](https://github.com/0chain/zwalletcli#getting-tokens-with-faucet-smart-contract---faucet).   
+Note: At least have 1 ZCN token balance in your wallet before locking tokens into stake pool. 
 
 Still facing any issues refer to troubleshooting section [here](#troubleshooting).
 
