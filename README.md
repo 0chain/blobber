@@ -15,7 +15,8 @@ A blobber serves as a storage provider within the Züs network, comprising decen
 - [Directory Setup for Blobbers](#directory-setup-for-blobbers)
 - [Building and Starting the Blobber](#building-and-starting-the-nodes)
   - [Building on Standard Hardware](#building-on-standard-hardware)
-  - [Building on apple silicon](#building-on-apple-silicon) 
+  - [Building on apple silicon](#building-on-apple-silicon)
+- [Creating Allocation on Blobbers](#creating-allocation-on-blobbers) 
 - [Connect to other network](#connect-to-other-network)
 - [Miscellaneous](#miscellaneous) 
 - [Cleanup](#cleanup)
@@ -68,16 +69,17 @@ chmod +x ./docker.local/bin/blobber.init.setup-mac.sh
 ```
 ## Building and Starting the Nodes
   
-1. Setup a network called testnet0 for each of these node containers to talk to each other.
+1. In case network is not configured setup a network called testnet0 for each of these node containers to talk to each other.
  
  ```
 docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.0.255 testnet0
 ```
-Note: Run all scripts as sudo .  
+Note: Run all scripts as sudo.  
 
 2. Set up the block_worker URL
 
 A block worker URL is a field in the `blobber/config/0chain_validator.yaml` and `blobber/config/0chain_blobber.yaml` configuration files that require the URL of blockchain network you want to connect to. For testing purposes we will connect to the demo Züs network and replace the default URL in blobber/config/0chain_validator.yaml and 0chain_blobber.yaml with the below-mentioned URL.
+
 ```
 block_worker: https://demo.zus.network/dns
 ```
@@ -85,49 +87,63 @@ block_worker: https://demo.zus.network/dns
 
 ### Building on standard hardware
 
-3. Go back to the blobber directory and build blobber containers using the scripts below:
+3. Go back to the blobber directory in terminal(`cd blobber`) and build blobber containers using the scripts below:
+
 ```
 ./docker.local/bin/build.base.sh
 ./docker.local/bin/build.blobber.sh
 ./docker.local/bin/build.validator.sh
 ```
-Note: Run all scripts as sudo. 
-This would take few minutes.
+Note: Run all scripts as sudo. This would take few minutes.
 
 ### Building on apple silicon 
 
-Sometimes in Apple Silicon devices (m1/m2 macbooks), buildx will not work for build scripts. To force a regular blobber build, run the following instead of the build commands mentioned above:
-```
-DOCKER_BUILD=build ./docker.local/bin/build.base.sh
-DOCKER_BUILD=build ./docker.local/bin/build.blobber.sh
-DOCKER_BUILD=build ./docker.local/bin/build.validator.sh.
-```
+4. Sometimes in Apple Silicon devices (m1/m2 macbooks), build might fail using the scripts above. To force a regular blobber build, run the scripts above in Rosetta from Terminal on apple silicon devices. To open the Terminal on a Mac with Apple Silicon (M1 or later) under Rosetta, you can do so by following these steps:
 
-4. To link to local gosdk so that the changes are reflected on the blobber build please use the below command(optional)
+  4.1) Click on the Finder icon in your dock, or open a new Finder window.
 
-```
-./docker.local/bin/build.blobber.dev.sh
+  4.2) Navigate to the "Applications" folder. You can usually find this on the left sidebar of a Finder window.
 
-```
+  4.3) Open the "Utilities" folder within "Applications."
 
-5. Begin by creating wallet by installing [zwalletcli](https://github.com/0chain/zwalletcli/wiki/Install-zwalletcli) , [configure network](https://github.com/0chain/zwalletcli/wiki/Configure-network) and then proceed to install [zboxcli](https://github.com/0chain/zwalletcli/wiki/Install-zwalletcli) for performing storage operations on blobbers. Detailed instructions for creating a wallet using zwalletcli can be found [here](https://github.com/0chain/zwalletcli#creating-wallet---any-command).
+  4.4) Look for the "Terminal" application. Right-Click Terminal > Get Info > Check Open using Rosetta.
 
-6. Once the wallet is created, the wallet information will be stored in `wallet.json` located in the .zcn folder of the linux or mac `$HOME` directory. Now navigate to the .zcn folder 
+  4.5) Double-click on the Terminal application to open it under Rosetta.
+
+  4.6) Now to go to blobber directory and build blobber containers use the commands below:
+
+      ```
+       cd blobber
+      ./docker.local/bin/build.base.sh
+      ./docker.local/bin/build.blobber.sh
+      ./docker.local/bin/build.validator.sh
+      ```
+  4.7) To link to local gosdk so that the changes are reflected on the blobber build please use the below command(optional)
+
+     ```
+     ./docker.local/bin/build.blobber.dev.sh
+     ```
+
+5. Now install [zwalletcli](https://github.com/0chain/zwalletcli/tree/digismash-patch-2#1-installation), then proceed to configure the network as outlined [here](https://github.com/0chain/zwalletcli/tree/digismash-patch-2#2-configure-network), and create a wallet using zwalletcli as detailed [here](https://github.com/0chain/zwalletcli#creating-wallet---any-command).
+
+6. Next, install zboxcli to execute storage operations on blobber. Detailed instructions for installation can be found [here](https://github.com/0chain/zboxcli/tree/hm90121-patch-1-1#1-installation).
+
+7. Once the wallet is created, the wallet information will be stored in `wallet.json` located in the .zcn folder of the linux or mac `$HOME` directory. Now navigate to the .zcn folder 
 ```
 cd $HOME/.zcn/
 ```
-7. Open the wallet.json file. It should be similar to the output below:
+8. Open the wallet.json file. It should be similar to the output below:
 ```
 {"client_id":"4af719e1fdb6244159f17922382f162387bae3708250cab6bc1c20cd85fb594c",
 "client_key":"da1769bd0203b9c84dc19846ed94155b58d1ffeb3bbe35d38db5bf2fddf5a91c91b22bc7c89dd87e1f1fecbb17ef0db93517dd3886a64274997ea46824d2c119","keys":[{"public_key":"da1769bd0203b9c84dc19846ed94155b58d1ffeb3bbe35d38db5bf2fddf5a91c91b22bc7c89dd87e1f1fecbb17ef0db93517dd3886a64274997ea46824d2c1>
 "private_key":"542f6be49108f52203ce75222601397aad32e554451371581ba0eca56b093d19"}],"mnemonics":"butter whisper wheat hope duck mention bird half wedding aim good regret maximum illegal much inch immune unlock resource congress drift>
 "version":"1.0","date_created":"2021-09-09T20:22:56+05:30"}
 ```
-8. Copy the client_id value and paste it into blobbers and validators settings. These files can be found in `blobber/config` directory.
+9. Copy the client_id value and paste it into blobbers and validators settings. These files can be found in `blobber/config` directory.
   
-9. Open both the `blobber/config/0chain_validator.yaml` and `blobber/config/0chain_blobber.yaml` and edit the `delegate_wallet` value with your `client_id` value.
+10. Open both the `blobber/config/0chain_validator.yaml` and `blobber/config/0chain_blobber.yaml` and edit the `delegate_wallet` value with your `client_id` value.
 
-10. Now run the blobbers by navigating into blobber directories for Blobber1 (git/blobber/docker.local/blobber1) and run the container using
+11. Now run the blobbers by navigating into blobber directories for Blobber1 (git/blobber/docker.local/blobber1) and run the container using
 
 ```
 # For locally build images
@@ -141,27 +157,33 @@ cd $HOME/.zcn/
 
 If you are facing `insufficient balance to pay fee` errors when starting blobbers, you can turn  off fees in [0chain.yaml.server_chain.smart_contract.miner](https://github.com/0chain/0chain/blob/3c38dfd0920675d86876a5b8895272cb66ded9ad/docker.local/config/0chain.yaml#LL96C3-L96C16) by adjusting true to false.
 
- 11. Now you can create allocations on blobber and store files. For creating allocations you need tokens into your wallet, follow the guide below to get tokens into wallet using zwalletcli:
+## Creating Allocation on Blobbers
+
+1. Now you can create allocations on blobber and store files. For creating allocations you need tokens into your wallet, follow the guide below to get tokens into wallet using zwalletcli:
 
 - [Get Tokens](https://github.com/0chain/zwalletcli#getting-tokens-with-faucet-smart-contract---faucet)
 
- 12. Then create new allocation using the command below:
+ 2. Then open zbox in another terminal tab and create new allocation using the command below:
 
 ```
 ./zbox newallocation --lock 0.5
 ```
+Now, you have the capability to store files in allocated space and execute a variety of operations using zboxcli. For a comprehensive list of commands and their respective functionalities, please refer to the documentation [here](https://github.com/0chain/zboxcli/tree/hm90121-patch-1-1#commands-table).
+
 Note: If unable to create new allocations as shown below.
 
 ```
 ./zbox newallocation --lock 0.5
 Error creating allocation: transaction_not_found: Transaction was not found on any of the sharders
 ```
-
-To fix this issue you must lock some tokens on the blobber.Get the local blobber id using the `./zbox ls-blobbers` and use the following command 
+To fix this issue you must lock some tokens on the blobber stake pool. Get the blobber id using the `./zbox ls-blobbers` and use the command below to lock tokens into stake pool. 
 
 ```
 ./zbox sp-lock --blobber_id $BLOBBER_ID --tokens 1
 ```
+Note: At least have 1 ZCN token balance in your wallet before locking tokens into stake pool.To know how to get tokens check [Get Tokens](https://github.com/0chain/zwalletcli#getting-tokens-with-faucet-smart-contract---faucet).   
+
+Still facing any issues refer to troubleshooting section [here](#troubleshooting).
 
 ## Troubleshooting
 
