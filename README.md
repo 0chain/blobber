@@ -60,12 +60,12 @@ cd blobber
   
 ```
 chmod +x ./docker.local/bin/blobber.init.setup.sh
-./docker.local/bin/blobber.init.setup.sh
+sudo ./docker.local/bin/blobber.init.setup.sh
 ```
 **NOTE**: For mac user please run the command below:
 ```
 chmod +x ./docker.local/bin/blobber.init.setup-mac.sh
-./docker.local/bin/blobber.init.setup-mac.sh
+sudo ./docker.local/bin/blobber.init.setup-mac.sh
 ```
 ## Building and Starting the Nodes
   
