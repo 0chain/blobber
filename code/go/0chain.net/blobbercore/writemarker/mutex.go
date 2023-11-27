@@ -2,16 +2,15 @@ package writemarker
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/errors"
 	"github.com/0chain/gosdk/constants"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 // LockStatus lock status
@@ -27,6 +26,11 @@ type LockResult struct {
 	Status    LockStatus `json:"status,omitempty"`
 	CreatedAt int64      `json:"created_at,omitempty"`
 }
+
+var (
+	lockPool  = make(map[string]*WriteLock)
+	lockMutex sync.Mutex
+)
 
 // Mutex WriteMarker mutex
 type Mutex struct {
@@ -51,45 +55,28 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string) (*L
 	l, _ := m.ML.GetLock(allocationID)
 	l.Lock()
 	defer l.Unlock()
-
-	db := datastore.GetStore().GetTransaction(ctx)
-
-	var lock WriteLock
-	err := db.Table(TableNameWriteLock).Where("allocation_id=?", allocationID).First(&lock).Error
-	if err != nil {
+	lockMutex.Lock()
+	defer lockMutex.Unlock()
+	lock, ok := lockPool[allocationID]
+	if !ok {
 		// new lock
 		logging.Logger.Info("Creating new lock")
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			lock = WriteLock{
-				AllocationID: allocationID,
-				ConnectionID: connectionID,
-				CreatedAt:    time.Now(),
-			}
-
-			err = db.Table(TableNameWriteLock).Create(&lock).Error
-			if err != nil {
-				return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
-			}
-
-			return &LockResult{
-				Status:    LockStatusOK,
-				CreatedAt: lock.CreatedAt.Unix(),
-			}, nil
+		lock = &WriteLock{
+			CreatedAt:    time.Now(),
+			ConnectionID: connectionID,
 		}
-		logging.Logger.Error("Could not create lock")
-		//native postgres error
-		return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
+		lockPool[allocationID] = lock
+		return &LockResult{
+			Status:    LockStatusOK,
+			CreatedAt: lock.CreatedAt.Unix(),
+		}, nil
 	}
 
 	if lock.ConnectionID != connectionID {
-		if time.Since(lock.CreatedAt) > config.Configuration.WriteMarkerLockTimeout {
+		if time.Since(lock.CreatedAt) > config.Configuration.WriteMarkerLockTimeout || lock.ConnectionID == "" {
 			// Lock expired. Provide lock to other connection id
 			lock.ConnectionID = connectionID
 			lock.CreatedAt = time.Now()
-			err = db.Model(&WriteLock{}).Where("allocation_id=?", allocationID).Save(&lock).Error
-			if err != nil {
-				return nil, errors.New("db_error", err.Error())
-			}
 			return &LockResult{
 				Status:    LockStatusOK,
 				CreatedAt: lock.CreatedAt.Unix(),
@@ -103,10 +90,6 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string) (*L
 	}
 
 	lock.CreatedAt = time.Now()
-	err = db.Table(TableNameWriteLock).Where("allocation_id=?", allocationID).Save(&lock).Error
-	if err != nil {
-		return nil, errors.ThrowLog(err.Error(), common.ErrBadDataStore)
-	}
 
 	return &LockResult{
 		Status:    LockStatusOK,
@@ -118,15 +101,12 @@ func (*Mutex) Unlock(ctx context.Context, allocationID string, connectionID stri
 	if allocationID == "" || connectionID == "" {
 		return nil
 	}
-
-	db := datastore.GetStore().GetTransaction(ctx)
-
-	err := db.Exec("DELETE FROM write_locks WHERE allocation_id = ? and connection_id = ? ", allocationID, connectionID).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil
-		}
-		return errors.ThrowLog(err.Error(), common.ErrBadDataStore)
+	lockMutex.Lock()
+	defer lockMutex.Unlock()
+	lock, ok := lockPool[allocationID]
+	// reset lock if connection id matches
+	if ok && lock.ConnectionID == connectionID {
+		lock.ConnectionID = ""
 	}
 
 	return nil
