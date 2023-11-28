@@ -108,6 +108,5 @@ func (*Mutex) Unlock(ctx context.Context, allocationID string, connectionID stri
 	if ok && lock.ConnectionID == connectionID {
 		lock.ConnectionID = ""
 	}
-
 	return nil
 }
