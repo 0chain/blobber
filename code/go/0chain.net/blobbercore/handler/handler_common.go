@@ -124,6 +124,7 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 			// Lock will compete with other CommitWrites and Challenge validation
 			var allocationObj *allocation.Allocation
 			mutex := lock.GetMutex(allocationObj.TableName(), allocationID)
+			Logger.Info("Locking allocation", zap.String("allocation_id", allocationID))
 			mutex.Lock()
 			defer mutex.Unlock()
 		}
