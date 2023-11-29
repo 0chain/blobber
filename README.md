@@ -6,7 +6,7 @@
 
 # Blobber - A storage provider in Züs network
 
-A blobber serves as a storage provider within the Züs network, comprising decentralized servers scattered across the globe, all interconnected to the Züs network to cater to our users' storage requirements.This readme provides instructions on how to setup and register blobber to the Züs network .
+A blobber serves as a storage provider within the Züs network, comprising decentralized servers scattered across the globe, all interconnected to the Züs network to cater to our users storage requirements. This readme provides instructions on how to setup and register blobber to the Züs network.
 
 ## Table of Contents  
 
@@ -71,14 +71,14 @@ sudo ./docker.local/bin/blobber.init.setup-mac.sh
   
 1. In case network is not configured setup a network called testnet0 for each of these node containers to talk to each other.
  
- ```
+```
 docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.0.255 testnet0
 ```
 Note: Run all scripts as sudo.  
 
 2. Set up the block_worker URL
 
-A block worker URL is a field in the `blobber/config/0chain_validator.yaml` and `blobber/config/0chain_blobber.yaml` configuration files that require the URL of blockchain network you want to connect to. For testing purposes we will connect to the demo Züs network and replace the default URL in blobber/config/0chain_validator.yaml and 0chain_blobber.yaml with the below-mentioned URL.
+A block worker URL is a field in the `blobber/config/0chain_validator.yaml` and `blobber/config/0chain_blobber.yaml` configuration files that require the URL of blockchain network you want to connect to. For testing purposes we will connect to the demo Züs network and replace the default URL in `blobber/config/0chain_validator.yaml` and `0chain_blobber.yaml` with the below-mentioned URL.
 
 ```
 block_worker: https://demo.zus.network/dns
@@ -98,19 +98,25 @@ Note: Run all scripts as sudo. This would take few minutes.
 
 ### Building on apple silicon 
 
-4. Sometimes in Apple Silicon devices (m1/m2 macbooks), build might fail using the scripts above. To force a regular blobber build, run the scripts above in Rosetta from Terminal on apple silicon devices. To open the Terminal on a Mac with Apple Silicon (M1 or later) under Rosetta, you can do so by following these steps:
+4. Sometimes in Apple Silicon devices (m1/m2 macbooks), build might fail using the scripts above. To force a regular blobber build, run the following instead of the build commands mentioned above:
+```
+DOCKER_BUILD=build ./docker.local/bin/build.base.sh
+DOCKER_BUILD=build ./docker.local/bin/build.blobber.sh
+DOCKER_BUILD=build ./docker.local/bin/build.validator.sh.
+```
+If the above doesnot work you can follow steps below:
 
-  - 4.1) Click on the Finder icon in your dock, or open a new Finder window.
+  - Click on the Finder icon in your dock, or open a new Finder window.
 
-  - 4.2) Navigate to the "Applications" folder. You can usually find this on the left sidebar of a Finder window.
+  - Navigate to the "Applications" folder. You can usually find this on the left sidebar of a Finder window.
 
-  - 4.3) Open the "Utilities" folder within "Applications."
-
-  - 4.4) Look for the "Terminal" application. Right-Click Terminal > Get Info > Check Open using Rosetta.
-
-  - 4.5) Double-click on the Terminal application to open it under Rosetta.
-
-  - 4.6) Now to go to blobber directory and build blobber containers use the commands below:
+  - Open the "Utilities" folder within "Applications."
+     
+  - Look for the "Terminal" application. Right-Click Terminal > Get Info > Check Open using Rosetta.
+      
+  - Double-click on the Terminal application to open it under Rosetta.
+      
+  - Now to go to blobber directory and build blobber containers using the commands below:
 
       ```
        cd blobber
@@ -118,32 +124,31 @@ Note: Run all scripts as sudo. This would take few minutes.
       ./docker.local/bin/build.blobber.sh
       ./docker.local/bin/build.validator.sh
       ```
-  - 4.7) To link to local gosdk so that the changes are reflected on the blobber build please use the below command(optional)
 
-     ```
-     ./docker.local/bin/build.blobber.dev.sh
-     ```
+5. To link to local gosdk so that the changes are reflected on the blobber build please use the command(optional)
+```
+ ./docker.local/bin/build.blobber.dev.sh
+```
+6. Now install [zwalletcli](https://github.com/0chain/zwalletcli/tree/digismash-patch-2#1-installation), then proceed to configure the network as outlined [here](https://github.com/0chain/zwalletcli/tree/digismash-patch-2#2-configure-network), and create a wallet using zwalletcli as detailed [here](https://github.com/0chain/zwalletcli#creating-wallet---any-command).
 
-5. Now install [zwalletcli](https://github.com/0chain/zwalletcli/tree/digismash-patch-2#1-installation), then proceed to configure the network as outlined [here](https://github.com/0chain/zwalletcli/tree/digismash-patch-2#2-configure-network), and create a wallet using zwalletcli as detailed [here](https://github.com/0chain/zwalletcli#creating-wallet---any-command).
+7. Next, install zboxcli to execute storage operations on blobber. Detailed instructions for installation can be found [here](https://github.com/0chain/zboxcli/tree/hm90121-patch-1-1#1-installation).
 
-6. Next, install zboxcli to execute storage operations on blobber. Detailed instructions for installation can be found [here](https://github.com/0chain/zboxcli/tree/hm90121-patch-1-1#1-installation).
-
-7. Once the wallet is created, the wallet information will be stored in `wallet.json` located in the .zcn folder of the linux or mac `$HOME` directory. Now navigate to the .zcn folder 
+8. Once the wallet is created, the wallet information will be stored in `wallet.json` located in the .zcn folder of the linux or mac `$HOME` directory. Now navigate to the .zcn folder 
 ```
 cd $HOME/.zcn/
 ```
-8. Open the wallet.json file. It should be similar to the output below:
+9. Open the wallet.json file. It should be similar to the output below:
 ```
 {"client_id":"4af719e1fdb6244159f17922382f162387bae3708250cab6bc1c20cd85fb594c",
 "client_key":"da1769bd0203b9c84dc19846ed94155b58d1ffeb3bbe35d38db5bf2fddf5a91c91b22bc7c89dd87e1f1fecbb17ef0db93517dd3886a64274997ea46824d2c119","keys":[{"public_key":"da1769bd0203b9c84dc19846ed94155b58d1ffeb3bbe35d38db5bf2fddf5a91c91b22bc7c89dd87e1f1fecbb17ef0db93517dd3886a64274997ea46824d2c1>
 "private_key":"542f6be49108f52203ce75222601397aad32e554451371581ba0eca56b093d19"}],"mnemonics":"butter whisper wheat hope duck mention bird half wedding aim good regret maximum illegal much inch immune unlock resource congress drift>
 "version":"1.0","date_created":"2021-09-09T20:22:56+05:30"}
 ```
-9. Copy the client_id value and paste it into blobbers and validators settings. These files can be found in `blobber/config` directory.
+10. Copy the client_id value and paste it into blobbers and validators settings. These files can be found in `blobber/config` directory.
   
-10. Open both the `blobber/config/0chain_validator.yaml` and `blobber/config/0chain_blobber.yaml` and edit the `delegate_wallet` value with your `client_id` value.
+11. Open both the `blobber/config/0chain_validator.yaml` and `blobber/config/0chain_blobber.yaml` and edit the `delegate_wallet` value with your `client_id` value.
 
-11. Now run the blobbers by navigating into blobber directories for Blobber1 (git/blobber/docker.local/blobber1) and run the container using
+12. Now run the blobbers by navigating into blobber directories for Blobber1 (`cd blobber/docker.local/blobber1`) and run the containers using
 
 ```
 # For locally build images
@@ -151,8 +156,10 @@ cd $HOME/.zcn/
 
 # For remote images
 ../bin/p0blobber.start.sh
-
 ```
+
+Note: Run atleast 4 blobbers for a minimal working setup. For running more blobbers repeat the process in more blobber directories (blobber/docker.local/blobber|i)(blobber1/2/3 etc.).
+
 **_Note: Replace the localhost form `docker.local/p0docker-compose.yml` to your public IP if you are trying to connect to another network ._**
 
 If you are facing `insufficient balance to pay fee` errors when starting blobbers, you can turn  off fees in [0chain.yaml.server_chain.smart_contract.miner](https://github.com/0chain/0chain/blob/3c38dfd0920675d86876a5b8895272cb66ded9ad/docker.local/config/0chain.yaml#LL96C3-L96C16) by adjusting true to false.
@@ -299,40 +306,26 @@ block_worker: https://demo.zus.network/dns
 
 1. Get rid of old unused docker resources:
 
-  
-
 ```
 
 docker system prune
 
 ```
 
-
 2. To get rid of all the docker resources and start afresh:
 
-  
-
 ```
-
 docker system prune -a
-
 ```
-  
 
 3. Stop All Containers
 
-
 ```
-
 docker stop $(docker ps -a -q)
 
 ```
 
-  
-
 4. Remove All Containers
-
-  
 
 ```
 
