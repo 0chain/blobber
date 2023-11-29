@@ -448,19 +448,6 @@ ALTER SEQUENCE terms_id_seq OWNED BY terms.id;
 
 
 --
--- Name: write_locks; Type: TABLE; Schema: public; Owner: blobber_user
---
-
-CREATE TABLE write_locks (
-    allocation_id character varying(64) NOT NULL,
-    connection_id character varying(64),
-    created_at timestamp with time zone
-);
-
-
-ALTER TABLE write_locks OWNER TO blobber_user;
-
---
 -- Name: write_markers; Type: TABLE; Schema: public; Owner: blobber_user
 --
 
@@ -736,15 +723,6 @@ ALTER TABLE ONLY settings
 
 ALTER TABLE ONLY terms
     ADD CONSTRAINT terms_pkey PRIMARY KEY (id);
-
-
---
--- Name: write_locks write_locks_pkey; Type: CONSTRAINT; Schema: public; Owner: blobber_user
---
-
-ALTER TABLE ONLY write_locks
-    ADD CONSTRAINT write_locks_pkey PRIMARY KEY (allocation_id);
-
 
 --
 -- Name: write_markers write_markers_pkey; Type: CONSTRAINT; Schema: public; Owner: blobber_user
