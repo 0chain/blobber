@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.10.1-0.20231114143641-51b9f0240b64
+	github.com/0chain/gosdk v1.10.1-0.20231201211803-a228948b1864
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.2
 	github.com/go-openapi/runtime v0.26.0
@@ -44,8 +44,7 @@ require (
 
 require (
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d // indirect
-	github.com/minio/sha256-simd v1.0.1 // indirect
-	github.com/zeebo/blake3 v0.2.3
+	github.com/minio/sha256-simd v1.0.1
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect
 )
 
@@ -67,7 +66,7 @@ require (
 	github.com/emirpasic/gods v1.18.1
 	github.com/ethereum/go-ethereum v1.11.4 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/fsnotify/fsnotify v1.6.0
 	github.com/gin-gonic/gin v1.9.1 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-openapi/analysis v0.21.4 // indirect

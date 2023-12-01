@@ -801,7 +801,7 @@ func TestGetMerkleTree(t *testing.T) {
 
 			rootHash, _ := hex.DecodeString(fixedMerkleRoot)
 			fmp := &util.FixedMerklePath{
-				LeafHash: encryption.BlakeHash(challengeProof.Data),
+				LeafHash: encryption.ShaHash(challengeProof.Data),
 				RootHash: rootHash,
 				Nodes:    challengeProof.Proof,
 				LeafInd:  test.blockOffset,

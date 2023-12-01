@@ -356,7 +356,7 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 	}
 
 	logging.Logger.Info("Verifying data block and merkle path", zap.String("challenge_id", challengeObj.ID))
-	fHash := encryption.BlakeHash(cr.ChallengeProof.Data)
+	fHash := encryption.ShaHash(cr.ChallengeProof.Data)
 	fixedMerkleRoot, _ := hex.DecodeString(cr.ObjPath.Meta.FixedMerkleRoot)
 	fmp := &util.FixedMerklePath{
 		LeafHash: fHash,
