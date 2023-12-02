@@ -166,7 +166,6 @@ Sample Response:
   terms:
     read_price:          26.874 mZCN / GB
     write_price:         26.874 mZCN / GB / time_unit
-    min_lock_demand:     0.1
     cct:                 2m0s
     max_offer_duration:  744h0m0s
 - id:                    7a90e6790bcd3d78422d7a230390edc102870fe58c15472073922024985b1c7d
@@ -176,7 +175,6 @@ Sample Response:
   terms:
     read_price:          10.000 mZCN / GB
     write_price:         100.000 mZCN / GB / time_unit
-    min_lock_demand:     0.1
     cct:                 2m0s
     max_offer_duration:  744h0m0s
 - id:                    f65af5d64000c7cd2883f4910eb69086f9d6e6635c744e62afcfab58b938ee25
@@ -186,7 +184,6 @@ Sample Response:
   terms:
     read_price:          10.000 mZCN / GB
     write_price:         100.000 mZCN / GB / time_unit
-    min_lock_demand:     0.1
     cct:                 2m0s
     max_offer_duration:  744h0m0s
 - id:                    f8dc4aaf3bb32ae0f4ed575dd6931a42b75e546e07cb37a6e1c6aaf1225891c5
@@ -196,7 +193,6 @@ Sample Response:
   terms:
     read_price:          26.874 mZCN / GB
     write_price:         26.865 mZCN / GB / time_unit
-    min_lock_demand:     0.1
     cct:                 2m0s
     max_offer_duration:  744h0m0s
 ```

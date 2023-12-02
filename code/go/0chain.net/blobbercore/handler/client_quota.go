@@ -114,8 +114,10 @@ func saveClientStats() {
 	}
 	mpLock.Unlock()
 	_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-		tx := datastore.GetStore().GetTransaction(ctx)
-		tx.Create(&dbStats)
+		if len(dbStats) > 0 {
+			tx := datastore.GetStore().GetTransaction(ctx)
+			return tx.Create(dbStats).Error
+		}
 		return nil
 	})
 	var blackList []string

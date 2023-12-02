@@ -162,7 +162,7 @@ func TestFixedMerkleTreeProof(t *testing.T) {
 			proofByte, err := fm.GetLeafContent(r)
 			require.NoError(t, err)
 
-			leafHash := encryption.RawHash(proofByte)
+			leafHash := encryption.ShaHash(proofByte)
 			ftp := util.FixedMerklePath{
 				LeafHash: leafHash,
 				RootHash: merkleRoot,
@@ -231,7 +231,7 @@ func TestValidationTreeWrite(t *testing.T) {
 				n, err = r.Read(b)
 				require.NoError(t, err)
 				require.EqualValues(t, size, n)
-				leaves[0] = encryption.RawHash(b)
+				leaves[0] = encryption.ShaHash(b)
 			} else {
 				nodes := make([]byte, totalLeaves*HashSize)
 				n, err = r.Read(nodes)

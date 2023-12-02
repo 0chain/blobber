@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/0chain/gosdk/core/util"
-	"golang.org/x/crypto/sha3"
+	"github.com/minio/sha256-simd"
 )
 
 func BenchmarkFixedMerkleProofFor10MB(b *testing.B) {
@@ -81,8 +81,8 @@ func runFixedMPBench(b *testing.B, size int64, filename string) {
 			b.Fatalf("error: %v", err)
 		}
 
-		h := sha3.New256()
-		h.Write(proofByte)
+		h := sha256.New()
+		_, _ = h.Write(proofByte)
 
 		fp := util.FixedMerklePath{
 			LeafHash: h.Sum(nil),

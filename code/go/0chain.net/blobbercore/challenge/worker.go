@@ -154,7 +154,7 @@ func processChallenge(ctx context.Context, it *ChallengeEntity) {
 func commitOnChainWorker(ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {
-			logging.Logger.Error("[commitWorker]challenge", zap.Any("err", r))
+			logging.Logger.Error("[commitWorker]challenge recovery", zap.Any("err", r))
 		}
 	}()
 	wg := sync.WaitGroup{}
@@ -210,23 +210,37 @@ func commitOnChainWorker(ctx context.Context) {
 
 func getBatch(batchSize int) (chall []ChallengeEntity) {
 	challengeMapLock.RLock()
-	defer challengeMapLock.RUnlock()
 
 	if challengeMap.Size() == 0 {
+		challengeMapLock.RUnlock()
 		return
 	}
 
+	var toClean []int64
 	it := challengeMap.Iterator()
 	for it.Next() {
 		if len(chall) >= batchSize {
 			break
 		}
 		ticket := it.Value().(*ChallengeEntity)
-		if ticket.Status != Processed {
-			break
+		ticket.statusMutex.Lock()
+		switch ticket.Status {
+		case Accepted:
+			ticket.statusMutex.Unlock()
+			goto brekLoop
+		case Processed:
+			chall = append(chall, *ticket)
+		default:
+			toClean = append(toClean, ticket.RoundCreatedAt)
 		}
-		chall = append(chall, *ticket)
+		ticket.statusMutex.Unlock()
 	}
+brekLoop:
+	challengeMapLock.RUnlock()
+	for _, r := range toClean {
+		deleteChallenge(r)
+	}
+
 	return
 }
 
@@ -247,6 +261,8 @@ func (it *ChallengeEntity) createChallenge(ctx context.Context) bool {
 		logging.Logger.Info("createChallenge", zap.String("challenge_id", it.ChallengeID), zap.String("status", "already exists"))
 		return false
 	}
+	it.statusMutex = &sync.Mutex{}
+	it.Status = Accepted
 	challengeMap.Put(it.RoundCreatedAt, it)
 	return true
 }
