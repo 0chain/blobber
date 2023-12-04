@@ -25,14 +25,14 @@ var (
 type AllocationUpdate func(a *Allocation)
 
 func init() {
-	allocCache, _ := lru.New[string, *Allocation](lruSize)
+	allocCache, _ := lru.New[string, Allocation](lruSize)
 	Repo = &Repository{
 		allocCache: allocCache,
 	}
 }
 
 type Repository struct {
-	allocCache *lru.Cache[string, *Allocation]
+	allocCache *lru.Cache[string, Allocation]
 }
 
 type AllocationCache struct {
@@ -319,11 +319,13 @@ func (r *Repository) getAllocFromGlobalCache(id string) *Allocation {
 	if !ok {
 		return nil
 	}
-	return a
+	return &a
 }
 
 func (r *Repository) setAllocToGlobalCache(a *Allocation) {
-	r.allocCache.Add(a.ID, a)
+	if a != nil {
+		r.allocCache.Add(a.ID, *a)
+	}
 }
 
 func (r *Repository) DeleteAllocation(allocationID string) {
