@@ -208,7 +208,7 @@ func (wm *WriteMarkerEntity) SendToChan(ctx context.Context) error {
 	if sem == nil {
 		sem = SetLock(wm.WM.AllocationID)
 	}
-	err := sem.Acquire(ctx, 1)
+	err := sem.Acquire(context.TODO(), 1)
 	if err != nil {
 		return err
 	}
