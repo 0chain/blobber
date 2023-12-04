@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -316,12 +317,15 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	var shareInfo *reference.ShareInfo
 
 	if !isOwner {
-		authTokenString := dr.AuthToken
-		if authTokenString == "" {
+		if dr.AuthToken == "" {
 			return nil, common.NewError("invalid_authticket", "authticket is required")
 		}
+		authTokenString, err := base64.StdEncoding.DecodeString(dr.AuthToken)
+		if err != nil {
+			return nil, common.NewError("invalid_authticket", err.Error())
+		}
 
-		if authToken, err = fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID, false); authToken == nil {
+		if authToken, err = fsh.verifyAuthTicket(ctx, string(authTokenString), alloc, fileref, clientID, false); authToken == nil {
 			return nil, common.NewErrorf("invalid_authticket", "cannot verify auth ticket: %v", err)
 		}
 
