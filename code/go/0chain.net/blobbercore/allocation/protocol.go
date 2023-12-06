@@ -146,7 +146,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 			"owner_id":         a.OwnerID,
 			"owner_public_key": a.OwnerPublicKey,
 			"repairer_id":      a.RepairerID,
-			"total_size":       a.TotalSize,
+			"size":             a.TotalSize,
 			"finalized":        a.Finalized,
 			"time_unit":        a.TimeUnit,
 			"file_options":     a.FileOptions,
