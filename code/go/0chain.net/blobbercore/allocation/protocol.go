@@ -142,7 +142,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 	} else {
 		updateMap := map[string]interface{}{
 			"tx":               a.Tx,
-			"expiration":       a.Expiration,
+			"expiration_date":  a.Expiration,
 			"owner_id":         a.OwnerID,
 			"owner_public_key": a.OwnerPublicKey,
 			"repairer_id":      a.RepairerID,
