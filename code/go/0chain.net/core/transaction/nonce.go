@@ -36,7 +36,7 @@ func (m *nonceMonitor) getNextUnusedNonce() int64 {
 		// return next nonce that is not in use or has already been 6 mins since reserved.
 		if reservedTime, ok := m.used[start]; !ok || reservedTime.Add(time.Minute*6).Before(time.Now().UTC()) {
 			m.used[start] = time.Now().UTC()
-			logging.Logger.Info("Next available nonce.", zap.Any("nonce", start))
+			logging.Logger.Info("Next available nonce.", zap.Any("nonce", start), zap.Any("highestSuccess", m.highestSuccess))
 			return start
 		}
 	}
@@ -45,6 +45,8 @@ func (m *nonceMonitor) getNextUnusedNonce() int64 {
 func (m *nonceMonitor) recordFailedNonce(nonce int64) {
 	m.Lock()
 	defer m.Unlock()
+
+	logging.Logger.Info("recording nonce failure", zap.Any("nonce", nonce), zap.Any("highestSuccess", m.highestSuccess))
 
 	delete(m.used, nonce)
 
@@ -65,6 +67,7 @@ func (m *nonceMonitor) recordFailedNonce(nonce int64) {
 func (m *nonceMonitor) recordSuccess(nonce int64) {
 	m.Lock()
 	defer m.Unlock()
+	logging.Logger.Info("recording nonce success", zap.Any("nonce", nonce), zap.Any("highestSuccess", m.highestSuccess))
 
 	delete(m.used, nonce)
 
@@ -74,12 +77,11 @@ func (m *nonceMonitor) recordSuccess(nonce int64) {
 		return
 	}
 
-	m.highestSuccess = nonce
-
-	// (clean up) delete entries on failed up to this new highest success
 	for i := m.highestSuccess; i <= nonce; i++ {
 		delete(m.failed, i)
 	}
+	// (clean up) delete entries on failed up to this new highest success
+	m.highestSuccess = nonce
 }
 
 func (m *nonceMonitor) refreshFromBalance() {
