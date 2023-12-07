@@ -9,7 +9,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	gomocket "github.com/selvatico/go-mocket"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -56,16 +55,10 @@ func TestMutext_LockShouldWork(t *testing.T) {
 			connectionID: "lock_same_connection_id",
 			requestTime:  now,
 			mock: func() {
-				gomocket.Catcher.NewMock().
-					WithQuery(`SELECT * FROM "write_locks" WHERE allocation_id=$1 ORDER BY "write_locks"."allocation_id" LIMIT 1`).
-					WithArgs("lock_same_allocation_id").
-					WithReply([]map[string]interface{}{
-						{
-							"allocation_id": "lock_same_allocation_id",
-							"connection_id": "lock_same_connection_id",
-							"created_at":    now,
-						},
-					})
+				lockPool["lock_same_allocation_id"] = &WriteLock{
+					CreatedAt:    now,
+					ConnectionID: "lock_same_connection_id",
+				}
 			},
 			assert: func(test *testing.T, r *LockResult, err error) {
 				require.Nil(test, err)
@@ -79,16 +72,10 @@ func TestMutext_LockShouldWork(t *testing.T) {
 			connectionID: "lock_pending_connection_id",
 			requestTime:  time.Now(),
 			mock: func() {
-				gomocket.Catcher.NewMock().
-					WithQuery(`SELECT * FROM "write_locks" WHERE allocation_id=$1 ORDER BY "write_locks"."allocation_id" LIMIT 1`).
-					WithArgs("lock_allocation_id").
-					WithReply([]map[string]interface{}{
-						{
-							"allocation_id": "lock_allocation_id",
-							"connection_id": "lock_connection_id",
-							"created_at":    time.Now().Add(-5 * time.Second),
-						},
-					})
+				lockPool["lock_allocation_id"] = &WriteLock{
+					CreatedAt:    time.Now().Add(-5 * time.Second),
+					ConnectionID: "lock_connection_id",
+				}
 			},
 			assert: func(test *testing.T, r *LockResult, err error) {
 				require.Nil(test, err)
@@ -101,16 +88,10 @@ func TestMutext_LockShouldWork(t *testing.T) {
 			connectionID: "lock_timeout_2nd_connection_id",
 			requestTime:  now,
 			mock: func() {
-				gomocket.Catcher.NewMock().
-					WithQuery(`SELECT * FROM "write_locks" WHERE allocation_id=$1 ORDER BY "write_locks"."allocation_id" LIMIT 1`).
-					WithArgs("lock_timeout_allocation_id").
-					WithReply([]map[string]interface{}{
-						{
-							"allocation_id": "lock_timeout_allocation_id",
-							"connection_id": "lock_timeout_1st_connection_id",
-							"created_at":    time.Now().Add(31 * time.Second),
-						},
-					})
+				lockPool["lock_timeout_allocation_id"] = &WriteLock{
+					CreatedAt:    time.Now().Add(31 * time.Second),
+					ConnectionID: "lock_timeout_1st_connection_id",
+				}
 			},
 			assert: func(test *testing.T, r *LockResult, err error) {
 				require.Nil(test, err)
@@ -123,16 +104,10 @@ func TestMutext_LockShouldWork(t *testing.T) {
 			connectionID: "lock_same_timeout_connection_id",
 			requestTime:  now,
 			mock: func() {
-				gomocket.Catcher.NewMock().
-					WithQuery(`SELECT * FROM "write_locks" WHERE allocation_id=$1 ORDER BY "write_locks"."allocation_id" LIMIT 1`).
-					WithArgs("lock_same_timeout_allocation_id").
-					WithReply([]map[string]interface{}{
-						{
-							"allocation_id": "lock_same_timeout_allocation_id",
-							"connection_id": "lock_same_timeout_connection_id",
-							"created_at":    now.Add(-config.Configuration.WriteMarkerLockTimeout),
-						},
-					})
+				lockPool["lock_same_timeout_allocation_id"] = &WriteLock{
+					CreatedAt:    now.Add(-config.Configuration.WriteMarkerLockTimeout),
+					ConnectionID: "lock_same_timeout_connection_id",
+				}
 			},
 			assert: func(test *testing.T, r *LockResult, err error) {
 				require.Nil(test, err)

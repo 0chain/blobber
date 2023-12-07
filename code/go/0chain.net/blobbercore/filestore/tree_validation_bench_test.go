@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/0chain/gosdk/core/util"
-	"github.com/zeebo/blake3"
+	"github.com/minio/sha256-simd"
 )
 
 func BenchmarkFixedMerkleProofFor10MB(b *testing.B) {
@@ -81,7 +81,7 @@ func runFixedMPBench(b *testing.B, size int64, filename string) {
 			b.Fatalf("error: %v", err)
 		}
 
-		h := blake3.New()
+		h := sha256.New()
 		_, _ = h.Write(proofByte)
 
 		fp := util.FixedMerklePath{
