@@ -20,10 +20,10 @@ var (
 	mut             sync.RWMutex
 )
 
-const (
-	timestampGap          = 30 * 24 * 60 * 60  // 30 days
-	cleanupWorkerInterval = 24 * 7 * time.Hour // 7 days
-)
+// const (
+// 	timestampGap          = 30 * 24 * 60 * 60  // 30 days
+// 	cleanupWorkerInterval = 24 * 7 * time.Hour // 7 days
+// )
 
 func SetupWorkers(ctx context.Context) {
 	var res []allocation.Res
