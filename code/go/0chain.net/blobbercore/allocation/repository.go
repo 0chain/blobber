@@ -260,7 +260,9 @@ func (r *Repository) Commit(tx *datastore.EnhancedDB) {
 			for _, update := range txnCache.AllocationUpdates {
 				update(alloc)
 			}
-			r.setAllocToGlobalCache(alloc)
+			if len(txnCache.AllocationUpdates) > 0 {
+				r.setAllocToGlobalCache(alloc)
+			}
 		}
 		mut.Unlock()
 	}
