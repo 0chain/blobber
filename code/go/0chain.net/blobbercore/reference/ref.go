@@ -51,7 +51,7 @@ type Ref struct {
 	ActualFileSize          int64  `gorm:"column:actual_file_size;not null;default:0" dirlist:"actual_file_size" filelist:"actual_file_size"`
 	ActualFileHashSignature string `gorm:"column:actual_file_hash_signature;size:64" filelist:"actual_file_hash_signature"  json:"actual_file_hash_signature,omitempty"`
 	ActualFileHash          string `gorm:"column:actual_file_hash;size:64;not null" filelist:"actual_file_hash"`
-	MimeType                string `gorm:"column:mimetype;size:64;not null" filelist:"mimetype"`
+	MimeType                string `gorm:"column:mimetype;size:255;not null" filelist:"mimetype"`
 	AllocationRoot          string `gorm:"column:allocation_root;size:64;not null"`
 	ThumbnailSize           int64  `gorm:"column:thumbnail_size;not null;default:0" filelist:"thumbnail_size"`
 	ThumbnailHash           string `gorm:"column:thumbnail_hash;size:64;not null" filelist:"thumbnail_hash"`
