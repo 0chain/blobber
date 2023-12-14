@@ -352,7 +352,7 @@ CREATE TABLE reference_objects (
     actual_file_size bigint DEFAULT 0 NOT NULL,
     actual_file_hash_signature character varying(64),
     actual_file_hash character varying(64) NOT NULL,
-    mimetype character varying(64) NOT NULL,
+    mimetype character varying(255) NOT NULL,
     allocation_root character varying(64) NOT NULL,
     thumbnail_size bigint DEFAULT 0 NOT NULL,
     thumbnail_hash character varying(64) NOT NULL,
