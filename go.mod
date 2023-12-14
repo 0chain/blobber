@@ -48,7 +48,10 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect
 )
 
-require github.com/pressly/goose/v3 v3.13.4
+require (
+	github.com/pressly/goose/v3 v3.13.4
+	github.com/zeebo/blake3 v0.2.3
+)
 
 require (
 	github.com/0chain/common v0.0.6-0.20230127095721-8df4d1d72565 // indirect

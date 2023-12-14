@@ -169,7 +169,7 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 		blobberID    = node.Self.ID
 		quotaManager = getQuotaManager()
 	)
-
+	now := time.Now()
 	if clientID == "" {
 		return nil, common.NewError("redeem_readmarker", "invalid client")
 	}
@@ -178,7 +178,7 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 	if err != nil {
 		return nil, common.NewErrorf("redeem_readmarker", "invalid allocation id passed: %v", err)
 	}
-
+	elapsedAllocation := time.Since(now)
 	dr, err := FromDownloadRequest(alloc.ID, r, true)
 	if err != nil {
 		return nil, err
@@ -215,7 +215,7 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, common.NewErrorf("redeem_readmarker", "couldn't get read marker from DB: %v", err)
 	}
-
+	elapsedReadMarker := time.Since(now) - elapsedAllocation
 	if rme != nil {
 		latestRM = rme.LatestRM
 		latestRedeemedRC = rme.LatestRedeemedRC
@@ -229,7 +229,7 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 	if err != nil {
 		return nil, common.NewErrorf("not_enough_tokens", "pre-redeeming read marker: %v", err)
 	}
-
+	elapsedRedeem := time.Since(now) - elapsedAllocation - elapsedReadMarker
 	if latestRM != nil && latestRM.ReadCounter+(dr.ReadMarker.SessionRC) > dr.ReadMarker.ReadCounter {
 		latestRM.BlobberID = node.Self.ID
 		return &blobberhttp.DownloadResponse{
@@ -254,9 +254,9 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 		Logger.Error(err.Error())
 		return nil, common.NewError("redeem_readmarker", "couldn't save latest read marker")
 	}
-
+	elapsedSaveMarker := time.Since(now) - elapsedAllocation - elapsedReadMarker - elapsedRedeem
 	quotaManager.createOrUpdateQuota(dr.ReadMarker.SessionRC, dr.ConnectionID)
-	Logger.Info("readmarker_saved", zap.Any("rmObj", rmObj))
+	Logger.Info("[redeemMarker]", zap.String("alloc_id", allocationID), zap.Duration("get_alloc", elapsedAllocation), zap.Duration("get-lock", elapsedReadMarker), zap.Duration("redeem", elapsedRedeem), zap.Duration("save", elapsedSaveMarker), zap.Duration("total", time.Since(now)))
 	return &blobberhttp.DownloadResponse{
 		Success:  true,
 		LatestRM: &dr.ReadMarker,
@@ -292,7 +292,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	if err != nil {
 		return nil, err
 	}
-
+	now := time.Now()
 	if dr.NumBlocks > config.Configuration.BlockLimitRequest {
 		return nil, common.NewErrorf("download_file", "too many blocks requested: %v, max limit is %v", dr.NumBlocks, config.Configuration.BlockLimitRequest)
 	}
@@ -306,7 +306,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	if err != nil {
 		return nil, common.NewErrorf("download_file", "invalid file path: %v", err)
 	}
-
+	elapsedGetRef := time.Since(now)
 	if fileref.Type != reference.FILE {
 		return nil, common.NewErrorf("download_file", "path is not a file: %v", err)
 	}
@@ -347,17 +347,18 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 
 	isReadFree := alloc.IsReadFree(blobberID)
 	var dq *DownloadQuota
-
+	Logger.Info("freeRead", zap.Bool("isReadFree", isReadFree), zap.String("clientID", clientID), zap.String("connectionID", dr.ConnectionID))
 	if !isReadFree {
 		dq = quotaManager.getDownloadQuota(dr.ConnectionID)
 		if dq == nil {
+			Logger.Error("failDownload", zap.String("connectionID", dr.ConnectionID))
 			return nil, common.NewError("download_file", fmt.Sprintf("no download quota for %v", dr.ConnectionID))
 		}
 		if dq.Quota < dr.NumBlocks {
 			return nil, common.NewError("download_file", fmt.Sprintf("insufficient quota: available %v, requested %v", dq.Quota, dr.NumBlocks))
 		}
 	}
-
+	elapsedMarker := time.Since(now) - elapsedGetRef
 	var (
 		downloadMode         = dr.DownloadMode
 		fileDownloadResponse *filestore.FileDownloadResponse
@@ -410,7 +411,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			return nil, common.NewErrorf("download_file", "couldn't get file block: %v", err)
 		}
 	}
-
+	elapsedResponse := time.Since(now) - elapsedGetRef - elapsedMarker
 	var chunkEncoder ChunkEncoder
 	if len(fileref.EncryptedKey) > 0 && authToken != nil {
 		chunkEncoder = &PREChunkEncoder{
@@ -433,13 +434,21 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			return nil, common.NewError("download_file", err.Error())
 		}
 	}
-
+	elapsedData := time.Since(now) - elapsedGetRef - elapsedMarker - elapsedResponse
 	fileDownloadResponse.Data = chunkData
 	reference.FileBlockDownloaded(ctx, fileref, dr.NumBlocks)
 	go func() {
 		addDailyBlocks(clientID, dr.NumBlocks)
 		AddDownloadedData(clientID, dr.NumBlocks)
 	}()
+	elapsedStats := time.Since(now) - elapsedGetRef - elapsedMarker - elapsedResponse - elapsedData
+	Logger.Info("[download]", zap.String("allocation_id", alloc.ID),
+		zap.Any("download_request", dr),
+		zap.Duration("get_ref", elapsedGetRef),
+		zap.Duration("get_marker", elapsedMarker),
+		zap.Duration("get_response", elapsedResponse),
+		zap.Duration("get_data", elapsedData),
+		zap.Duration("stats", elapsedStats))
 	if !dr.VerifyDownload {
 		return fileDownloadResponse.Data, nil
 	}
@@ -625,7 +634,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	// Move preCommitDir to finalDir
-	err = connectionObj.MoveToFilestore(ctx)
+	err = connectionObj.MoveToFilestore()
 	if err != nil {
 		return nil, common.NewError("move_to_filestore_error", fmt.Sprintf("Error while moving to filestore: %s", err.Error()))
 	}
@@ -704,9 +713,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
-		if !errors.Is(common.ErrFileWasDeleted, err) {
-			return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
-		}
+		return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 	}
 	elapsedCommitStore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem - elapsedApplyChanges - elapsedSaveAllocation
 	err = writemarkerEntity.SendToChan(ctx)
@@ -1191,7 +1198,6 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST / PUT / DELETE / PATCH instead")
 	}
-
 	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	clientID := ctx.Value(constants.ContextKeyClient).(string)

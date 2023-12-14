@@ -3,6 +3,7 @@ package common
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -91,6 +92,13 @@ func ToByteStream(handler JSONResponderF) ReqRespHandlerf {
 			}
 		}
 	}
+}
+
+func DummyDataHandler(w http.ResponseWriter, r *http.Request) {
+	size := 32 * 1024 * 1024
+	buf := make([]byte, size)
+	rand.Read(buf)
+	w.Write(buf) //nolint:errcheck
 }
 
 func SetupCORSResponse(w http.ResponseWriter, r *http.Request) {

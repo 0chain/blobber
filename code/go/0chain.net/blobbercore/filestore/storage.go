@@ -40,6 +40,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
@@ -475,7 +476,7 @@ func (fs *FileStore) GetFileThumbnail(readBlockIn *ReadBlockInput) (*FileDownloa
 func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadResponse, error) {
 	var fileObjectPath string
 	var err error
-
+	now := time.Now()
 	if readBlockIn.IsThumbnail {
 		return fs.GetFileThumbnail(readBlockIn)
 	}
@@ -510,7 +511,7 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 		}
 	}
 	defer file.Close()
-
+	elapsedGetFile := time.Since(now)
 	filesize := readBlockIn.FileSize
 	maxBlockNum := int64(math.Ceil(float64(filesize) / ChunkSize))
 
@@ -522,7 +523,7 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 
 	nodesSize := getNodesSize(filesize, util.MaxMerkleLeavesSize)
 	vmp := &FileDownloadResponse{}
-
+	var elapsedVerifyDownload time.Duration
 	if readBlockIn.VerifyDownload {
 		vp := validationTreeProof{
 			dataSize: readBlockIn.FileSize,
@@ -536,6 +537,7 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 
 		vmp.Nodes = nodes
 		vmp.Indexes = indexes
+		elapsedVerifyDownload = time.Since(now) - elapsedGetFile
 	}
 
 	fileOffset := FMTSize + nodesSize + int64(startBlock)*ChunkSize
@@ -552,6 +554,8 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 	}
 
 	vmp.Data = buffer[:n]
+	elapsedReadData := time.Since(now) - elapsedGetFile - elapsedVerifyDownload
+	logging.Logger.Info("GetFileBlock", zap.Duration("elapsedGetFile", elapsedGetFile), zap.Duration("elapsedVerifyDownload", elapsedVerifyDownload), zap.Duration("elapsedReadData", elapsedReadData))
 	return vmp, nil
 }
 

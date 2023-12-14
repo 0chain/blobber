@@ -20,6 +20,7 @@ func SetupHandlers(r *mux.Router) {
 		Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/v1/file/upload/{allocation}", RateLimitByFileRL(common.ToJSONResponse(WithConnection(UploadHandler))))
 	r.HandleFunc("/v1/file/download/{allocation}", RateLimitByFileRL(common.ToByteStream(WithConnection(DownloadHandler)))).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/v1/temp/download", common.DummyDataHandler)
 }
 
 // swagger:route GET /v1/block/magic/get getmagicblock

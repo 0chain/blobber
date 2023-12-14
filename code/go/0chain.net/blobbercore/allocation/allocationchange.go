@@ -252,6 +252,7 @@ func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error
 		go func(change AllocationChangeProcessor) {
 			err := change.CommitToFileStore(ctx, mut)
 			if err != nil && !errors.Is(common.ErrFileWasDeleted, err) {
+				logging.Logger.Error("AllocationChangeCollector_CommitToFileStore", zap.Error(err))
 				cancel()
 				errorMutex.Lock()
 				commitError = err
@@ -281,7 +282,7 @@ type Result struct {
 }
 
 // TODO: Need to speed up this function
-func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) (err error) {
+func (a *AllocationChangeCollector) MoveToFilestore() (err error) {
 
 	logging.Logger.Info("Move to filestore", zap.String("allocation_id", a.AllocationID))
 
@@ -359,10 +360,10 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) (err er
 		return e
 	}
 
-	return deleteFromFileStore(ctx, a.AllocationID)
+	return deleteFromFileStore(a.AllocationID)
 }
 
-func deleteFromFileStore(ctx context.Context, allocationID string) error {
+func deleteFromFileStore(allocationID string) error {
 	limitCh := make(chan struct{}, 10)
 	wg := &sync.WaitGroup{}
 	var results []Result
