@@ -22,7 +22,7 @@ func setupNode() error {
 	if err != nil {
 		err = readKeysFromFile(&keysFile)
 		if err != nil {
-			fmt.Errorf("error reading keys from local")
+			panic(err)
 		}
 		fmt.Print("using blobber keys from local")
 	} else {
@@ -57,14 +57,14 @@ func setupNode() error {
 }
 
 func readKeysFromAws() error {
-	minerSecretName := os.Getenv("BLOBBER_SECRET_NAME")
+	blobberSecretName := os.Getenv("BLOBBER_SECRET_NAME")
 	awsRegion := os.Getenv("AWS_REGION")
-	keys, err := common.GetSecretsFromAWS(minerSecretName, awsRegion)
+	keys, err := common.GetSecretsFromAWS(blobberSecretName, awsRegion)
 	if err != nil {
 		return err
 	}
 	secretsFromAws := strings.Split(keys, "\n")
-	if len(secretsFromAws) < 4 {
+	if len(secretsFromAws) < 2 {
 		return fmt.Errorf("wrong file format from aws")
 	}
 	publicKey = secretsFromAws[0]
@@ -77,6 +77,7 @@ func readKeysFromFile(keysFile *string) error {
 	if err != nil {
 		return err
 	}
+	defer reader.Close()
 	publicKey, privateKey, _, _ = encryption.ReadKeys(reader)
 	return nil
 }

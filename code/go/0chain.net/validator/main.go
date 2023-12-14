@@ -8,6 +8,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/build"
@@ -39,6 +40,8 @@ func initHandlers(r *mux.Router) {
 	r.HandleFunc("/", HomePageHandler)
 	storage.SetupHandlers(r)
 }
+
+var publicKey, privateKey string
 
 func main() {
 	fmt.Println("======[ Validator ]======")
@@ -90,13 +93,17 @@ func main() {
 
 	fmt.Printf("[+] %-24s    %s\n", "setup configs", "[OK]")
 
-	// register on chain
-	reader, err := os.Open(*keysFile)
+	err := readKeysFromAws()
 	if err != nil {
-		panic(err)
+		err = readKeysFromFile(keysFile)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Print("using blobber keys from local")
+	} else {
+		fmt.Print("using blobber keys from aws")
 	}
-	publicKey, privateKey, _, _ := encryption.ReadKeys(reader)
-	reader.Close()
+
 	node.Self.SetKeys(publicKey, privateKey)
 
 	if len(*hostUrl) > 0 {
@@ -258,4 +265,30 @@ func HomePageHandler(w http.ResponseWriter, r *http.Request) {
 	for _, sharder := range network.Sharders {
 		fmt.Fprintf(w, "%v\n", sharder)
 	}
+}
+
+func readKeysFromAws() error {
+	blobberSecretName := os.Getenv("VALIDATOR_SECRET_NAME")
+	awsRegion := os.Getenv("AWS_REGION")
+	keys, err := common.GetSecretsFromAWS(blobberSecretName, awsRegion)
+	if err != nil {
+		return err
+	}
+	secretsFromAws := strings.Split(keys, "\n")
+	if len(secretsFromAws) < 2 {
+		return fmt.Errorf("wrong file format from aws")
+	}
+	publicKey = secretsFromAws[0]
+	privateKey = secretsFromAws[1]
+	return nil
+}
+
+func readKeysFromFile(keysFile *string) error {
+	reader, err := os.Open(*keysFile)
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+	publicKey, privateKey, _, _ = encryption.ReadKeys(reader)
+	return nil
 }
