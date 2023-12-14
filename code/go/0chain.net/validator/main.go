@@ -99,9 +99,9 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Print("using blobber keys from local")
+		fmt.Print("using validator keys from local")
 	} else {
-		fmt.Print("using blobber keys from aws")
+		fmt.Print("using validator keys from aws")
 	}
 
 	node.Self.SetKeys(publicKey, privateKey)
