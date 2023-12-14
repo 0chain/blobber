@@ -27,6 +27,9 @@ services:
     image: validator
     environment:
       - DOCKER=true
+      - AWS_ACCESS_KEY_ID=key_id
+      - AWS_SECRET_ACCESS_KEY=secret_key
+      - AWS_REGION=aws_region
     depends_on:
       - postgres
     volumes:
