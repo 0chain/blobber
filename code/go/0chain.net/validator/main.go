@@ -99,9 +99,9 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Print("using validator keys from local")
+		fmt.Println("using validator keys from local")
 	} else {
-		fmt.Print("using validator keys from aws")
+		fmt.Println("using validator keys from aws")
 	}
 
 	node.Self.SetKeys(publicKey, privateKey)

@@ -16,7 +16,7 @@ import (
 var publicKey, privateKey string
 
 func setupNode() error {
-	fmt.Print("> setup blobber")
+	fmt.Println("> setup blobber")
 
 	err := readKeysFromAws()
 	if err != nil {
@@ -24,9 +24,9 @@ func setupNode() error {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Print("using blobber keys from local")
+		fmt.Println("using blobber keys from local")
 	} else {
-		fmt.Print("using blobber keys from aws")
+		fmt.Println("using blobber keys from aws")
 	}
 
 	node.Self.SetKeys(publicKey, privateKey)
