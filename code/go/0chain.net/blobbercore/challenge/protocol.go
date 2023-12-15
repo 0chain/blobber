@@ -122,10 +122,9 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			cr.CancelChallenge(ctx, err)
 			return err
 		}
-
-		cr.RefID = objectPath.RefID
-		cr.ObjectPath = objectPath
 		if objectPath != nil {
+			cr.RefID = objectPath.RefID
+			cr.ObjectPath = objectPath
 			if objectPath.RootHash != allocationObj.AllocationRoot {
 				logging.Logger.Error("object_path_root_hash_mismatch", zap.Any("object_path", objectPath), zap.Any("allocation_root", allocationObj.AllocationRoot), zap.Any("latest_write_marker", wms[len(wms)-1].WM.AllocationRoot), zap.Any("is_latest", wms[len(wms)-1].Latest))
 			}
