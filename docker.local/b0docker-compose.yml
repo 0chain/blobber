@@ -27,6 +27,10 @@ services:
     image: validator
     environment:
       - DOCKER=true
+      - AWS_ACCESS_KEY_ID=key_id
+      - AWS_SECRET_ACCESS_KEY=secret_key
+      - VALIDATOR_SECRET_NAME=validator_secret_name
+      - AWS_REGION=aws_region
     depends_on:
       - postgres
     volumes:
@@ -53,6 +57,10 @@ services:
       - DB_USER=blobber_user
       - DB_PASSWORD=blobber
       - DB_PORT=5432
+      - AWS_ACCESS_KEY_ID=key_id
+      - AWS_SECRET_ACCESS_KEY=secret_key
+      - BLOBBER_SECRET_NAME=blobber_secret_name
+      - AWS_REGION=aws_region
     depends_on:
       - validator
       - postgres
