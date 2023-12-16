@@ -169,6 +169,17 @@ func (r *Repository) GetAllocations(ctx context.Context, offset int64) ([]*Alloc
 	return allocs, nil
 }
 
+func (r *Repository) GetAllocationFromDB(ctx context.Context, allocationID string) (*Allocation, error) {
+	var tx = datastore.GetStore().GetTransaction(ctx)
+
+	alloc := &Allocation{}
+	err := tx.Model(&Allocation{}).Where("id = ?", allocationID).Take(alloc).Error
+	if err != nil {
+		return nil, err
+	}
+	return alloc, nil
+}
+
 func (r *Repository) GetAllocationIds(ctx context.Context) []Res {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 	if tx == nil {

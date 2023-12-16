@@ -122,9 +122,29 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			cr.CancelChallenge(ctx, err)
 			return err
 		}
-
-		cr.RefID = objectPath.RefID
-		cr.ObjectPath = objectPath
+		if objectPath != nil {
+			cr.RefID = objectPath.RefID
+			cr.ObjectPath = objectPath
+			if objectPath.RootHash != allocationObj.AllocationRoot {
+				logging.Logger.Error("object_path_root_hash_mismatch", zap.Any("object_path", objectPath), zap.Any("allocation_root", allocationObj.AllocationRoot), zap.Any("latest_write_marker", wms[len(wms)-1].WM.AllocationRoot), zap.Any("is_latest", wms[len(wms)-1].Latest))
+			}
+			allocationObj, err = allocation.Repo.GetAllocationFromDB(ctx, cr.AllocationID)
+			if err != nil {
+				allocMu.RUnlock()
+				cr.CancelChallenge(ctx, err)
+				return err
+			}
+			if allocationObj.AllocationRoot != objectPath.RootHash {
+				logging.Logger.Error("root_mismatch", zap.Any("allocation_root", allocationObj.AllocationRoot), zap.Any("latest_write_marker", wms[len(wms)-1].WM.AllocationRoot), zap.Any("object_path_root", objectPath.RootHash))
+			} else {
+				wms, err = writemarker.GetWriteMarkersInRange(ctx, cr.AllocationID, objectPath.RootHash, cr.Timestamp, allocationObj.AllocationRoot)
+				if err != nil {
+					allocMu.RUnlock()
+					cr.CancelChallenge(ctx, err)
+					return err
+				}
+			}
+		}
 	}
 	cr.RespondedAllocationRoot = allocationObj.AllocationRoot
 
