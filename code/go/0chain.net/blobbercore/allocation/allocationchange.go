@@ -281,7 +281,7 @@ type Result struct {
 }
 
 // TODO: Need to speed up this function
-func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) (err error) {
+func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 
 	logging.Logger.Info("Move to filestore", zap.String("allocation_id", a.AllocationID))
 
@@ -291,7 +291,7 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) (err er
 
 	e := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		tx := datastore.GetStore().GetTransaction(ctx)
-		err = tx.Model(&reference.Ref{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Select("id", "validation_root", "thumbnail_hash", "prev_validation_root", "prev_thumbnail_hash").Where("allocation_id=? AND is_precommit=? AND type=?", a.AllocationID, true, reference.FILE).
+		err := tx.Model(&reference.Ref{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Select("id", "validation_root", "thumbnail_hash", "prev_validation_root", "prev_thumbnail_hash").Where("allocation_id=? AND is_precommit=? AND type=?", a.AllocationID, true, reference.FILE).
 			FindInBatches(&refs, 50, func(tx *gorm.DB, batch int) error {
 
 				for _, ref := range refs {

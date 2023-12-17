@@ -35,12 +35,12 @@ func (dc *dbCollector) DeleteRefRecord(ref *Ref) {
 func (dc *dbCollector) Finalize(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	if len(dc.deletedRefs) > 0 {
-		err := db.Delete(&dc.deletedRefs).Error
+		err := db.Delete(dc.deletedRefs).Error
 		if err != nil {
 			return err
 		}
 	}
-	err := db.Create(&dc.createdRefs).Error
+	err := db.Create(dc.createdRefs).Error
 	if err != nil {
 		return err
 	}

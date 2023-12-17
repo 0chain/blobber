@@ -101,6 +101,7 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context, rootRef *reference
 		ActualThumbnailHash:     nf.ActualThumbnailHash,
 		ActualThumbnailSize:     nf.ActualThumbnailSize,
 		EncryptedKey:            nf.EncryptedKey,
+		EncryptedKeyPoint:       nf.EncryptedKeyPoint,
 		ChunkSize:               nf.ChunkSize,
 		CreatedAt:               ts,
 		UpdatedAt:               ts,
