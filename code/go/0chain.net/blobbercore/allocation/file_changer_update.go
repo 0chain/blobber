@@ -96,6 +96,7 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, rootRef *reference
 	fileRef.ActualThumbnailHash = nf.ActualThumbnailHash
 	fileRef.ActualThumbnailSize = nf.ActualThumbnailSize
 	fileRef.EncryptedKey = nf.EncryptedKey
+	fileRef.EncryptedKeyPoint = nf.EncryptedKeyPoint
 	fileRef.ChunkSize = nf.ChunkSize
 	fileRef.IsPrecommit = true
 

@@ -106,7 +106,6 @@ func (r *Repository) GetByIdAndLock(ctx context.Context, id string) (*Allocation
 	cache[id] = AllocationCache{
 		Allocation: alloc,
 	}
-	r.setAllocToGlobalCache(alloc)
 	return alloc, err
 }
 
@@ -159,12 +158,6 @@ func (r *Repository) GetAllocations(ctx context.Context, offset int64) ([]*Alloc
 		Find(&allocs).Error
 	if err != nil {
 		return allocs, err
-	}
-	for ind, alloc := range allocs {
-		if ind == lruSize {
-			break
-		}
-		r.setAllocToGlobalCache(alloc)
 	}
 	return allocs, nil
 }

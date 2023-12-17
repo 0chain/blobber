@@ -638,6 +638,9 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		Logger.Error("Error applying changes", zap.Error(err))
 		return nil, err
 	}
+	if !rootRef.IsPrecommit {
+		return nil, common.NewError("no_root_change", "No change in root ref")
+	}
 
 	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
 		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
