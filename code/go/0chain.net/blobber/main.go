@@ -48,8 +48,8 @@ func main() {
 		panic(err)
 	}
 
-	err := setCCTFromChain()
-	if err != nil {
+	if err := setStorageScConfigFromChain(); err != nil {
+		logging.Logger.Error("Error setStorageScConfigFromChain" + err.Error())
 		panic(err)
 	}
 

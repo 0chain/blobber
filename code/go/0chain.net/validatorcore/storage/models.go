@@ -330,10 +330,10 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 	latestWM := cr.WriteMarkers[len(cr.WriteMarkers)-1].WM
 	if cr.ObjPath != nil {
 		rootRef := cr.ObjPath.RootObject
-		allocationRootCalculated := rootRef.Hash
+		allocationRootCalculated := cr.ObjPath.RootHash
 
 		if latestWM.AllocationRoot != allocationRootCalculated {
-			return common.NewError("challenge_validation_failed", "Allocation root does not match")
+			return common.NewError("challenge_validation_failed", fmt.Sprintf("Allocation root does not match expected %s got %s", allocationRootCalculated, latestWM.AllocationRoot))
 		}
 
 		if rootRef.NumBlocks == 0 {
@@ -356,7 +356,7 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 	}
 
 	logging.Logger.Info("Verifying data block and merkle path", zap.String("challenge_id", challengeObj.ID))
-	fHash := encryption.RawHash(cr.ChallengeProof.Data)
+	fHash := encryption.ShaHash(cr.ChallengeProof.Data)
 	fixedMerkleRoot, _ := hex.DecodeString(cr.ObjPath.Meta.FixedMerkleRoot)
 	fmp := &util.FixedMerklePath{
 		LeafHash: fHash,

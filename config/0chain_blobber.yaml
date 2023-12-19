@@ -12,12 +12,15 @@ logging:
 #  100 GB - 107374182400
 capacity: 1073741824 # 1 GB bytes total blobber capacity
 read_price: 0.00     # token / GB for reading
-write_price: 0.10    # token / GB / time_unit for writing
+write_price: 0.025    # token / GB / time_unit for writing
 price_in_usd: false
 price_worker_in_hours: 12
 
 # update_allocations_interval used to refresh known allocation objects from SC
-update_allocations_interval: 1m
+update_allocations_interval: 60m
+
+#finalize_allocations_interval used to get and finalize empty allocations
+finalize_allocations_interval: 24h
 
 # maximum limit on the number of combined directories and files on each allocation
 max_dirs_files: 50000
@@ -25,13 +28,13 @@ max_dirs_files: 50000
 # delegate wallet (must be set)
 delegate_wallet: '9c693cb14f29917968d6e8c909ebbea3425b4c1bc64b6732cadc2a1869f49be9'
 # maximum allowed number of stake holders
-num_delegates: 50
+num_delegates: 10
 # service charge of the blobber
-service_charge: 0.10
+service_charge: 0
 # min submit from miners`
-min_submit: 50
+min_submit: 20
 # min confirmation from sharder
-min_confirmation: 50
+min_confirmation: 10
 
 block_worker: https://dev.0chain.net/dns
 
@@ -59,7 +62,16 @@ rate_limiters:
   # General Request Per Second. This rps is used to rate limit endpoints like copy, rename, get file metadata,
   # get paginated refs, etc. Default is 5
   general_rps: 1600
-
+  # Number of blocks downloaded in a day. Default is 100GB(the value needs to be in blocks which is data/64KB)
+  block_limit_daily: 1562500
+  # Max blocks per download request. Default is 500
+  block_limit_request: 500
+  # Max blocks in a month for a client. Default is 2000GB(the value needs to be in blocks which is data/64KB)
+  block_limit_monthly: 31250000
+  # Max upload limit in a month for a client. Default is 2000GB(the value needs to be in blocks which is data/64KB)
+  upload_limit_monthly: 31250000
+  # Max commit limit in a month for a client. Default is 30000
+  commit_limit_monthly: 30000
 server_chain:
   id: "0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe"
   owner: "edb90b850f2e7e7cbd0a1fa370fdcc5cd378ffbec95363a7bc0e5a98b8ba5759"
@@ -83,6 +95,7 @@ challenge_response:
   frequency: 10
   num_workers: 5
   max_retries: 20
+  cleanup_gap: 100000
 
 healthcheck:
   frequency: 60m # send healthcheck to miners every 60 minutes
@@ -96,6 +109,7 @@ db:
   password: blobber
   host: postgres
   port: 5432
+  archive_path: "/var/lib/postgresql/hdd"
 
 storage:
   files_dir: "/path/to/hdd"
@@ -107,9 +121,10 @@ storage:
 #  Similarly for some file_hash "ef935503b66b1ce026610edf18bffd756a79676a8fe317d951965b77a77c0227" with dir_level [2, 2, 1]
 #  following path is created for the file:
 # {alloc_dir}/ef/93/5/503b66b1ce026610edf18bffd756a79676a8fe317d951965b77a77c0227
-  alloc_dir_level: [2, 1]
+  alloc_dir_level: [2, 1] #TODO sort it out
   file_dir_level: [2, 2, 1]
 
+#TODO remove
 disk_update:
   # defaults to true. If false, blobber has to manually update blobber's capacity upon increase/decrease
   # If blobber has to limit its capacity to 5% of its capacity then it should turn automaci_update to false.

@@ -23,6 +23,7 @@ type FileInputData struct {
 	IsFinal      bool
 	IsThumbnail  bool
 	FilePathHash string
+	Size         int64
 	Hasher       *CommitHasher
 }
 

@@ -12,7 +12,7 @@ import (
 	"sync"
 
 	"github.com/0chain/gosdk/core/util"
-	"golang.org/x/crypto/sha3"
+	"github.com/minio/sha256-simd"
 )
 
 const (
@@ -66,7 +66,7 @@ func (ft *fixedMerkleTree) CalculateRootAndStoreNodes(f io.Writer) (merkleRoot [
 
 	buffer := make([]byte, FMTSize)
 	var bufLen int
-	h := sha3.New256()
+	h := sha256.New()
 
 	for i := 0; i < util.FixedMTDepth; i++ {
 		if len(nodes) == 1 {
@@ -83,7 +83,7 @@ func (ft *fixedMerkleTree) CalculateRootAndStoreNodes(f io.Writer) (merkleRoot [
 			bufLen += copy(buffer[bufLen:bufLen+HashSize], nodes[j])
 			bufLen += copy(buffer[bufLen:bufLen+HashSize], nodes[j+1])
 
-			h.Write(buffer[prevBufLen:bufLen])
+			_, _ = h.Write(buffer[prevBufLen:bufLen])
 			newNodes[nodeInd] = h.Sum(nil)
 			nodeInd++
 		}
@@ -228,7 +228,7 @@ func (v *validationTree) CalculateRootAndStoreNodes(f io.WriteSeeker) (merkleRoo
 	nodes := make([][]byte, len(v.GetLeaves()))
 	copy(nodes, v.GetLeaves())
 
-	h := sha3.New256()
+	h := sha256.New()
 	depth := v.CalculateDepth()
 
 	s := getNodesSize(v.GetDataSize(), util.MaxMerkleLeavesSize)
@@ -246,7 +246,7 @@ func (v *validationTree) CalculateRootAndStoreNodes(f io.WriteSeeker) (merkleRoo
 				bufInd += copy(buffer[bufInd:], nodes[j])
 				bufInd += copy(buffer[bufInd:], nodes[j+1])
 
-				h.Write(buffer[prevBufInd:bufInd])
+				_, _ = h.Write(buffer[prevBufInd:bufInd])
 				newNodes = append(newNodes, h.Sum(nil))
 			}
 		} else {
@@ -256,13 +256,13 @@ func (v *validationTree) CalculateRootAndStoreNodes(f io.WriteSeeker) (merkleRoo
 				bufInd += copy(buffer[bufInd:], nodes[j])
 				bufInd += copy(buffer[bufInd:], nodes[j+1])
 
-				h.Write(buffer[prevBufInd:bufInd])
+				_, _ = h.Write(buffer[prevBufInd:bufInd])
 				newNodes = append(newNodes, h.Sum(nil))
 			}
 			h.Reset()
 			prevBufInd := bufInd
 			bufInd += copy(buffer[bufInd:], nodes[len(nodes)-1])
-			h.Write(buffer[prevBufInd:bufInd])
+			_, _ = h.Write(buffer[prevBufInd:bufInd])
 			newNodes = append(newNodes, h.Sum(nil))
 		}
 
@@ -288,7 +288,7 @@ type validationTreeProof struct {
 // If endInd - startInd is whole file then no proof is required at all.
 // startInd and endInd is taken as closed interval. So to get proof for data at index 0 both startInd
 // and endInd would be 0.
-func (v *validationTreeProof) GetMerkleProofOfMultipleIndexes(r io.ReadSeeker, nodesSize int64, startInd, endInd int) (
+func (v *validationTreeProof) getMerkleProofOfMultipleIndexes(r io.ReadSeeker, nodesSize int64, startInd, endInd int) (
 	[][][]byte, [][]int, error) {
 
 	if startInd < 0 || endInd < 0 {

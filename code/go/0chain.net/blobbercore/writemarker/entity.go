@@ -52,6 +52,7 @@ type WriteMarkerEntity struct {
 	CloseTxnID      string            `gorm:"column:close_txn_id;size:64"`
 	ConnectionID    string            `gorm:"column:connection_id;size:64"`
 	ClientPublicKey string            `gorm:"column:client_key;size:256"`
+	Latest          bool              `gorm:"column:latest;not null;default:true"`
 	Sequence        int64             `gorm:"column:sequence;unique;autoIncrement;<-:false;index:idx_seq,unique,priority:2"` // <-:false skips value insert/update by gorm
 	datastore.ModelWithTS
 }
@@ -72,38 +73,47 @@ func (w *WriteMarkerEntity) BeforeSave(tx *gorm.DB) error {
 }
 
 func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context, status WriteMarkerStatus, statusMessage, redeemTxn string) (err error) {
-	db := datastore.GetStore().GetTransaction(ctx)
-	statusBytes, _ := json.Marshal(statusMessage)
+	err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		db := datastore.GetStore().GetTransaction(ctx)
+		statusBytes, _ := json.Marshal(statusMessage)
 
-	if status == Failed {
-		wm.ReedeemRetries++
+		if status == Failed {
+			wm.ReedeemRetries++
+			err = db.Model(wm).Updates(WriteMarkerEntity{
+				Status:         status,
+				StatusMessage:  string(statusBytes),
+				CloseTxnID:     redeemTxn,
+				ReedeemRetries: wm.ReedeemRetries,
+			}).Error
+			return err
+		}
+
 		err = db.Model(wm).Updates(WriteMarkerEntity{
-			Status:         status,
-			StatusMessage:  string(statusBytes),
-			CloseTxnID:     redeemTxn,
-			ReedeemRetries: wm.ReedeemRetries,
+			Status:        status,
+			StatusMessage: string(statusBytes),
+			CloseTxnID:    redeemTxn,
 		}).Error
-		return
-	}
+		if err != nil {
+			return err
+		}
 
-	err = db.Model(wm).Updates(WriteMarkerEntity{
-		Status:        status,
-		StatusMessage: string(statusBytes),
-		CloseTxnID:    redeemTxn,
-	}).Error
-	if err != nil {
-		return
-	}
+		err = db.Exec("UPDATE write_markers SET latest = false WHERE allocation_id = ? AND allocation_root = ? AND sequence < ?", wm.WM.AllocationID, wm.WM.PreviousAllocationRoot, wm.Sequence).Error
+		if err != nil {
+			return err
+		}
 
-	// TODO (sfxdx): what about failed write markers ?
-	if status != Committed || wm.WM.Size <= 0 {
-		return // not committed or a deleting marker
-	}
+		// TODO (sfxdx): what about failed write markers ?
+		if status != Committed || wm.WM.Size <= 0 {
+			return err // not committed or a deleting marker
+		}
 
-	// work on pre-redeemed tokens and write-pools balances tracking
-	if err := allocation.AddToPending(ctx, wm.WM.ClientID, wm.WM.AllocationID, -wm.WM.Size); err != nil {
-		return fmt.Errorf("can't save allocation pending value: %v", err)
-	}
+		// work on pre-redeemed tokens and write-pools balances tracking
+		if err := allocation.AddToPending(ctx, wm.WM.ClientID, wm.WM.AllocationID, -wm.WM.Size); err != nil {
+			return fmt.Errorf("can't save allocation pending value: %v", err)
+		}
+		return nil
+	})
+
 	return
 }
 
@@ -198,7 +208,7 @@ func (wm *WriteMarkerEntity) SendToChan(ctx context.Context) error {
 	if sem == nil {
 		sem = SetLock(wm.WM.AllocationID)
 	}
-	err := sem.Acquire(ctx, 1)
+	err := sem.Acquire(context.TODO(), 1)
 	if err != nil {
 		return err
 	}

@@ -4,12 +4,12 @@ go 1.18
 
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.8.18-0.20230901213317-53d640a9b7f9
+	github.com/0chain/gosdk v1.11.0
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.2
 	github.com/go-openapi/runtime v0.26.0
 	github.com/gorilla/handlers v1.5.1
-	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/mux v1.8.1
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0
 	github.com/herumi/bls-go-binary v1.31.0
@@ -21,9 +21,9 @@ require (
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/zap v1.24.0
-	golang.org/x/crypto v0.11.0
+	golang.org/x/crypto v0.15.0
 	golang.org/x/net v0.10.0 // indirect
-	golang.org/x/sys v0.10.0
+	golang.org/x/sys v0.14.0
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/genproto v0.0.0-20230526203410-71b5a4ffd15e //  indirect
 	google.golang.org/grpc v1.56.2
@@ -33,7 +33,7 @@ require (
 	gorm.io/datatypes v1.2.0
 	gorm.io/driver/postgres v1.5.2
 	gorm.io/driver/sqlite v1.5.2
-	gorm.io/gorm v1.25.2
+	gorm.io/gorm v1.25.5
 )
 
 require (
@@ -44,10 +44,30 @@ require (
 
 require (
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d // indirect
+	github.com/minio/sha256-simd v1.0.1
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect
 )
 
-require github.com/pressly/goose/v3 v3.13.4
+require (
+	github.com/aws/aws-sdk-go-v2 v1.24.0
+	github.com/aws/aws-sdk-go-v2/config v1.26.1
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.25.5
+	github.com/pressly/goose/v3 v3.13.4
+)
+
+require (
+	github.com/aws/aws-sdk-go-v2/credentials v1.16.12 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.14.10 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.2.9 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.5.9 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/ini v1.7.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.10.4 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.10.9 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.18.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.21.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.26.5 // indirect
+	github.com/aws/smithy-go v1.19.0 // indirect
+)
 
 require (
 	github.com/0chain/common v0.0.6-0.20230127095721-8df4d1d72565 // indirect
@@ -65,7 +85,7 @@ require (
 	github.com/emirpasic/gods v1.18.1
 	github.com/ethereum/go-ethereum v1.11.4 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/fsnotify/fsnotify v1.6.0
 	github.com/gin-gonic/gin v1.9.1 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-openapi/analysis v0.21.4 // indirect
@@ -85,6 +105,7 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/h2non/filetype v1.1.3 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.6
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
@@ -94,7 +115,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.4 // indirect
-	github.com/klauspost/reedsolomon v1.11.7 // indirect
+	github.com/klauspost/reedsolomon v1.11.8 // indirect
 	github.com/machinebox/graphql v0.2.2 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
@@ -123,7 +144,7 @@ require (
 	go.mongodb.org/mongo-driver v1.11.3 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
-	golang.org/x/text v0.11.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect

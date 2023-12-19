@@ -4,6 +4,7 @@
 package handler
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -301,6 +302,7 @@ func TestHandlers_Download(t *testing.T) {
 					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
 					r.Header.Set("X-Connection-ID", connectionID)
 					r.Header.Set("X-Mode", DownloadContentFull)
+					r.Header.Set("X-Verify-Download", fmt.Sprint(true))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, alloc.OwnerID)
 					r.Header.Set(common.ClientKeyHeader, alloc.OwnerPublicKey)
@@ -478,10 +480,10 @@ func TestHandlers_Download(t *testing.T) {
 					r.Header.Set("X-Path-Hash", pathHash)
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
 					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
-					r.Header.Set("X-Verify-Download", fmt.Sprint(false))
+					r.Header.Set("X-Verify-Download", fmt.Sprint(true))
 					r.Header.Set("X-Connection-ID", connectionID)
 					r.Header.Set("X-Mode", DownloadContentFull)
-					r.Header.Set("X-Auth-Token", authTicket)
+					r.Header.Set("X-Auth-Token", base64.StdEncoding.EncodeToString([]byte(authTicket)))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
 					r.Header.Set(common.ClientKeyHeader, guestClient.ClientKey)
@@ -559,10 +561,10 @@ func TestHandlers_Download(t *testing.T) {
 					r.Header.Set("X-Path-Hash", pathHash)
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
 					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
-					r.Header.Set("X-Verify-Download", fmt.Sprint(false))
+					r.Header.Set("X-Verify-Download", fmt.Sprint(true))
 					r.Header.Set("X-Connection-ID", connectionID)
 					r.Header.Set("X-Mode", DownloadContentFull)
-					r.Header.Set("X-Auth-Token", authTicket)
+					r.Header.Set("X-Auth-Token", base64.StdEncoding.EncodeToString([]byte(authTicket)))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
 					r.Header.Set(common.ClientKeyHeader, guestClient.ClientKey)
@@ -673,10 +675,10 @@ func TestHandlers_Download(t *testing.T) {
 					r.Header.Set("X-Path-Hash", filePathHash)
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
 					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
-					r.Header.Set("X-Verify-Download", fmt.Sprint(false))
+					r.Header.Set("X-Verify-Download", fmt.Sprint(true))
 					r.Header.Set("X-Connection-ID", connectionID)
 					r.Header.Set("X-Mode", DownloadContentFull)
-					r.Header.Set("X-Auth-Token", authTicket)
+					r.Header.Set("X-Auth-Token", base64.StdEncoding.EncodeToString([]byte(authTicket)))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
 					r.Header.Set(common.ClientKeyHeader, guestClient.ClientKey)
@@ -793,10 +795,10 @@ func TestHandlers_Download(t *testing.T) {
 					r.Header.Set("X-Path-Hash", filePathHash)
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
 					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
-					r.Header.Set("X-Verify-Download", fmt.Sprint(false))
+					r.Header.Set("X-Verify-Download", fmt.Sprint(true))
 					r.Header.Set("X-Connection-ID", connectionID)
 					r.Header.Set("X-Mode", DownloadContentFull)
-					r.Header.Set("X-Auth-Token", authTicket)
+					r.Header.Set("X-Auth-Token", base64.StdEncoding.EncodeToString([]byte(authTicket)))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
 					r.Header.Set(common.ClientKeyHeader, guestClient.ClientKey)
@@ -912,10 +914,10 @@ func TestHandlers_Download(t *testing.T) {
 					r.Header.Set("X-Path-Hash", filePathHash)
 					r.Header.Set("X-Block-Num", fmt.Sprintf("%d", 1))
 					r.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", 1))
-					r.Header.Set("X-Verify-Download", fmt.Sprint(false))
+					r.Header.Set("X-Verify-Download", fmt.Sprint(true))
 					r.Header.Set("X-Connection-ID", connectionID)
 					r.Header.Set("X-Mode", DownloadContentFull)
-					r.Header.Set("X-Auth-Token", authTicket)
+					r.Header.Set("X-Auth-Token", base64.StdEncoding.EncodeToString([]byte(authTicket)))
 					r.Header.Set(common.ClientSignatureHeader, sign)
 					r.Header.Set(common.ClientHeader, guestClient.ClientID)
 					r.Header.Set(common.ClientKeyHeader, guestClient.ClientKey)
@@ -991,7 +993,7 @@ func TestHandlers_Download(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			mock := datastore.MockTheStore(t)
 			test.setupDbMock(mock)
-
+			allocation.Repo.DeleteAllocation(alloc.ID)
 			if test.begin != nil {
 				test.begin()
 			}
@@ -1005,9 +1007,7 @@ func TestHandlers_Download(t *testing.T) {
 			m := make(map[string]interface{})
 			err = json.Unmarshal(data, &m)
 			require.NoError(t, err)
-
 			if test.wantCode != http.StatusOK || test.wantBody != "" {
-				fmt.Println("fprint", test.args.w.Body.String())
 				var body string
 				if m["Data"] != nil {
 					body = m["Data"].(string)

@@ -11,6 +11,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	handleCommon "github.com/0chain/blobber/code/go/0chain.net/core/common/handler"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+	"github.com/0chain/gosdk/zboxcore/sdk"
 	"github.com/0chain/gosdk/zcncore"
 )
 
@@ -80,6 +81,11 @@ func setupServerChain() error {
 		return err
 	}
 	if err := zcncore.SetWalletInfo(node.Self.GetWalletString(), false); err != nil {
+		return err
+	}
+
+	if err := sdk.InitStorageSDK(node.Self.GetWalletString(), serverChain.BlockWorker, config.Configuration.ChainID, config.Configuration.SignatureScheme,
+		nil, 0); err != nil {
 		return err
 	}
 

@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"database/sql/driver"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -10,7 +11,6 @@ import (
 	"net/http/httptest"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -128,15 +128,16 @@ func TestDownloadFile(t *testing.T) {
 			require.NoError(t, authTicket.Sign())
 			require.NoError(t, client.PopulateClient(mockClientWallet, "bls0chain"))
 			authTicketBytes, _ := json.Marshal(authTicket)
-			req.Header.Set("X-Auth-Token", string(authTicketBytes))
+			auth := base64.StdEncoding.EncodeToString(authTicketBytes)
+			req.Header.Set("X-Auth-Token", auth)
 		}
 		if len(p.inData.contentMode) > 0 {
 			req.Header.Set("X-Mode", p.inData.contentMode)
 		}
 	}
 
-	makeMockMakeSCRestAPICall := func(t *testing.T, p parameters) func(scAddress string, relativePath string, params map[string]string, chain *chain.Chain) ([]byte, error) {
-		return func(scAddress string, relativePath string, params map[string]string, chain *chain.Chain) ([]byte, error) {
+	makeMockMakeSCRestAPICall := func(t *testing.T, p parameters) func(scAddress string, relativePath string, params map[string]string) ([]byte, error) {
+		return func(scAddress string, relativePath string, params map[string]string) ([]byte, error) {
 			require.New(t)
 			require.EqualValues(t, scAddress, transaction.STORAGE_CONTRACT_ADDRESS)
 			switch relativePath {
@@ -460,6 +461,7 @@ func TestDownloadFile(t *testing.T) {
 				datastore.MocketTheStore(t, mocketLogging)
 				setupInMock(t, test.parameters)
 				setupOutMock(t, test.parameters)
+				allocation.Repo.DeleteAllocation(mockAllocationId)
 
 				ctx := setupCtx(test.parameters)
 				ctx = context.WithValue(ctx, constants.ContextKeyAllocationID, mockAllocationId)

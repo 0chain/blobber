@@ -3,7 +3,7 @@ package common
 import "net/http"
 
 const (
-	FormFileParseMaxMemory = 10 * 1024 * 1024
+	FormFileParseMaxMemory = 32 * 1024 * 1024
 )
 
 // TryParseForm try populates r.Form and r.PostForm.

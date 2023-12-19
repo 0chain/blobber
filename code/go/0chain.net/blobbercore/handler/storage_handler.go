@@ -9,8 +9,6 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-
 	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
@@ -49,8 +47,6 @@ func (fsh *StorageHandler) verifyAllocation(ctx context.Context, allocationID, a
 		return nil, common.NewErrorf("verify_allocation",
 			"verifying allocation transaction error: %v", err)
 	}
-
-	logging.Logger.Info("verifyAllocation", zap.Any("alloc", alloc), zap.Any("now", common.Now()))
 
 	if alloc.Expiration < common.Now() {
 		return nil, common.NewError("verify_allocation",
@@ -252,7 +248,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	}
 
 	result := fileref.GetListingData(ctx)
-	fileStats, err := reference.GetFileStats(ctx, fileref.ID)
+	fileStats, err := reference.GetFileStats(ctx, fileref)
 	if err != nil {
 		return nil, common.NewError("bad_db_operation", "Error retrieving file stats. "+err.Error())
 	}
@@ -293,11 +289,11 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 	if err != nil {
 		return nil, err
 	}
-
+	_, ok := common.GetField(r, "list")
 	escapedPathHash := sanitizeString(pathHash)
 
 	Logger.Info("Path Hash for list dir :" + escapedPathHash)
-	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "path", "lookup_hash", "type", "name"})
+	fileref, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "path", "lookup_hash", "type", "name", "file_meta_hash", "parent_path"})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// `/` always is valid even it doesn't exists in db. so ignore RecordNotFound error
@@ -309,15 +305,36 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 		}
 	}
 
-	authTokenString := r.FormValue("auth_token")
+	authTokenString, _ := common.GetField(r, "auth_token")
 	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
-		authToken, err := fsh.verifyAuthTicket(ctx, r.FormValue("auth_token"), allocationObj, fileref, clientID, true)
+		authToken, err := fsh.verifyAuthTicket(ctx, authTokenString, allocationObj, fileref, clientID, true)
 		if err != nil {
 			return nil, err
 		}
 		if authToken == nil {
 			return nil, common.NewError("auth_ticket_verification_failed", "Could not verify the auth ticket.")
 		}
+	}
+
+	if !ok {
+		var listResult blobberhttp.ListResult
+		listResult.AllocationRoot = allocationObj.AllocationRoot
+		if fileref == nil {
+			fileref = &reference.Ref{Type: reference.DIRECTORY, Path: path, AllocationID: allocationID}
+		}
+		if fileref.Type == reference.FILE {
+			parent, err := reference.GetReference(ctx, allocationID, fileref.ParentPath)
+			if err != nil {
+				return nil, common.NewError("invalid_parameters", "Invalid path. Parent dir of file not found. "+err.Error())
+			}
+			fileref = parent
+		}
+		listResult.Meta = fileref.GetListingData(ctx)
+		if clientID != allocationObj.OwnerID {
+			delete(listResult.Meta, "path")
+		}
+		listResult.Entities = make([]map[string]interface{}, 0)
+		return &listResult, nil
 	}
 
 	// when '/' is not available in database we ignore 'record not found' error. which results into nil fileRef
@@ -404,9 +421,11 @@ func (fsh *StorageHandler) GetLatestWriteMarker(ctx context.Context, r *http.Req
 	} else {
 		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
 		if err != nil {
-			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
+			Logger.Error("[latest_write_marker]", zap.String("allocation_root", allocationObj.AllocationRoot), zap.String("allocation_id", allocationObj.ID))
+			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation. "+err.Error())
 		}
 		if latestWM == nil {
+			Logger.Info("[latest_write_marker]", zap.String("allocation_root", allocationObj.AllocationRoot), zap.String("allocation_id", allocationObj.ID))
 			return nil, common.NewError("latest_write_marker_read_error", "Latest write marker not found for allocation.")
 		}
 		if latestWM.WM.PreviousAllocationRoot != "" {

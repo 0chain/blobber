@@ -2,6 +2,7 @@ package allocation
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -48,6 +49,7 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 		maxDirFilesPerAlloc int
 		expectedMessage     string
 		expectingError      bool
+		fileIDMeta          map[string]string
 		setupDbMock         func()
 	}{
 		{
@@ -57,6 +59,7 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 			allocationID:        alloc.ID,
 			maxDirFilesPerAlloc: 5,
 			expectingError:      false,
+			fileIDMeta:          map[string]string{},
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
 
@@ -177,6 +180,7 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 			allocationID:        alloc.ID,
 			maxDirFilesPerAlloc: 5,
 			expectingError:      false,
+			fileIDMeta:          map[string]string{"/target": "file_id"},
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
 
@@ -296,6 +300,7 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 			allocationID:        alloc.ID,
 			maxDirFilesPerAlloc: 5,
 			expectingError:      false,
+			fileIDMeta:          map[string]string{"/target": "file_id"},
 			setupDbMock: func() {
 				mocket.Catcher.Reset()
 
@@ -339,7 +344,7 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 							"path":            "/new/orig.txt",
 							"name":            "orig.txt",
 							"allocation_id":   alloc.ID,
-							"parent_path":     "/",
+							"parent_path":     "/new",
 							"validation_root": "validation_root",
 							"thumbnail_size":  00,
 							"thumbnail_hash":  "",
@@ -390,7 +395,7 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 							"path":            "/new/orig.txt",
 							"name":            "orig.txt",
 							"allocation_id":   alloc.ID,
-							"parent_path":     "/",
+							"parent_path":     "/new",
 							"validation_root": "validation_root",
 							"thumbnail_size":  00,
 							"thumbnail_hash":  "",
@@ -440,7 +445,7 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 							"path":            "/new/orig.txt",
 							"name":            "orig.txt",
 							"allocation_id":   alloc.ID,
-							"parent_path":     "/",
+							"parent_path":     "/new",
 							"validation_root": "validation_root",
 							"thumbnail_size":  00,
 							"thumbnail_hash":  "",
@@ -456,7 +461,7 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 
 	for _, tt := range testCases {
 		tc := tt
-
+		mut := &sync.Mutex{}
 		t.Run(t.Name(), func(t *testing.T) {
 			fs := &MockFileStore{}
 			if err := fs.Initialize(); err != nil {
@@ -478,12 +483,12 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 			rootRef, err := reference.GetReferencePathFromPaths(ctx, tc.allocationID, []string{change.DestPath, change.SrcPath}, []string{change.SrcPath})
 			require.Nil(t, err)
 			err = func() error {
-				_, err := change.ApplyChange(ctx, rootRef, tc.allocChange, "/", common.Now()-1, nil)
+				_, err := change.ApplyChange(ctx, rootRef, tc.allocChange, "/", common.Now()-1, tc.fileIDMeta)
 				if err != nil {
 					return err
 				}
 
-				return change.CommitToFileStore(ctx)
+				return change.CommitToFileStore(ctx, mut)
 			}()
 
 			if tc.expectingError {

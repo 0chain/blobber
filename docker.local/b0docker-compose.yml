@@ -1,23 +1,38 @@
 version: "3"
 services:
   postgres:
+    container_name: postgres-blob-${BLOBBER}
     image: postgres:14
     environment:
+      POSTGRES_DB: blobber_meta
       POSTGRES_PORT: 5432
-      POSTGRES_HOST: postgres
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: secret
+      POSTGRES_HOST: postgres-blob-${BLOBBER}
+      POSTGRES_USER: blobber_user
+      POSTGRES_PASSWORD: blobber
       POSTGRES_HOST_AUTH_METHOD: trust
-#expose_ci_port
+      SLOW_TABLESPACE_PATH: /var/lib/postgresql/hdd # this should match with archive_path in 0chain_blobber.yaml
+      SLOW_TABLESPACE: hdd_tablespace # this should match with the dbs.events.slowtablespace in 0chain.yaml
     volumes:
+      - ../config/postgresql.conf:/etc/postgresql/postgresql.conf
       - ./blobber${BLOBBER}/data/postgresql:/var/lib/postgresql/data
       - ./sql_init:/docker-entrypoint-initdb.d
+      # - ../blobber${BLOBBER}/data/postgresql2:/var/lib/postgresql/hdd
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    restart: unless-stopped
     networks:
       default:
+
   validator:
+    container_name: validator-${BLOBBER}
     image: validator
     environment:
-      - DOCKER= true
+      - DOCKER=true
+      - AWS_ACCESS_KEY_ID=key_id
+      - AWS_SECRET_ACCESS_KEY=secret_key
+      - VALIDATOR_SECRET_NAME=validator_secret_name
+      - AWS_REGION=aws_region
+    depends_on:
+      - postgres
     volumes:
       - ${CONFIG_PATH:-../config}:/validator/config #value after :- is default value
       - ./blobber${BLOBBER}/data:/validator/data
@@ -26,19 +41,32 @@ services:
     ports:
       - "506${BLOBBER}:506${BLOBBER}"
     command: ./bin/validator --port 506${BLOBBER} --hostname 198.18.0.6${BLOBBER} --deployment_mode 0 --keys_file keysconfig/b0vnode${BLOBBER}_keys.txt --log_dir /validator/log
+    restart: unless-stopped
     networks:
       default:
       testnet0:
         ipv4_address: 198.18.0.6${BLOBBER}
 
   blobber:
+    container_name: blobber-${BLOBBER}
     image: blobber
     environment:
-      - DOCKER= true
+      - DOCKER=true
+      - DB_HOST=postgres-blob-${BLOBBER}
+      - DB_NAME=blobber_meta
+      - DB_USER=blobber_user
+      - DB_PASSWORD=blobber
+      - DB_PORT=5432
+      - AWS_ACCESS_KEY_ID=key_id
+      - AWS_SECRET_ACCESS_KEY=secret_key
+      - BLOBBER_SECRET_NAME=blobber_secret_name
+      - AWS_REGION=aws_region
     depends_on:
       - validator
+      - postgres
     links:
       - validator:validator
+      - postgres:postgres
     volumes:
       - ${CONFIG_PATH:-../config}:/blobber/config
       - ./blobber${BLOBBER}/files:/blobber/files
@@ -50,6 +78,7 @@ services:
       - "505${BLOBBER}:505${BLOBBER}"
       - "3150${BLOBBER}:3150${BLOBBER}"
     command: ./bin/blobber --port 505${BLOBBER} --grpc_port 3150${BLOBBER} --hostname 198.18.0.9${BLOBBER} --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER}_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data
+    restart: unless-stopped
     networks:
       default:
       testnet0:

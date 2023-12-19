@@ -9,9 +9,9 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 )
 
 // DeleteFileCommand command for deleting file
@@ -20,6 +20,7 @@ type DeleteFileCommand struct {
 	changeProcessor  *allocation.DeleteFileChange
 	allocationChange *allocation.AllocationChange
 	path             string
+	connectionID     string
 }
 
 func (cmd *DeleteFileCommand) GetExistingFileRef() *reference.Ref {
@@ -43,15 +44,28 @@ func (cmd *DeleteFileCommand) IsValidated(ctx context.Context, req *http.Request
 
 	cmd.path = path
 
+	connectionID, ok := common.GetField(req, "connection_id")
+	if !ok {
+		return common.NewError("invalid_parameters", "Invalid connection id passed")
+	}
+	cmd.connectionID = connectionID
 	var err error
-	cmd.existingFileRef, err = reference.GetLimitedRefFieldsByPath(ctx, allocationObj.ID, path, []string{"path", "name", "size", "hash", "fixed_merkle_root"})
+	pathHash := encryption.Hash(path)
+	err = allocation.GetError(connectionID, pathHash)
+	if err != nil {
+		return err
+	}
+	lookUpHash := reference.GetReferenceLookup(allocationObj.ID, path)
+	cmd.existingFileRef, err = reference.GetLimitedRefFieldsByLookupHashWith(ctx, allocationObj.ID, lookUpHash, []string{"path", "name", "size", "hash", "fixed_merkle_root"})
 	if err != nil {
 		if errors.Is(gorm.ErrRecordNotFound, err) {
 			return common.ErrFileWasDeleted
 		}
 		return common.NewError("bad_db_operation", err.Error())
 	}
-	return nil
+	allocation.CreateConnectionChange(connectionID, pathHash, allocationObj)
+
+	return allocation.SetFinalized(connectionID, pathHash, cmd)
 }
 
 // UpdateChange add DeleteFileChange in db
@@ -62,32 +76,36 @@ func (cmd *DeleteFileCommand) UpdateChange(ctx context.Context, connectionObj *a
 }
 
 // ProcessContent flush file to FileStorage
-func (cmd *DeleteFileCommand) ProcessContent(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) (blobberhttp.UploadResult, error) {
+func (cmd *DeleteFileCommand) ProcessContent(allocationObj *allocation.Allocation) (allocation.UploadResult, error) {
 	deleteSize := cmd.existingFileRef.Size
-
-	cmd.changeProcessor = &allocation.DeleteFileChange{ConnectionID: connectionObj.ID,
-		AllocationID: connectionObj.AllocationID, Name: cmd.existingFileRef.Name,
+	connectionID := cmd.connectionID
+	cmd.changeProcessor = &allocation.DeleteFileChange{ConnectionID: connectionID,
+		AllocationID: allocationObj.ID, Name: cmd.existingFileRef.Name,
 		Hash: cmd.existingFileRef.Hash, Path: cmd.existingFileRef.Path, Size: deleteSize}
 
-	result := blobberhttp.UploadResult{}
+	result := allocation.UploadResult{}
 	result.Filename = cmd.existingFileRef.Name
 	result.ValidationRoot = cmd.existingFileRef.ValidationRoot
 	result.FixedMerkleRoot = cmd.existingFileRef.FixedMerkleRoot
 	result.Size = cmd.existingFileRef.Size
+	result.IsFinal = true
 
 	cmd.allocationChange = &allocation.AllocationChange{}
-	cmd.allocationChange.ConnectionID = connectionObj.ID
+	cmd.allocationChange.ConnectionID = connectionID
 	cmd.allocationChange.Size = 0 - deleteSize
 	cmd.allocationChange.Operation = constants.FileOperationDelete
 
-	connectionObj.Size += cmd.allocationChange.Size
-	allocation.UpdateConnectionObjSize(connectionObj.ID, cmd.allocationChange.Size)
+	allocation.UpdateConnectionObjSize(connectionID, cmd.allocationChange.Size)
 
 	return result, nil
 }
 
 // ProcessThumbnail no thumbnail should be processed for delete. A deffered delete command has been added on ProcessContent
-func (cmd *DeleteFileCommand) ProcessThumbnail(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, connectionObj *allocation.AllocationChangeCollector) error {
+func (cmd *DeleteFileCommand) ProcessThumbnail(allocationObj *allocation.Allocation) error {
 	//DO NOTHING
 	return nil
+}
+
+func (cmd *DeleteFileCommand) GetNumBlocks() int64 {
+	return 0
 }

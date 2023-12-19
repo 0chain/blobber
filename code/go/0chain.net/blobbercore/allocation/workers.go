@@ -3,12 +3,14 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
@@ -25,6 +27,10 @@ const (
 
 func StartUpdateWorker(ctx context.Context, interval time.Duration) {
 	go UpdateWorker(ctx, interval)
+}
+
+func StartFinalizeWorker(ctx context.Context, interval time.Duration) {
+	go FinalizeAllocationsWorker(ctx, interval)
 }
 
 // UpdateWorker updates all not finalized and not cleaned allocations
@@ -44,8 +50,34 @@ func UpdateWorker(ctx context.Context, interval time.Duration) {
 	for {
 		select {
 		case <-tick:
-			_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+			updateCtx := datastore.GetStore().CreateTransaction(context.TODO())
+			_ = datastore.GetStore().WithTransaction(updateCtx, func(ctx context.Context) error {
 				updateWork(ctx)
+				return nil
+			})
+			updateCtx.Done()
+		case <-quit:
+			return
+		}
+	}
+}
+
+func FinalizeAllocationsWorker(ctx context.Context, interval time.Duration) {
+	logging.Logger.Info("start finalize allocations worker")
+
+	var tk = time.NewTicker(interval)
+	defer tk.Stop()
+
+	var (
+		tick = tk.C
+		quit = ctx.Done()
+	)
+
+	for {
+		select {
+		case <-tick:
+			_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+				finalizeExpiredAllocations(ctx)
 				return nil
 			})
 		case <-quit:
@@ -101,7 +133,7 @@ func updateWork(ctx context.Context) {
 		offset += int64(len(allocs))
 
 		for _, a := range allocs {
-			updateAllocation(ctx, a)
+			updateAllocation(ctx, a, node.Self.ID)
 			if waitOrQuit(ctx, REQUEST_TIMEOUT) {
 				return
 			}
@@ -117,10 +149,10 @@ func findAllocations(ctx context.Context, offset int64) (allocs []*Allocation, c
 
 func shouldFinalize(sa *transaction.StorageAllocation) bool {
 	var now = common.Now()
-	return sa.Until() < now && !sa.Finalized
+	return sa.Expiration < now && !sa.Finalized
 }
 
-func updateAllocation(ctx context.Context, a *Allocation) {
+func updateAllocation(ctx context.Context, a *Allocation, selfBlobberID string) {
 	if a.Finalized {
 		cleanupAllocation(ctx, a)
 		return
@@ -130,6 +162,19 @@ func updateAllocation(ctx context.Context, a *Allocation) {
 	if err != nil {
 		logging.Logger.Error("requesting allocations from SC", zap.Error(err))
 		return
+	}
+
+	removedBlobber := true
+	for _, d := range sa.BlobberDetails {
+		if d.BlobberID == selfBlobberID {
+			removedBlobber = false
+			break
+		}
+	}
+
+	if removedBlobber {
+		logging.Logger.Info("blobber removed from allocation", zap.String("blobber", selfBlobberID), zap.String("allocation", a.ID))
+		cleanupAllocation(ctx, a)
 	}
 
 	// if new Tx, then we have to update the allocation
@@ -142,7 +187,8 @@ func updateAllocation(ctx context.Context, a *Allocation) {
 
 	// send finalize allocation transaction
 	if shouldFinalize(sa) {
-		sendFinalizeAllocation(a)
+		sendFinalizeAllocation(a.ID)
+		cleanupAllocation(ctx, a)
 		return
 	}
 
@@ -152,13 +198,24 @@ func updateAllocation(ctx context.Context, a *Allocation) {
 	}
 }
 
+func finalizeExpiredAllocations(ctx context.Context) {
+	var allocs, err = requestExpiredAllocations()
+	if err != nil {
+		logging.Logger.Error("requesting expired allocations from SC", zap.Error(err))
+		return
+	}
+
+	for _, allocID := range allocs {
+		sendFinalizeAllocation(allocID)
+	}
+}
+
 func requestAllocation(allocID string) (sa *transaction.StorageAllocation, err error) {
 	var b []byte
 	b, err = transaction.MakeSCRestAPICall(
 		transaction.STORAGE_CONTRACT_ADDRESS,
 		"/allocation",
-		map[string]string{"allocation": allocID},
-		chain.GetServerChain())
+		map[string]string{"allocation": allocID})
 	if err != nil {
 		return
 	}
@@ -167,20 +224,58 @@ func requestAllocation(allocID string) (sa *transaction.StorageAllocation, err e
 	return
 }
 
+func requestExpiredAllocations() (allocs []string, err error) {
+	var b []byte
+	b, err = transaction.MakeSCRestAPICall(
+		transaction.STORAGE_CONTRACT_ADDRESS,
+		"/expired-allocations",
+		map[string]string{"blobber_id": node.Self.ID})
+	if err != nil {
+		return
+	}
+	err = json.Unmarshal(b, &allocs)
+	return
+}
+
 func updateAllocationInDB(ctx context.Context, a *Allocation, sa *transaction.StorageAllocation) (ua *Allocation, err error) {
 	var tx = datastore.GetStore().GetTransaction(ctx)
 	var changed bool = a.Tx != sa.Tx
+	if !changed {
+		return a, nil
+	}
 
 	// transaction
 	a.Tx = sa.Tx
 	a.OwnerID = sa.OwnerID
 	a.OwnerPublicKey = sa.OwnerPublicKey
 
-	// update fields
+	// // update fields
 	a.Expiration = sa.Expiration
 	a.TotalSize = sa.Size
 	a.Finalized = sa.Finalized
 	a.FileOptions = sa.FileOptions
+	a.BlobberSize = int64(math.Ceil(float64(sa.Size) / float64(sa.DataShards)))
+
+	updateMap := make(map[string]interface{})
+	updateMap["tx"] = a.Tx
+	updateMap["owner_id"] = a.OwnerID
+	updateMap["owner_public_key"] = a.OwnerPublicKey
+	updateMap["expiration_date"] = a.Expiration
+	updateMap["size"] = a.TotalSize
+	updateMap["finalized"] = a.Finalized
+	updateMap["file_options"] = a.FileOptions
+	updateMap["blobber_size"] = a.BlobberSize
+
+	updateOption := func(alloc *Allocation) {
+		alloc.Tx = a.Tx
+		alloc.OwnerID = a.OwnerID
+		alloc.OwnerPublicKey = a.OwnerPublicKey
+		alloc.Expiration = a.Expiration
+		alloc.TotalSize = a.TotalSize
+		alloc.Finalized = a.Finalized
+		alloc.FileOptions = a.FileOptions
+		alloc.BlobberSize = a.BlobberSize
+	}
 
 	// update terms
 	a.Terms = make([]*Terms, 0, len(sa.BlobberDetails))
@@ -194,12 +289,8 @@ func updateAllocationInDB(ctx context.Context, a *Allocation, sa *transaction.St
 	}
 
 	// save allocations
-	if err := Repo.Save(ctx, a); err != nil {
+	if err := Repo.UpdateAllocation(ctx, a, updateMap, updateOption); err != nil {
 		return nil, err
-	}
-
-	if !changed {
-		return a, nil
 	}
 
 	// save allocation terms
@@ -217,7 +308,7 @@ type finalizeRequest struct {
 	AllocationID string `json:"allocation_id"`
 }
 
-func sendFinalizeAllocation(a *Allocation) {
+func sendFinalizeAllocation(allocationID string) {
 	var tx, err = transaction.NewTransactionEntity()
 	if err != nil {
 		logging.Logger.Error("creating new transaction entity", zap.Error(err))
@@ -225,9 +316,8 @@ func sendFinalizeAllocation(a *Allocation) {
 	}
 
 	var request finalizeRequest
-	request.AllocationID = a.ID
+	request.AllocationID = allocationID
 
-	// TODO should this be verified?
 	err = tx.ExecuteSmartContract(
 		transaction.STORAGE_CONTRACT_ADDRESS,
 		transaction.FINALIZE_ALLOCATION,

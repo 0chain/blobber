@@ -9,7 +9,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
@@ -138,7 +137,36 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 
 	logging.Logger.Info("Saving the allocation to DB")
 
-	err = Repo.Save(ctx, a)
+	if !isExist {
+		err = Repo.Save(ctx, a)
+	} else {
+		updateMap := map[string]interface{}{
+			"tx":               a.Tx,
+			"expiration_date":  a.Expiration,
+			"owner_id":         a.OwnerID,
+			"owner_public_key": a.OwnerPublicKey,
+			"repairer_id":      a.RepairerID,
+			"size":             a.TotalSize,
+			"finalized":        a.Finalized,
+			"time_unit":        a.TimeUnit,
+			"file_options":     a.FileOptions,
+			"start_time":       a.StartTime,
+		}
+
+		updateOption := func(alloc *Allocation) {
+			alloc.Tx = a.Tx
+			alloc.Expiration = a.Expiration
+			alloc.OwnerID = a.OwnerID
+			alloc.OwnerPublicKey = a.OwnerPublicKey
+			alloc.RepairerID = a.RepairerID
+			alloc.TotalSize = a.TotalSize
+			alloc.Finalized = a.Finalized
+			alloc.TimeUnit = a.TimeUnit
+			alloc.FileOptions = a.FileOptions
+			alloc.StartTime = a.StartTime
+		}
+		err = Repo.UpdateAllocation(ctx, a, updateMap, updateOption)
+	}
 
 	if err != nil {
 		return nil, err
@@ -161,7 +189,7 @@ func RequestReadPoolStat(clientID string) (*ReadPool, error) {
 	params := map[string]string{
 		"client_id": clientID,
 	}
-	resp, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/getReadPoolStat", params, chain.GetServerChain())
+	resp, err := transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/getReadPoolStat", params)
 	if err != nil {
 		return nil, fmt.Errorf("requesting read pools stat: %v", err)
 	}
@@ -188,7 +216,7 @@ func RequestWritePool(allocationID string) (wps *WritePool, err error) {
 	params := map[string]string{
 		"allocation": allocationID,
 	}
-	resp, err = transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/allocation", params, chain.GetServerChain())
+	resp, err = transaction.MakeSCRestAPICall(transaction.STORAGE_CONTRACT_ADDRESS, "/allocation", params)
 	if err != nil {
 		return nil, fmt.Errorf("requesting write pools stat: %v", err)
 	}

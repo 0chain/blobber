@@ -2,6 +2,7 @@ package allocation
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -363,7 +364,7 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 
 	for _, tt := range testCases {
 		tc := tt
-
+		mut := &sync.Mutex{}
 		t.Run(t.Name(), func(t *testing.T) {
 			fs := &MockFileStore{}
 			if err := fs.Initialize(); err != nil {
@@ -390,7 +391,7 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 					return err
 				}
 				require.Equal(t, 2, len(rootRef.Children))
-				return change.CommitToFileStore(ctx)
+				return change.CommitToFileStore(ctx, mut)
 			}()
 
 			if tc.expectingError {

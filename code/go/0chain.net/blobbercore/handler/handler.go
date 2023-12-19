@@ -28,6 +28,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
+
 	"github.com/go-openapi/runtime/middleware"
 
 	"github.com/0chain/gosdk/constants"
@@ -178,10 +180,10 @@ func setupHandlers(r *mux.Router) {
 		Methods(http.MethodPost, http.MethodDelete, http.MethodOptions)
 
 	r.HandleFunc("/v1/connection/commit/{allocation}",
-		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnection(CommitHandler))))
+		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnectionForWM(CommitHandler))))
 
 	r.HandleFunc("/v1/connection/rollback/{allocation}",
-		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnection(RollbackHandler))))
+		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnectionForWM(RollbackHandler))))
 
 	//object info related apis
 	r.HandleFunc("/allocation",
@@ -215,20 +217,19 @@ func setupHandlers(r *mux.Router) {
 	// Allowing admin api for debugging purpose only. Later on commented out line should be
 	// uncommented and line below it should be deleted
 
-	// r.HandleFunc("/_debug", common.AuthenticateAdmin(common.ToJSONResponse(DumpGoRoutines)))
-	r.HandleFunc("/_debug", RateLimitByCommmitRL(common.ToJSONResponse(DumpGoRoutines)))
-	// r.HandleFunc("/_config", common.AuthenticateAdmin(common.ToJSONResponse(GetConfig)))
-	r.HandleFunc("/_config", RateLimitByCommmitRL(common.ToJSONResponse(GetConfig)))
+	r.HandleFunc("/_debug", common.AuthenticateAdmin(common.ToJSONResponse(DumpGoRoutines)))
+	// r.HandleFunc("/_debug", RateLimitByCommmitRL(common.ToJSONResponse(DumpGoRoutines)))
+	r.HandleFunc("/_config", common.AuthenticateAdmin(common.ToJSONResponse(GetConfig)))
+	// r.HandleFunc("/_config", RateLimitByCommmitRL(common.ToJSONResponse(GetConfig)))
 	// r.HandleFunc("/_stats", common.AuthenticateAdmin(StatsHandler))
 	r.HandleFunc("/_stats", RateLimitByCommmitRL(StatsHandler))
-	// r.HandleFunc("/_statsJSON", common.AuthenticateAdmin(common.ToJSONResponse(stats.StatsJSONHandler)))
-	r.HandleFunc("/_statsJSON", RateLimitByCommmitRL(common.ToJSONResponse(stats.StatsJSONHandler)))
+
+	r.HandleFunc("/_logs", RateLimitByCommmitRL(common.ToJSONResponse(GetLogs)))
+
 	// r.HandleFunc("/_cleanupdisk", common.AuthenticateAdmin(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))
 	// r.HandleFunc("/_cleanupdisk", RateLimitByCommmitRL(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))
-	// r.HandleFunc("/getstats", common.AuthenticateAdmin(common.ToJSONResponse(stats.GetStatsHandler)))
-	r.HandleFunc("/getstats", RateLimitByCommmitRL(common.ToJSONResponse(WithReadOnlyConnection(stats.GetStatsHandler))))
-	// r.HandleFunc("/challengetimings", common.AuthenticateAdmin(common.ToJSONResponse(GetChallengeTimings)))
-	r.HandleFunc("/challengetimings", RateLimitByCommmitRL(common.ToJSONResponse(GetChallengeTimings)))
+	r.HandleFunc("/challengetimings", common.AuthenticateAdmin(common.ToJSONResponse(GetChallengeTimings)))
+	// r.HandleFunc("/challengetimings", RateLimitByCommmitRL(common.ToJSONResponse(GetChallengeTimings)))
 	r.HandleFunc("/challenge-timings-by-challengeId", RateLimitByCommmitRL(common.ToJSONResponse(GetChallengeTiming)))
 
 	//marketplace related
@@ -740,7 +741,7 @@ func StatsHandler(w http.ResponseWriter, r *http.Request) {
 			writeResponse(w, []byte(err.Error()))
 			return
 		}
-
+		w.Header().Set("Content-Type", "application/json")
 		writeResponse(w, statsJson)
 
 		return
@@ -781,6 +782,10 @@ func DumpGoRoutines(ctx context.Context, r *http.Request) (interface{}, error) {
 func GetConfig(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	return config.Configuration, nil
+}
+
+func GetLogs(ctx context.Context, r *http.Request) (interface{}, error) {
+	return transaction.Last50Transactions, nil
 }
 
 func CleanupDiskHandler(ctx context.Context, r *http.Request) (interface{}, error) {

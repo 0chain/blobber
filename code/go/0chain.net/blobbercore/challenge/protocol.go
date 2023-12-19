@@ -49,7 +49,9 @@ func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error)
 	cancellation := time.Now()
 	db := datastore.GetStore().GetTransaction(ctx)
 	deleteChallenge(cr.RoundCreatedAt)
+	cr.statusMutex.Lock()
 	cr.Status = Cancelled
+	cr.statusMutex.Unlock()
 	cr.StatusMessage = errReason.Error()
 	cr.UpdatedAt = cancellation.UTC()
 	if err := db.Save(cr).Error; err != nil {
@@ -62,7 +64,7 @@ func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error)
 			zap.Time("cancellation", cancellation),
 			zap.Error(err))
 	}
-	logging.Logger.Error("[challenge]canceled", zap.String("challenge_id", cr.ChallengeID), zap.Error(errReason))
+	logging.Logger.Error("[challenge]canceled", zap.String("challenge_id", cr.ChallengeID), zap.Any("round_created_at", cr.RoundCreatedAt), zap.Error(errReason))
 }
 
 // LoadValidationTickets load validation tickets
@@ -79,7 +81,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	allocMu := lock.GetMutex(allocation.Allocation{}.TableName(), cr.AllocationID)
 	allocMu.RLock()
 
-	allocationObj, err := allocation.GetAllocationByID(ctx, cr.AllocationID)
+	allocationObj, err := allocation.Repo.GetAllocationFromDB(ctx, cr.AllocationID)
 	if err != nil {
 		allocMu.RUnlock()
 		cr.CancelChallenge(ctx, err)
@@ -106,6 +108,9 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	blockNum := int64(0)
 	var objectPath *reference.ObjectPath
 	if rootRef != nil {
+		if rootRef.Hash != allocationObj.AllocationRoot {
+			logging.Logger.Error("root_mismatch", zap.Any("allocation_root", allocationObj.AllocationRoot), zap.Any("latest_write_marker", wms[len(wms)-1].WM.AllocationRoot), zap.Any("root_ref_hash", rootRef.Hash))
+		}
 		if rootRef.NumBlocks > 0 {
 			r := rand.New(rand.NewSource(cr.RandomNumber))
 			blockNum = r.Int63n(rootRef.NumBlocks)
@@ -120,9 +125,10 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			cr.CancelChallenge(ctx, err)
 			return err
 		}
-
-		cr.RefID = objectPath.RefID
-		cr.ObjectPath = objectPath
+		if objectPath != nil {
+			cr.RefID = objectPath.RefID
+			cr.ObjectPath = objectPath
+		}
 	}
 	cr.RespondedAllocationRoot = allocationObj.AllocationRoot
 
@@ -225,7 +231,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		cr.ValidationTickets = make([]*ValidationTicket, len(cr.Validators))
 	}
 
-	accessMu := sync.Mutex{}
+	accessMu := sync.RWMutex{}
 	updateMapAndSlice := func(validatorID string, i int, vt *ValidationTicket) {
 		accessMu.Lock()
 		cr.ValidationTickets[i] = vt
@@ -236,6 +242,9 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		}
 		accessMu.Unlock()
 	}
+
+	numSuccess := 0
+	numFailed := 0
 
 	swg := sizedwaitgroup.New(10)
 	for i, validator := range cr.Validators {
@@ -254,7 +263,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 
 			resp, err := util.SendPostRequest(url, postDataBytes, nil)
 			if err != nil {
-				//network issue, don't cancel it, and try it again
+				numFailed++
 				logging.Logger.Error("[challenge]post: ", zap.Any("error", err.Error()))
 				updateMapAndSlice(validatorID, i, nil)
 				return
@@ -262,6 +271,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			var validationTicket ValidationTicket
 			err = json.Unmarshal(resp, &validationTicket)
 			if err != nil {
+				numFailed++
 				logging.Logger.Error(
 					"[challenge]resp: ",
 					zap.String("validator",
@@ -272,12 +282,17 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 				updateMapAndSlice(validatorID, i, nil)
 				return
 			}
+
 			logging.Logger.Info(
 				"[challenge]resp: Got response from the validator.",
 				zap.Any("validator_response", validationTicket),
+				zap.Any("numSuccess", numSuccess),
+				zap.Any("numFailed", numFailed),
 			)
+
 			verified, err := validationTicket.VerifySign()
 			if err != nil || !verified {
+				numFailed++
 				logging.Logger.Error(
 					"[challenge]ticket: Validation ticket from validator could not be verified.",
 					zap.String("validator", validatorID),
@@ -286,38 +301,25 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 				return
 			}
 			updateMapAndSlice(validatorID, i, &validationTicket)
+
+			numSuccess++
 		}(url, validator.ID, i)
 	}
 
-	swg.Wait()
-
-	numSuccess := 0
-	numFailure := 0
-
-	numValidatorsResponded := 0
-	for _, vt := range cr.ValidationTickets {
-		if vt != nil {
-			if vt.Result {
-				numSuccess++
-			} else {
-				logging.Logger.Error("[challenge]ticket: "+vt.Message, zap.String("validator", vt.ValidatorID))
-				numFailure++
-			}
-			numValidatorsResponded++
+	for {
+		if numSuccess > (len(cr.Validators)/2) || numSuccess+numFailed == len(cr.Validators) {
+			break
 		}
 	}
 
-	logging.Logger.Info("[challenge]validator response stats", zap.Any("challenge_id", cr.ChallengeID), zap.Any("validator_responses", responses))
-	if numSuccess > (len(cr.Validators)/2) || numFailure > (len(cr.Validators)/2) || numValidatorsResponded == len(cr.Validators) {
-		if numSuccess > (len(cr.Validators) / 2) {
-			cr.Result = ChallengeSuccess
-		} else {
-			cr.Result = ChallengeFailure
-
-			logging.Logger.Error("[challenge]validate: ", zap.String("challenge_id", cr.ChallengeID), zap.Any("block_num", cr.BlockNum), zap.Any("object_path", objectPath))
-		}
-
+	accessMu.RLock()
+	logging.Logger.Info("[challenge]validator response stats", zap.Any("challenge_id", cr.ChallengeID), zap.Any("validator_responses", responses), zap.Any("num_success", numSuccess), zap.Any("num_failed", numFailed))
+	accessMu.RUnlock()
+	if numSuccess > (len(cr.Validators) / 2) {
+		cr.Result = ChallengeSuccess
+		cr.statusMutex.Lock()
 		cr.Status = Processed
+		cr.statusMutex.Unlock()
 		cr.UpdatedAt = time.Now().UTC()
 	} else {
 		cr.CancelChallenge(ctx, ErrNoConsensusChallenge)
@@ -384,7 +386,9 @@ func IsEntityNotFoundError(err error) bool {
 }
 
 func (cr *ChallengeEntity) SaveChallengeResult(ctx context.Context, t *transaction.Transaction, toAdd bool) {
+	cr.statusMutex.Lock()
 	cr.Status = Committed
+	cr.statusMutex.Unlock()
 	cr.StatusMessage = t.TransactionOutput
 	cr.CommitTxnID = t.Hash
 	cr.UpdatedAt = time.Now().UTC()

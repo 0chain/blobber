@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0chain/gosdk/zcncore"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -14,10 +16,18 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
+const GetRoundInterval = 3 * time.Minute
+
 type TodoChallenge struct {
 	Id        string
 	CreatedAt time.Time
 	Status    ChallengeStatus
+}
+
+type RoundInfo struct {
+	CurrentRound            int64
+	CurrentRoundCaptureTime time.Time
+	LastRoundDiff           int64
 }
 
 func Int64Comparator(a, b interface{}) int {
@@ -37,6 +47,7 @@ var (
 	toProcessChallenge = make(chan *ChallengeEntity, 100)
 	challengeMap       = treemap.NewWith(Int64Comparator)
 	challengeMapLock   = sync.RWMutex{}
+	roundInfo          = RoundInfo{}
 )
 
 const batchSize = 5
@@ -60,10 +71,33 @@ func startPullWorker(ctx context.Context) {
 }
 
 func startWorkers(ctx context.Context) {
+	go getRoundWorker(ctx)
+
 	// start challenge listeners
 	go challengeProcessor(ctx)
 
 	go commitOnChainWorker(ctx)
+}
+
+func getRoundWorker(ctx context.Context) {
+	ticker := time.NewTicker(GetRoundInterval)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			currentRound, _ := zcncore.GetRoundFromSharders()
+
+			if roundInfo.LastRoundDiff == 0 {
+				roundInfo.LastRoundDiff = 1000
+			} else {
+				roundInfo.LastRoundDiff = currentRound - roundInfo.CurrentRound
+			}
+			roundInfo.CurrentRound = currentRound
+			roundInfo.CurrentRoundCaptureTime = time.Now()
+		}
+	}
 }
 
 func challengeProcessor(ctx context.Context) {
@@ -120,7 +154,7 @@ func processChallenge(ctx context.Context, it *ChallengeEntity) {
 func commitOnChainWorker(ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {
-			logging.Logger.Error("[commitWorker]challenge", zap.Any("err", r))
+			logging.Logger.Error("[commitWorker]challenge recovery", zap.Any("err", r))
 		}
 	}()
 	wg := sync.WaitGroup{}
@@ -163,7 +197,7 @@ func commitOnChainWorker(ctx context.Context) {
 					_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 						err := challenge.VerifyChallengeTransaction(ctx, txn)
 						if err == nil || err != ErrEntityNotFound {
-							deleteChallenge(int64(challenge.RoundCreatedAt))
+							deleteChallenge(challenge.RoundCreatedAt)
 						}
 						return nil
 					})
@@ -176,23 +210,37 @@ func commitOnChainWorker(ctx context.Context) {
 
 func getBatch(batchSize int) (chall []ChallengeEntity) {
 	challengeMapLock.RLock()
-	defer challengeMapLock.RUnlock()
 
 	if challengeMap.Size() == 0 {
+		challengeMapLock.RUnlock()
 		return
 	}
 
+	var toClean []int64
 	it := challengeMap.Iterator()
 	for it.Next() {
 		if len(chall) >= batchSize {
 			break
 		}
 		ticket := it.Value().(*ChallengeEntity)
-		if ticket.Status != Processed {
-			break
+		ticket.statusMutex.Lock()
+		switch ticket.Status {
+		case Accepted:
+			ticket.statusMutex.Unlock()
+			goto brekLoop
+		case Processed:
+			chall = append(chall, *ticket)
+		default:
+			toClean = append(toClean, ticket.RoundCreatedAt)
 		}
-		chall = append(chall, *ticket)
+		ticket.statusMutex.Unlock()
 	}
+brekLoop:
+	challengeMapLock.RUnlock()
+	for _, r := range toClean {
+		deleteChallenge(r)
+	}
+
 	return
 }
 
@@ -213,6 +261,8 @@ func (it *ChallengeEntity) createChallenge(ctx context.Context) bool {
 		logging.Logger.Info("createChallenge", zap.String("challenge_id", it.ChallengeID), zap.String("status", "already exists"))
 		return false
 	}
+	it.statusMutex = &sync.Mutex{}
+	it.Status = Accepted
 	challengeMap.Put(it.RoundCreatedAt, it)
 	return true
 }

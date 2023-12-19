@@ -1,6 +1,7 @@
 package conductrpc
 
 import (
+	"context"
 	"log"
 	"sync"
 	"sync/atomic"
@@ -31,6 +32,10 @@ func (e *Entity) State() (state *State) {
 // SetState sets current state.
 func (e *Entity) SetState(state *State) {
 	e.state.Store(state) // update
+
+	if state.GetFileMetaRoot {
+		go SendFileMetaRoot()
+	}
 }
 
 // NewEntity creates RPC client for integration tests.
@@ -105,6 +110,25 @@ func (e *Entity) BlobberCommitted(blobberID string) {
 	if err != nil {
 		log.Println(err)
 	}
+}
+
+func (e *Entity) ValidatorTicket(ticket ValidtorTicket) {
+	err := e.client.validationTicketGenerated(ticket)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+func (e *Entity) SendFileMetaRoot(blobberID, fileMetaRoot string, ctxCncl context.CancelFunc) {
+	m := map[string]string{
+		"blobber_id":     blobberID,
+		"file_meta_root": fileMetaRoot,
+	}
+	err := e.client.sendFileMetaRoot(m)
+	if err != nil {
+		return
+	}
+	ctxCncl()
 }
 
 //

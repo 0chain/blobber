@@ -33,6 +33,9 @@ func (m *Mutex) RLock() {
 }
 
 func (m *Mutex) RUnlock() {
+	lockMutex.Lock()
+	defer lockMutex.Unlock()
+	m.usedby--
 	m.mu.RUnlock()
 }
 
