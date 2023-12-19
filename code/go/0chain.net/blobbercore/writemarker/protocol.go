@@ -124,7 +124,6 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context) error {
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
 		wme.StatusMessage = "Error creating transaction entity. " + err.Error()
-		wme.ReedeemRetries++
 		if err := wme.UpdateStatus(ctx, Failed, "Error creating transaction entity. "+err.Error(), ""); err != nil {
 			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
 		}
@@ -141,7 +140,6 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context) error {
 		Logger.Error("Failed during sending close connection to the miner. ", zap.String("err:", err.Error()))
 		wme.Status = Failed
 		wme.StatusMessage = "Failed during sending close connection to the miner. " + err.Error()
-		wme.ReedeemRetries++
 		if err := wme.UpdateStatus(ctx, Failed, "Failed during sending close connection to the miner. "+err.Error(), ""); err != nil {
 			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
 		}
@@ -154,7 +152,6 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context) error {
 		Logger.Error("Error verifying the close connection transaction", zap.String("err:", err.Error()), zap.String("txn", txn.Hash))
 		wme.Status = Failed
 		wme.StatusMessage = "Error verifying the close connection transaction." + err.Error()
-		wme.ReedeemRetries++
 		wme.CloseTxnID = txn.Hash
 		// TODO Is this single try?
 		if err := wme.UpdateStatus(ctx, Failed, "Error verifying the close connection transaction."+err.Error(), txn.Hash); err != nil {
