@@ -50,7 +50,6 @@ func UpdateWorker(ctx context.Context, interval time.Duration) {
 	for {
 		select {
 		case <-tick:
-			logging.Logger.Info("update allocations", zap.Duration("interval", interval))
 			updateCtx := datastore.GetStore().CreateTransaction(context.TODO())
 			_ = datastore.GetStore().WithTransaction(updateCtx, func(ctx context.Context) error {
 				updateWork(ctx)
@@ -105,8 +104,6 @@ func waitOrQuit(ctx context.Context, d time.Duration) (quit bool) {
 }
 
 func updateWork(ctx context.Context) {
-	logging.Logger.Info("update allocations worker")
-
 	defer func() {
 		if r := recover(); r != nil {
 			logging.Logger.Error("[recover] updateWork", zap.Any("err", r))
@@ -121,13 +118,9 @@ func updateWork(ctx context.Context) {
 		err error
 	)
 
-	logging.Logger.Info("update allocations worker", zap.Int64("offset", offset), zap.Int("count", count))
-
 	// iterate all in loop accepting allocations with limit
 
 	for start := true; start || (offset < int64(count)); start = false {
-		logging.Logger.Info("update allocations worker", zap.Int64("offset", offset), zap.Int("count", count), zap.Bool("start", start))
-
 		allocs, count, err = findAllocations(ctx, offset)
 		if err != nil {
 			logging.Logger.Error("finding allocations in DB", zap.Error(err))
@@ -137,11 +130,7 @@ func updateWork(ctx context.Context) {
 			continue
 		}
 
-		logging.Logger.Info("1update allocations worker", zap.Int64("offset", offset), zap.Int("count", count), zap.Bool("start", start), zap.Any("allocs", allocs))
-
 		offset += int64(len(allocs))
-
-		logging.Logger.Info("2update allocations worker", zap.Int64("offset", offset), zap.Int("count", count), zap.Bool("start", start), zap.Any("allocs", allocs))
 
 		for _, a := range allocs {
 			updateAllocation(ctx, a, node.Self.ID)
@@ -149,8 +138,6 @@ func updateWork(ctx context.Context) {
 				return
 			}
 		}
-
-		logging.Logger.Info("3update allocations worker", zap.Int64("offset", offset), zap.Int("count", count), zap.Bool("start", start), zap.Any("allocs", allocs))
 	}
 }
 
@@ -166,18 +153,24 @@ func shouldFinalize(sa *transaction.StorageAllocation) bool {
 }
 
 func updateAllocation(ctx context.Context, a *Allocation, selfBlobberID string) {
-	if a.Finalized {
-		cleanupAllocation(ctx, a)
-		return
-	}
-
 	var sa, err = requestAllocation(a.ID)
 	if err != nil {
 		logging.Logger.Error("requesting allocations from SC", zap.Error(err))
 		return
 	}
 
-	logging.Logger.Info("update allocation", zap.String("id", a.ID), zap.Any("sa", sa), zap.Any("alloc", a))
+	// send finalize allocation transaction
+	if shouldFinalize(sa) {
+		sendFinalizeAllocation(a.ID)
+		cleanupAllocation(ctx, a)
+		return
+	}
+
+	// remove data
+	if sa.Finalized && !a.CleanedUp {
+		logging.Logger.Info("allocation finalised on chain", zap.String("id", a.ID))
+		cleanupAllocation(ctx, a)
+	}
 
 	removedBlobber := true
 	for _, d := range sa.BlobberDetails {
@@ -200,19 +193,6 @@ func updateAllocation(ctx context.Context, a *Allocation, selfBlobberID string) 
 		}
 	}
 
-	// send finalize allocation transaction
-	if shouldFinalize(sa) {
-		logging.Logger.Info("finalize allocation", zap.String("id", a.ID), zap.Any("sa", sa), zap.Any("alloc", a))
-		sendFinalizeAllocation(a.ID)
-		cleanupAllocation(ctx, a)
-		return
-	}
-
-	// remove data
-	if a.Finalized && !a.CleanedUp {
-		logging.Logger.Info("cleanup allocation", zap.String("id", a.ID), zap.Any("sa", sa), zap.Any("alloc", a))
-		cleanupAllocation(ctx, a)
-	}
 }
 
 func finalizeExpiredAllocations(ctx context.Context) {
@@ -361,7 +341,6 @@ func cleanupAllocation(ctx context.Context, a *Allocation) {
 }
 
 func deleteAllocation(ctx context.Context, a *Allocation) (err error) {
-	logging.Logger.Info("deleting allocation", zap.String("id", a.ID))
 	var tx = datastore.GetStore().GetTransaction(ctx)
 	filestore.GetFileStore().DeleteAllocation(a.ID)
 	err = tx.Model(&reference.Ref{}).Unscoped().
