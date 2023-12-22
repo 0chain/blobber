@@ -159,17 +159,17 @@ func updateAllocation(ctx context.Context, a *Allocation, selfBlobberID string) 
 		return
 	}
 
+	// remove data
+	if sa.Finalized && !a.CleanedUp {
+		logging.Logger.Info("allocation finalised on chain", zap.String("id", a.ID))
+		cleanupAllocation(ctx, a)
+	}
+
 	// send finalize allocation transaction
 	if shouldFinalize(sa) {
 		sendFinalizeAllocation(a.ID)
 		cleanupAllocation(ctx, a)
 		return
-	}
-
-	// remove data
-	if sa.Finalized && !a.CleanedUp {
-		logging.Logger.Info("allocation finalised on chain", zap.String("id", a.ID))
-		cleanupAllocation(ctx, a)
 	}
 
 	removedBlobber := true
