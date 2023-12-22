@@ -501,6 +501,15 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 		return
 	}
 
+	if rootRef.Hash != allocationObj.AllocationRoot {
+		allocationObj, err = allocation.Repo.GetAllocationFromDB(ctx, allocationID)
+		if err != nil {
+			errCh <- common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+			return
+		}
+		allocation.Repo.DeleteAllocation(allocationId)
+	}
+
 	refPath := &reference.ReferencePath{Ref: rootRef}
 
 	refsToProcess := []*reference.ReferencePath{refPath}
@@ -528,6 +537,9 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 		if err != nil {
 			errCh <- common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 			return
+		}
+		if latestWM.WM.AllocationRoot != rootRef.Hash {
+			errCh <- common.NewError("latest_write_marker_read_error", fmt.Sprintf("hash mismatch with latest write marker for allocation expected %s got %s", rootRef.Hash, latestWM.WM.AllocationRoot))
 		}
 	}
 
