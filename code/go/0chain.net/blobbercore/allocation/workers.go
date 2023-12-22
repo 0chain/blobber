@@ -186,7 +186,7 @@ func updateAllocation(ctx context.Context, a *Allocation, selfBlobberID string) 
 	}
 
 	// if new Tx, then we have to update the allocation
-	if sa.Tx != a.Tx || sa.OwnerID != a.OwnerID || sa.Finalized != a.Finalized {
+	if sa.Tx != a.Tx {
 		if _, err = updateAllocationInDB(ctx, a, sa); err != nil {
 			logging.Logger.Error("updating allocation in DB", zap.Error(err))
 			return
