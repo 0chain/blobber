@@ -95,6 +95,10 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 		logging.Logger.Info("Stale write marker. Allocation root mismatch",
 			zap.Any("allocation", allocationID),
 			zap.Any("wm", wm.WM.AllocationRoot), zap.Any("alloc_root", alloc.AllocationRoot))
+		if wm.ReedeemRetries == 0 && !alloc.IsRedeemRequired {
+			wm.ReedeemRetries++
+			go tryAgain(wm)
+		}
 		_ = wm.UpdateStatus(ctx, Rollbacked, "rollbacked", "")
 		err = db.Commit().Error
 		mut := GetLock(allocationID)

@@ -633,7 +633,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	elapsedMoveToFilestore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
 
 	rootRef, err := connectionObj.ApplyChanges(
-		ctx, writeMarker.AllocationRoot, writeMarker.Timestamp, fileIDMeta)
+		ctx, writeMarker.AllocationRoot, writeMarker.PreviousAllocationRoot, writeMarker.Timestamp, fileIDMeta)
 	if err != nil {
 		Logger.Error("Error applying changes", zap.Error(err))
 		return nil, err
@@ -712,10 +712,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		}
 	}
 	elapsedCommitStore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem - elapsedApplyChanges - elapsedSaveAllocation
-	err = writemarkerEntity.SendToChan(ctx)
-	if err != nil {
-		return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
-	}
 
 	connectionObj.DeleteChanges(ctx)
 
@@ -730,6 +726,10 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	//Delete connection object and its changes
 
 	db.Delete(connectionObj)
+	err = writemarkerEntity.SendToChan(ctx)
+	if err != nil {
+		return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
+	}
 	go allocation.DeleteConnectionObjEntry(connectionID)
 	go AddWriteMarkerCount(clientID, 1)
 
