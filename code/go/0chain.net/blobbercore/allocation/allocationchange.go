@@ -210,11 +210,14 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 	}
 }
 
-func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocationRoot string,
+func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocationRoot, prevAllocationRoot string,
 	ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error) {
 	rootRef, err := cc.GetRootRef(ctx)
 	if err != nil {
 		return rootRef, err
+	}
+	if rootRef.Hash != prevAllocationRoot {
+		return rootRef, common.NewError("invalid_prev_root", "Invalid prev root")
 	}
 	for idx, change := range cc.Changes {
 		changeProcessor := cc.AllocationChanges[idx]
@@ -284,12 +287,15 @@ type Result struct {
 func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 
 	logging.Logger.Info("Move to filestore", zap.String("allocation_id", a.AllocationID))
-
+	err := deleteFromFileStore(ctx, a.AllocationID)
+	if err != nil {
+		return err
+	}
 	var refs []*Result
 	limitCh := make(chan struct{}, 10)
 	wg := &sync.WaitGroup{}
 
-	e := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+	err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		tx := datastore.GetStore().GetTransaction(ctx)
 		err := tx.Model(&reference.Ref{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Select("id", "validation_root", "thumbnail_hash", "prev_validation_root", "prev_thumbnail_hash").Where("allocation_id=? AND is_precommit=? AND type=?", a.AllocationID, true, reference.FILE).
 			FindInBatches(&refs, 50, func(tx *gorm.DB, batch int) error {
@@ -355,11 +361,7 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 
 		return tx.Exec("UPDATE reference_objects SET is_precommit=?, prev_validation_root=validation_root, prev_thumbnail_hash=thumbnail_hash WHERE allocation_id=? AND is_precommit=? AND deleted_at is NULL", false, a.AllocationID, true).Error
 	})
-	if e != nil {
-		return e
-	}
-
-	return deleteFromFileStore(ctx, a.AllocationID)
+	return err
 }
 
 func deleteFromFileStore(ctx context.Context, allocationID string) error {
