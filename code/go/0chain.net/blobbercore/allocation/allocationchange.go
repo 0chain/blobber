@@ -130,13 +130,15 @@ func (change *AllocationChange) GetOrParseAffectedFilePath() (string, error) {
 func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clientID string) (*AllocationChangeCollector, error) {
 	cc := &AllocationChangeCollector{}
 	db := datastore.GetStore().GetTransaction(ctx)
+	now := time.Now()
 	err := db.Where("id = ? and allocation_id = ? and client_id = ? and status <> ?",
 		connectionID,
 		allocationID,
 		clientID,
 		DeletedConnection,
-	).Preload("Changes").First(cc).Error
+	).Preload("Changes").Take(cc).Error
 
+	dbTime := time.Since(now)
 	if err == nil {
 		cc.ComputeProperties()
 		// Load connection Obj size from memory
@@ -144,7 +146,10 @@ func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clien
 		cc.Status = InProgressConnection
 		return cc, nil
 	}
-
+	computeTime := time.Since(now) - dbTime
+	if computeTime+dbTime > 500*time.Millisecond {
+		logging.Logger.Info("GetAllocationChanges", zap.Duration("db", dbTime), zap.Duration("compute", computeTime), zap.Duration("total", time.Since(now)))
+	}
 	// It is a bug when connetion_id was marked as DeletedConnection
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		cc.ID = connectionID
