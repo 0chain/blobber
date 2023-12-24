@@ -855,6 +855,13 @@ ALTER TABLE ONLY allocation_changes
     ADD CONSTRAINT fk_allocation_connections_changes FOREIGN KEY (connection_id) REFERENCES allocation_connections(id) ON DELETE CASCADE;
 
 
+ --
+ -- Name: connection_id_index; Type: INDEX; Schema: public; Owner: blobber_user
+ --   
+
+CREATE INDEX connection_id_index ON allocation_changes USING btree (connection_id);
+
+
 --
 -- Name: file_stats fk_file_stats_ref; Type: FK CONSTRAINT; Schema: public; Owner: blobber_user
 --
