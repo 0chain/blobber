@@ -42,7 +42,7 @@ finalize_allocations_interval: 24h
 max_dirs_files: 50000
 
 # delegate wallet (must be set)
-delegate_wallet: '9c693cb14f29917968d6e8c909ebbea3425b4c1bc64b6732cadc2a1869f49be9'
+delegate_wallet: '1746b06bb09f55ee01b33b5e2e055d6cc7a900cb57c0a3a5eaabb8a0e7745802'
 # maximum allowed number of stake holders
 num_delegates: 50
 # service charge of the blobber
