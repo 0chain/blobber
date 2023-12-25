@@ -144,12 +144,13 @@ func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clien
 		// Load connection Obj size from memory
 		cc.Size = GetConnectionObjSize(connectionID)
 		cc.Status = InProgressConnection
+		computeTime := time.Since(now) - dbTime
+		if computeTime+dbTime > 500*time.Millisecond {
+			logging.Logger.Info("GetAllocationChanges", zap.Duration("db", dbTime), zap.Duration("compute", computeTime), zap.Duration("total", time.Since(now)))
+		}
 		return cc, nil
 	}
-	computeTime := time.Since(now) - dbTime
-	if computeTime+dbTime > 500*time.Millisecond {
-		logging.Logger.Info("GetAllocationChanges", zap.Duration("db", dbTime), zap.Duration("compute", computeTime), zap.Duration("total", time.Since(now)))
-	}
+
 	// It is a bug when connetion_id was marked as DeletedConnection
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		cc.ID = connectionID
