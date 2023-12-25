@@ -145,7 +145,7 @@ func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clien
 		cc.Size = GetConnectionObjSize(connectionID)
 		cc.Status = InProgressConnection
 		computeTime := time.Since(now) - dbTime
-		if computeTime+dbTime > 500*time.Millisecond {
+		if time.Since(now) > time.Duration(500*time.Millisecond) {
 			logging.Logger.Info("GetAllocationChanges", zap.Duration("db", dbTime), zap.Duration("compute", computeTime), zap.Duration("total", time.Since(now)))
 		}
 		return cc, nil
