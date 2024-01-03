@@ -13,6 +13,13 @@ import (
 	"github.com/herumi/bls-go-binary/bls"
 )
 
+func init() {
+	err := bls.Init(bls.CurveFp254BNb)
+	if err != nil {
+		panic(err)
+	}
+}
+
 /*
 ReadKeys - reads a publicKey and a privateKey from a Reader.
 They are assumed to be in two separate lines one followed by the other
