@@ -106,7 +106,7 @@ func ValidValidationTicket(challengeObj *Challenge, challengeID string, challeng
 	validationTicket.Message = "Challenge passed"
 	validationTicket.ValidatorID = node.Self.ID
 	validationTicket.ValidatorKey = node.Self.PublicKey
-	validationTicket.Timestamp = common.Now()
+	validationTicket.Timestamp = challengeObj.Timestamp
 	if err := validationTicket.Sign(); err != nil {
 		return nil, common.NewError("invalid_parameters", err.Error())
 	}

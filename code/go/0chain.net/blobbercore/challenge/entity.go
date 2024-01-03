@@ -68,7 +68,7 @@ type ValidationTicket struct {
 }
 
 func (vt *ValidationTicket) VerifySign() (bool, error) {
-	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v", vt.ChallengeID, vt.BlobberID, vt.ValidatorID, vt.ValidatorKey, vt.Result, vt.Timestamp)
+	hashData := fmt.Sprintf("%v:%v:%v:%v", vt.ChallengeID, vt.BlobberID, vt.Result, vt.Timestamp)
 	hash := encryption.Hash(hashData)
 	verified, err := encryption.Verify(vt.ValidatorKey, vt.Signature, hash)
 	return verified, err

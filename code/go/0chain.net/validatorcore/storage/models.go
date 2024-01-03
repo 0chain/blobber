@@ -395,7 +395,7 @@ type ValidationTicket struct {
 }
 
 func (vt *ValidationTicket) Sign() error {
-	hashData := fmt.Sprintf("%v:%v:%v:%v:%v:%v", vt.ChallengeID, vt.BlobberID, vt.ValidatorID, vt.ValidatorKey, vt.Result, vt.Timestamp)
+	hashData := fmt.Sprintf("%v:%v:%v:%v", vt.ChallengeID, vt.BlobberID, vt.Result, vt.Timestamp)
 	hash := encryption.Hash(hashData)
 	signature, err := node.Self.Sign(hash)
 	vt.Signature = signature

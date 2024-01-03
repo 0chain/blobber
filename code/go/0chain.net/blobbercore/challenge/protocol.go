@@ -41,8 +41,9 @@ var (
 )
 
 type ChallengeResponse struct {
-	ChallengeID       string              `json:"challenge_id"`
-	ValidationTickets []*ValidationTicket `json:"validation_tickets"`
+	ChallengeID         string              `json:"challenge_id"`
+	ValidationTickets   []*ValidationTicket `json:"validation_tickets"`
+	AggregatedSignature string              `json:"aggregated_signature"`
 }
 
 func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error) {
@@ -291,17 +292,17 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			)
 
 			verified, err := validationTicket.VerifySign()
-			if err != nil || !verified {
+			if err != nil || !verified || !validationTicket.Result {
 				numFailed++
 				logging.Logger.Error(
 					"[challenge]ticket: Validation ticket from validator could not be verified.",
 					zap.String("validator", validatorID),
+					zap.String("validator_response", validationTicket.Message),
 				)
 				updateMapAndSlice(validatorID, i, nil)
 				return
 			}
 			updateMapAndSlice(validatorID, i, &validationTicket)
-
 			numSuccess++
 		}(url, validator.ID, i)
 	}
