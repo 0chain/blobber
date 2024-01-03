@@ -172,8 +172,8 @@ func commitOnChainWorker(ctx context.Context) {
 			continue
 		}
 
-		logging.Logger.Info("committing_challenge_tickets", zap.Any("num", len(challenges)), zap.Any("challenges", challenges))
-
+		logging.Logger.Info("committing_challenge_tickets", zap.Any("num", len(challenges)))
+		now := time.Now()
 		for _, challenge := range challenges {
 			chall := challenge
 			var (
@@ -198,6 +198,9 @@ func commitOnChainWorker(ctx context.Context) {
 						err := challenge.VerifyChallengeTransaction(ctx, txn)
 						if err == nil || err != ErrEntityNotFound {
 							deleteChallenge(challenge.RoundCreatedAt)
+							if err != nil {
+								logging.Logger.Error("verifyChallengeTransaction", zap.Any("challenge", *challenge))
+							}
 						}
 						return nil
 					})
@@ -205,6 +208,7 @@ func commitOnChainWorker(ctx context.Context) {
 			}
 		}
 		wg.Wait()
+		logging.Logger.Info("committing_tickets_timing", zap.Any("num", len(challenges)), zap.Duration("elapsed", time.Since(now)))
 	}
 }
 

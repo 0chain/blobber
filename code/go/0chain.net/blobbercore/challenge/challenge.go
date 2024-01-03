@@ -215,7 +215,6 @@ func (c *ChallengeEntity) getCommitTransaction(ctx context.Context) (*transactio
 		c.CancelChallenge(ctx, err)
 		return nil, nil
 	}
-	logging.Logger.Info("[challenge]response:", zap.Any("challengeResponse", *sn))
 
 	err = UpdateChallengeTimingTxnSubmission(c.ChallengeID, txn.CreationDate)
 	if err != nil {

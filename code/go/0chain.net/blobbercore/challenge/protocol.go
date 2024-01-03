@@ -373,7 +373,7 @@ func (cr *ChallengeEntity) VerifyChallengeTransaction(ctx context.Context, txn *
 		_ = cr.Save(ctx)
 		return err
 	}
-	logging.Logger.Info("Success response from BC for challenge response transaction", zap.String("txn", txn.TransactionOutput), zap.String("challenge_id", cr.ChallengeID))
+	logging.Logger.Info("Success response from BC for challenge response transaction", zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ChallengeID))
 	cr.SaveChallengeResult(ctx, t, true)
 	return nil
 }
@@ -383,7 +383,7 @@ func IsValueNotPresentError(err error) bool {
 }
 
 func IsEntityNotFoundError(err error) bool {
-	return strings.Contains(err.Error(), EntityNotFound)
+	return strings.Contains(err.Error(), EntityNotFound) || strings.Contains(err.Error(), "not present") || strings.Contains(err.Error(), "invalid challenge response")
 }
 
 func (cr *ChallengeEntity) SaveChallengeResult(ctx context.Context, t *transaction.Transaction, toAdd bool) {
