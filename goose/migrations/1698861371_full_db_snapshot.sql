@@ -576,6 +576,8 @@ ALTER TABLE ONLY marketplace_share_info ALTER COLUMN id SET DEFAULT nextval('mar
 ALTER TABLE ONLY reference_objects ALTER COLUMN id SET DEFAULT nextval('reference_objects_id_seq'::regclass);
 
 
+ALTER TABLE ONLY reference_objects ADD CONSTRAINT path_commit UNIQUE(lookup_hash,is_precommit);
+
 --
 -- Name: terms id; Type: DEFAULT; Schema: public; Owner: blobber_user
 --
@@ -851,6 +853,13 @@ CREATE INDEX path_idx ON reference_objects USING btree (path);
 
 ALTER TABLE ONLY allocation_changes
     ADD CONSTRAINT fk_allocation_connections_changes FOREIGN KEY (connection_id) REFERENCES allocation_connections(id) ON DELETE CASCADE;
+
+
+ --
+ -- Name: connection_id_index; Type: INDEX; Schema: public; Owner: blobber_user
+ --   
+
+CREATE INDEX connection_id_index ON allocation_changes USING btree (connection_id);
 
 
 --
