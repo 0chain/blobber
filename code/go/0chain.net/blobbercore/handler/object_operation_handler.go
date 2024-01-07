@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -291,7 +292,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	if err != nil {
 		return nil, err
 	}
-	now := time.Now()
+
 	if dr.NumBlocks > config.Configuration.BlockLimitRequest {
 		return nil, common.NewErrorf("download_file", "too many blocks requested: %v, max limit is %v", dr.NumBlocks, config.Configuration.BlockLimitRequest)
 	}
@@ -300,7 +301,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	if dailyBlocksConsumed+dr.NumBlocks > config.Configuration.BlockLimitDaily {
 		return nil, common.NewErrorf("download_file", "daily block limit reached: %v, max limit is %v", dailyBlocksConsumed, config.Configuration.BlockLimitDaily)
 	}
-
+	now := time.Now()
 	fileref, err := reference.GetReferenceByLookupHash(ctx, alloc.ID, dr.PathHash)
 	if err != nil {
 		return nil, common.NewErrorf("download_file", "invalid file path: %v", err)
@@ -316,12 +317,15 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	var shareInfo *reference.ShareInfo
 
 	if !isOwner {
-		authTokenString := dr.AuthToken
-		if authTokenString == "" {
+		if dr.AuthToken == "" {
 			return nil, common.NewError("invalid_authticket", "authticket is required")
 		}
+		authTokenString, err := base64.StdEncoding.DecodeString(dr.AuthToken)
+		if err != nil {
+			return nil, common.NewError("invalid_authticket", err.Error())
+		}
 
-		if authToken, err = fsh.verifyAuthTicket(ctx, authTokenString, alloc, fileref, clientID, false); authToken == nil {
+		if authToken, err = fsh.verifyAuthTicket(ctx, string(authTokenString), alloc, fileref, clientID, false); authToken == nil {
 			return nil, common.NewErrorf("invalid_authticket", "cannot verify auth ticket: %v", err)
 		}
 
@@ -638,10 +642,13 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	elapsedMoveToFilestore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
 
 	rootRef, err := connectionObj.ApplyChanges(
-		ctx, writeMarker.AllocationRoot, writeMarker.Timestamp, fileIDMeta)
+		ctx, writeMarker.AllocationRoot, writeMarker.PreviousAllocationRoot, writeMarker.Timestamp, fileIDMeta)
 	if err != nil {
 		Logger.Error("Error applying changes", zap.Error(err))
 		return nil, err
+	}
+	if !rootRef.IsPrecommit {
+		return nil, common.NewError("no_root_change", "No change in root ref")
 	}
 
 	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
@@ -712,10 +719,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 	}
 	elapsedCommitStore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem - elapsedApplyChanges - elapsedSaveAllocation
-	err = writemarkerEntity.SendToChan(ctx)
-	if err != nil {
-		return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
-	}
 
 	connectionObj.DeleteChanges(ctx)
 
@@ -730,6 +733,10 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	//Delete connection object and its changes
 
 	db.Delete(connectionObj)
+	err = writemarkerEntity.SendToChan(ctx)
+	if err != nil {
+		return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
+	}
 	go allocation.DeleteConnectionObjEntry(connectionID)
 	go AddWriteMarkerCount(clientID, 1)
 
@@ -737,6 +744,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		zap.String("alloc_id", allocationID),
 		zap.String("allocation_root", writeMarker.AllocationRoot),
 		zap.String("input", input),
+		zap.Int("num_changes", len(connectionObj.Changes)),
 		zap.Duration("get_alloc", elapsedAllocation),
 		zap.Duration("get-lock", elapsedGetLock),
 		zap.Duration("get-conn-obj", elapsedGetConnObj),
@@ -1430,18 +1438,15 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	alloc.UsedSize -= latestWriteMarkerEntity.WM.Size
 	alloc.AllocationRoot = allocationRoot
 	alloc.FileMetaRoot = fileMetaRoot
+	alloc.IsRedeemRequired = true
 	updateMap := map[string]interface{}{
-		"blobber_size_used": alloc.BlobberSizeUsed,
-		"used_size":         alloc.UsedSize,
-		"allocation_root":   alloc.AllocationRoot,
-		"file_meta_root":    alloc.FileMetaRoot,
+		"blobber_size_used":  alloc.BlobberSizeUsed,
+		"used_size":          alloc.UsedSize,
+		"allocation_root":    alloc.AllocationRoot,
+		"file_meta_root":     alloc.FileMetaRoot,
+		"is_redeem_required": true,
 	}
-	sendWM := !alloc.IsRedeemRequired
-	if alloc.IsRedeemRequired {
-		writemarkerEntity.Status = writemarker.Rollbacked
-		alloc.IsRedeemRequired = false
-		updateMap["is_redeem_required"] = alloc.IsRedeemRequired
-	}
+
 	updateOption := func(a *allocation.Allocation) {
 		a.BlobberSizeUsed = alloc.BlobberSizeUsed
 		a.UsedSize = alloc.UsedSize
@@ -1464,11 +1469,9 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	if err != nil {
 		return &result, common.NewError("allocation_commit_error", "Error committing the transaction "+err.Error())
 	}
-	if sendWM {
-		err = writemarkerEntity.SendToChan(ctx)
-		if err != nil {
-			return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
-		}
+	err = writemarkerEntity.SendToChan(ctx)
+	if err != nil {
+		return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
 	}
 	err = allocation.CommitRollback(allocationID)
 	if err != nil {

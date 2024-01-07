@@ -153,14 +153,22 @@ func shouldFinalize(sa *transaction.StorageAllocation) bool {
 }
 
 func updateAllocation(ctx context.Context, a *Allocation, selfBlobberID string) {
-	if a.Finalized {
-		cleanupAllocation(ctx, a)
-		return
-	}
-
 	var sa, err = requestAllocation(a.ID)
 	if err != nil {
 		logging.Logger.Error("requesting allocations from SC", zap.Error(err))
+		return
+	}
+
+	// remove data
+	if sa.Finalized && !a.CleanedUp {
+		logging.Logger.Info("allocation finalised on chain", zap.String("id", a.ID))
+		cleanupAllocation(ctx, a)
+	}
+
+	// send finalize allocation transaction
+	if shouldFinalize(sa) {
+		sendFinalizeAllocation(a.ID)
+		cleanupAllocation(ctx, a)
 		return
 	}
 
@@ -178,24 +186,13 @@ func updateAllocation(ctx context.Context, a *Allocation, selfBlobberID string) 
 	}
 
 	// if new Tx, then we have to update the allocation
-	if sa.Tx != a.Tx || sa.OwnerID != a.OwnerID || sa.Finalized != a.Finalized {
-		if a, err = updateAllocationInDB(ctx, a, sa); err != nil {
+	if sa.Tx != a.Tx {
+		if _, err = updateAllocationInDB(ctx, a, sa); err != nil {
 			logging.Logger.Error("updating allocation in DB", zap.Error(err))
 			return
 		}
 	}
 
-	// send finalize allocation transaction
-	if shouldFinalize(sa) {
-		sendFinalizeAllocation(a.ID)
-		cleanupAllocation(ctx, a)
-		return
-	}
-
-	// remove data
-	if a.Finalized && !a.CleanedUp {
-		cleanupAllocation(ctx, a)
-	}
 }
 
 func finalizeExpiredAllocations(ctx context.Context) {

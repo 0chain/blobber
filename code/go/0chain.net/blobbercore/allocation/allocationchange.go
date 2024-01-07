@@ -210,12 +210,14 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 	}
 }
 
-func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocationRoot string,
+func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocationRoot, prevAllocationRoot string,
 	ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error) {
 	rootRef, err := cc.GetRootRef(ctx)
-	logging.Logger.Info("GetRootRef", zap.Any("rootRef", rootRef))
 	if err != nil {
 		return rootRef, err
+	}
+	if rootRef.Hash != prevAllocationRoot {
+		return rootRef, common.NewError("invalid_prev_root", "Invalid prev root")
 	}
 	for idx, change := range cc.Changes {
 		changeProcessor := cc.AllocationChanges[idx]
@@ -253,7 +255,6 @@ func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error
 		go func(change AllocationChangeProcessor) {
 			err := change.CommitToFileStore(ctx, mut)
 			if err != nil && !errors.Is(common.ErrFileWasDeleted, err) {
-				logging.Logger.Error("AllocationChangeCollector_CommitToFileStore", zap.Error(err))
 				cancel()
 				errorMutex.Lock()
 				commitError = err
@@ -283,17 +284,20 @@ type Result struct {
 }
 
 // TODO: Need to speed up this function
-func (a *AllocationChangeCollector) MoveToFilestore() (err error) {
+func (a *AllocationChangeCollector) MoveToFilestore() error {
 
 	logging.Logger.Info("Move to filestore", zap.String("allocation_id", a.AllocationID))
-
+	err := deleteFromFileStore(a.AllocationID)
+	if err != nil {
+		return err
+	}
 	var refs []*Result
 	limitCh := make(chan struct{}, 10)
 	wg := &sync.WaitGroup{}
 
-	e := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+	err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		tx := datastore.GetStore().GetTransaction(ctx)
-		err = tx.Model(&reference.Ref{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Select("id", "validation_root", "thumbnail_hash", "prev_validation_root", "prev_thumbnail_hash").Where("allocation_id=? AND is_precommit=? AND type=?", a.AllocationID, true, reference.FILE).
+		err := tx.Model(&reference.Ref{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Select("id", "validation_root", "thumbnail_hash", "prev_validation_root", "prev_thumbnail_hash").Where("allocation_id=? AND is_precommit=? AND type=?", a.AllocationID, true, reference.FILE).
 			FindInBatches(&refs, 50, func(tx *gorm.DB, batch int) error {
 
 				for _, ref := range refs {
@@ -357,11 +361,7 @@ func (a *AllocationChangeCollector) MoveToFilestore() (err error) {
 
 		return tx.Exec("UPDATE reference_objects SET is_precommit=?, prev_validation_root=validation_root, prev_thumbnail_hash=thumbnail_hash WHERE allocation_id=? AND is_precommit=? AND deleted_at is NULL", false, a.AllocationID, true).Error
 	})
-	if e != nil {
-		return e
-	}
-
-	return deleteFromFileStore(a.AllocationID)
+	return err
 }
 
 func deleteFromFileStore(allocationID string) error {

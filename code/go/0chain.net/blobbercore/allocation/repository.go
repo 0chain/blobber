@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -19,20 +20,23 @@ const (
 )
 
 var (
-	Repo *Repository
+	Repo    *Repository
+	mapLock sync.Mutex
 )
 
 type AllocationUpdate func(a *Allocation)
 
 func init() {
-	allocCache, _ := lru.New[string, *Allocation](lruSize)
+	allocCache, _ := lru.New[string, Allocation](lruSize)
 	Repo = &Repository{
 		allocCache: allocCache,
+		allocLock:  make(map[string]*sync.Mutex),
 	}
 }
 
 type Repository struct {
-	allocCache *lru.Cache[string, *Allocation]
+	allocCache *lru.Cache[string, Allocation]
+	allocLock  map[string]*sync.Mutex
 }
 
 type AllocationCache struct {
@@ -61,6 +65,9 @@ func (r *Repository) GetById(ctx context.Context, id string) (*Allocation, error
 
 	a := r.getAllocFromGlobalCache(id)
 	if a != nil {
+		cache[id] = AllocationCache{
+			Allocation: a,
+		}
 		return a, nil
 	}
 
@@ -99,7 +106,6 @@ func (r *Repository) GetByIdAndLock(ctx context.Context, id string) (*Allocation
 	cache[id] = AllocationCache{
 		Allocation: alloc,
 	}
-	r.setAllocToGlobalCache(alloc)
 	return alloc, err
 }
 
@@ -121,6 +127,9 @@ func (r *Repository) GetByTx(ctx context.Context, allocationID, txHash string) (
 
 	a := r.getAllocFromGlobalCache(allocationID)
 	if a != nil && a.Tx == txHash {
+		cache[allocationID] = AllocationCache{
+			Allocation: a,
+		}
 		return a, nil
 	}
 
@@ -150,13 +159,18 @@ func (r *Repository) GetAllocations(ctx context.Context, offset int64) ([]*Alloc
 	if err != nil {
 		return allocs, err
 	}
-	for ind, alloc := range allocs {
-		if ind == lruSize {
-			break
-		}
-		r.setAllocToGlobalCache(alloc)
-	}
 	return allocs, nil
+}
+
+func (r *Repository) GetAllocationFromDB(ctx context.Context, allocationID string) (*Allocation, error) {
+	var tx = datastore.GetStore().GetTransaction(ctx)
+
+	alloc := &Allocation{}
+	err := tx.Model(&Allocation{}).Where("id = ?", allocationID).Take(alloc).Error
+	if err != nil {
+		return nil, err
+	}
+	return alloc, nil
 }
 
 func (r *Repository) GetAllocationIds(ctx context.Context) []Res {
@@ -237,16 +251,24 @@ func (r *Repository) Commit(tx *datastore.EnhancedDB) {
 		return
 	}
 	for _, txnCache := range cache {
-		var alloc *Allocation
-		for _, update := range txnCache.AllocationUpdates {
-			alloc = r.getAllocFromGlobalCache(txnCache.Allocation.ID)
-			if alloc != nil {
+		alloc := r.getAllocFromGlobalCache(txnCache.Allocation.ID)
+		mapLock.Lock()
+		mut, ok := r.allocLock[txnCache.Allocation.ID]
+		if !ok {
+			mut = &sync.Mutex{}
+			r.allocLock[txnCache.Allocation.ID] = mut
+		}
+		mapLock.Unlock()
+		mut.Lock()
+		if alloc != nil {
+			for _, update := range txnCache.AllocationUpdates {
 				update(alloc)
 			}
+			if len(txnCache.AllocationUpdates) > 0 {
+				r.setAllocToGlobalCache(alloc)
+			}
 		}
-		if alloc != nil {
-			r.setAllocToGlobalCache(alloc)
-		}
+		mut.Unlock()
 	}
 }
 
@@ -319,11 +341,13 @@ func (r *Repository) getAllocFromGlobalCache(id string) *Allocation {
 	if !ok {
 		return nil
 	}
-	return a
+	return &a
 }
 
 func (r *Repository) setAllocToGlobalCache(a *Allocation) {
-	r.allocCache.Add(a.ID, a)
+	if a != nil {
+		r.allocCache.Add(a.ID, *a)
+	}
 }
 
 func (r *Repository) DeleteAllocation(allocationID string) {

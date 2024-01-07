@@ -117,6 +117,7 @@ func GetBlobberInfoJson() BlobberInfo {
 // Should only be used for handlers where the writemarker is submitted
 func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.StatusCodeResponderF {
 	return func(ctx context.Context, r *http.Request) (resp interface{}, statusCode int, err error) {
+		start := time.Now()
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
 		var vars = mux.Vars(r)
 		allocationID := vars["allocation_id"]
@@ -150,6 +151,7 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 			return resp, statusCode, common.NewErrorf("commit_error",
 				"error committing to meta store: %v", err)
 		}
+		Logger.Info("Committing to meta store took", zap.Duration("duration", time.Since(start)))
 		return
 	}
 }

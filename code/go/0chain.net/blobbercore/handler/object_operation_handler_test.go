@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"database/sql/driver"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -127,7 +128,8 @@ func TestDownloadFile(t *testing.T) {
 			require.NoError(t, authTicket.Sign())
 			require.NoError(t, client.PopulateClient(mockClientWallet, "bls0chain"))
 			authTicketBytes, _ := json.Marshal(authTicket)
-			req.Header.Set("X-Auth-Token", string(authTicketBytes))
+			auth := base64.StdEncoding.EncodeToString(authTicketBytes)
+			req.Header.Set("X-Auth-Token", auth)
 		}
 		if len(p.inData.contentMode) > 0 {
 			req.Header.Set("X-Mode", p.inData.contentMode)

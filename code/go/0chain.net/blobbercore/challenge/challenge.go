@@ -144,7 +144,7 @@ func validateOnValidators(ctx context.Context, c *ChallengeEntity) error {
 			zap.Time("created", createdTime),
 			zap.Error(err))
 		deleteChallenge(c.RoundCreatedAt)
-		return err
+		return nil
 	}
 
 	completedValidation := time.Now()

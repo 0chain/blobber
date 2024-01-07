@@ -8,7 +8,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
 	"golang.org/x/sync/semaphore"
@@ -21,10 +20,10 @@ var (
 	mut             sync.RWMutex
 )
 
-const (
-	timestampGap          = 30 * 24 * 60 * 60  // 30 days
-	cleanupWorkerInterval = 24 * 7 * time.Hour // 7 days
-)
+// const (
+// 	timestampGap          = 30 * 24 * 60 * 60  // 30 days
+// 	cleanupWorkerInterval = 24 * 7 * time.Hour // 7 days
+// )
 
 func SetupWorkers(ctx context.Context) {
 	var res []allocation.Res
@@ -45,7 +44,7 @@ func SetupWorkers(ctx context.Context) {
 	}
 
 	go startRedeem(ctx)
-	go startCleanupWorker(ctx)
+	// go startCleanupWorker(ctx)
 }
 
 func GetLock(allocationID string) *semaphore.Weighted {
@@ -96,6 +95,10 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 		logging.Logger.Info("Stale write marker. Allocation root mismatch",
 			zap.Any("allocation", allocationID),
 			zap.Any("wm", wm.WM.AllocationRoot), zap.Any("alloc_root", alloc.AllocationRoot))
+		if wm.ReedeemRetries == 0 && !alloc.IsRedeemRequired {
+			wm.ReedeemRetries++
+			go tryAgain(wm)
+		}
 		_ = wm.UpdateStatus(ctx, Rollbacked, "rollbacked", "")
 		err = db.Commit().Error
 		mut := GetLock(allocationID)
@@ -190,21 +193,22 @@ func retryRedeem(errString string) bool {
 	return !strings.Contains(errString, "value not present")
 }
 
-func startCleanupWorker(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(cleanupWorkerInterval):
-			_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-				tx := datastore.GetStore().GetTransaction(ctx)
-				timestamp := int64(common.Now()) - timestampGap // 30 days
-				err := tx.Exec("INSERT INTO write_markers_archive (SELECT * from write_markers WHERE timestamp < ? AND latest = )", timestamp, false).Error
-				if err != nil {
-					return err
-				}
-				return tx.Exec("DELETE FROM write_markers WHERE timestamp < ? AND latest = )", timestamp, false).Error
-			})
-		}
-	}
-}
+// TODO: don't delete prev WM
+// func startCleanupWorker(ctx context.Context) {
+// 	for {
+// 		select {
+// 		case <-ctx.Done():
+// 			return
+// 		case <-time.After(cleanupWorkerInterval):
+// 			_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+// 				tx := datastore.GetStore().GetTransaction(ctx)
+// 				timestamp := int64(common.Now()) - timestampGap // 30 days
+// 				err := tx.Exec("INSERT INTO write_markers_archive (SELECT * from write_markers WHERE timestamp < ? AND latest = )", timestamp, false).Error
+// 				if err != nil {
+// 					return err
+// 				}
+// 				return tx.Exec("DELETE FROM write_markers WHERE timestamp < ? AND latest = )", timestamp, false).Error
+// 			})
+// 		}
+// 	}
+// }

@@ -81,7 +81,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	allocMu := lock.GetMutex(allocation.Allocation{}.TableName(), cr.AllocationID)
 	allocMu.RLock()
 
-	allocationObj, err := allocation.GetAllocationByID(ctx, cr.AllocationID)
+	allocationObj, err := allocation.Repo.GetAllocationFromDB(ctx, cr.AllocationID)
 	if err != nil {
 		allocMu.RUnlock()
 		cr.CancelChallenge(ctx, err)
@@ -108,6 +108,9 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	blockNum := int64(0)
 	var objectPath *reference.ObjectPath
 	if rootRef != nil {
+		if rootRef.Hash != allocationObj.AllocationRoot {
+			logging.Logger.Error("root_mismatch", zap.Any("allocation_root", allocationObj.AllocationRoot), zap.Any("latest_write_marker", wms[len(wms)-1].WM.AllocationRoot), zap.Any("root_ref_hash", rootRef.Hash))
+		}
 		if rootRef.NumBlocks > 0 {
 			r := rand.New(rand.NewSource(cr.RandomNumber))
 			blockNum = r.Int63n(rootRef.NumBlocks)
@@ -122,9 +125,10 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			cr.CancelChallenge(ctx, err)
 			return err
 		}
-
-		cr.RefID = objectPath.RefID
-		cr.ObjectPath = objectPath
+		if objectPath != nil {
+			cr.RefID = objectPath.RefID
+			cr.ObjectPath = objectPath
+		}
 	}
 	cr.RespondedAllocationRoot = allocationObj.AllocationRoot
 
