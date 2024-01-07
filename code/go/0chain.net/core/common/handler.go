@@ -9,6 +9,10 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 )
 
 const (
@@ -56,7 +60,9 @@ func Respond(w http.ResponseWriter, data interface{}, err error) {
 		w.WriteHeader(400)
 		fmt.Fprintln(w, buf.String())
 	} else if data != nil {
+		start := time.Now()
 		json.NewEncoder(w).Encode(data) //nolint:errcheck // checked in previous step
+		logging.Logger.Info("dataResponse", zap.Duration("duration", time.Since(start)))
 	}
 }
 
