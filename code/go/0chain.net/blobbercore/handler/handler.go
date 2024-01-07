@@ -483,8 +483,8 @@ func RollbackHandler(ctx context.Context, r *http.Request) (interface{}, int, er
 }
 
 func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
-
-	ctx, canceler := context.WithTimeout(ctx, time.Second*10)
+	start := time.Now()
+	ctx, canceler := context.WithTimeout(ctx, time.Second*60)
 	defer canceler()
 
 	ctx = setupHandlerContext(ctx, r)
@@ -493,6 +493,7 @@ func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, er
 	if err != nil {
 		return nil, err
 	}
+	Logger.Info("ReferencePathHandler", zap.Duration("duration", time.Since(start)))
 	return response, nil
 }
 
