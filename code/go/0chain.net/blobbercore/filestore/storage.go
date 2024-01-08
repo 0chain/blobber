@@ -117,7 +117,7 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 		fileRef.ChunkUploaded = true
 		fs.updateAllocTempFileSize(allocID, currentSize-initialSize)
 	}
-	fmt.Println("writtenSize", writtenSize, offset)
+
 	fileRef.Size = writtenSize
 	fileRef.Name = fileData.Name
 	fileRef.Path = fileData.Path

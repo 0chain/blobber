@@ -8,6 +8,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"gorm.io/gorm"
 )
 
 var (
@@ -33,7 +34,7 @@ func (ClientStats) TableName() string {
 	return "client_stats"
 }
 
-func (cs *ClientStats) BeforeCreate() error {
+func (cs *ClientStats) BeforeCreate(tx *gorm.DB) error {
 	cs.CreatedAt = common.Now()
 	return nil
 }
