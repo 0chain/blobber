@@ -119,15 +119,18 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 	return func(ctx context.Context, r *http.Request) (resp interface{}, statusCode int, err error) {
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
 		var vars = mux.Vars(r)
-		allocationID := vars["allocation_id"]
-		if allocationID != "" {
-			// Lock will compete with other CommitWrites and Challenge validation
-			var allocationObj *allocation.Allocation
-			mutex := lock.GetMutex(allocationObj.TableName(), allocationID)
-			Logger.Info("Locking allocation", zap.String("allocation_id", allocationID))
-			mutex.Lock()
-			defer mutex.Unlock()
+		allocationID := vars["allocation"]
+		if allocationID == "" {
+			return nil, http.StatusBadRequest, common.NewError("invalid_allocation_id", "Allocation ID is required")
 		}
+
+		// Lock will compete with other CommitWrites and Challenge validation
+		var allocationObj *allocation.Allocation
+		mutex := lock.GetMutex(allocationObj.TableName(), allocationID)
+		Logger.Info("Locking allocation", zap.String("allocation_id", allocationID))
+		mutex.Lock()
+		defer mutex.Unlock()
+
 		tx := GetMetaDataStore().GetTransaction(ctx)
 		resp, statusCode, err = handler(ctx, r)
 
