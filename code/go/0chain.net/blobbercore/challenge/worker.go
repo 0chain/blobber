@@ -71,6 +71,7 @@ func startPullWorker(ctx context.Context) {
 }
 
 func startWorkers(ctx context.Context) {
+	setRound()
 	go getRoundWorker(ctx)
 
 	// start challenge listeners
@@ -85,19 +86,24 @@ func getRoundWorker(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			ticker.Stop()
 			return
 		case <-ticker.C:
-			currentRound, _ := zcncore.GetRoundFromSharders()
-
-			if roundInfo.LastRoundDiff == 0 {
-				roundInfo.LastRoundDiff = 1000
-			} else {
-				roundInfo.LastRoundDiff = currentRound - roundInfo.CurrentRound
-			}
-			roundInfo.CurrentRound = currentRound
-			roundInfo.CurrentRoundCaptureTime = time.Now()
+			setRound()
 		}
 	}
+}
+
+func setRound() {
+	currentRound, _ := zcncore.GetRoundFromSharders()
+
+	if roundInfo.LastRoundDiff == 0 {
+		roundInfo.LastRoundDiff = 1000
+	} else {
+		roundInfo.LastRoundDiff = currentRound - roundInfo.CurrentRound
+	}
+	roundInfo.CurrentRound = currentRound
+	roundInfo.CurrentRoundCaptureTime = time.Now()
 }
 
 func challengeProcessor(ctx context.Context) {
