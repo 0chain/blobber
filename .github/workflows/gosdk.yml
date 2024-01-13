@@ -39,7 +39,7 @@ jobs:
         uses: peter-evans/create-pull-request@v3
         with:
           base: ${{ github.event.inputs.base }}
-          token: ${{ secrets.GOSDK }}
+          token: ${{ secrets.SVC_ACCOUNT_SECRET }}
           commit-message: upgrade GoSDK to ${{ github.event.inputs.gosdk }}
           branch: gosdk-upgrade-${{ env.BRANCH }}
           delete-branch: true
