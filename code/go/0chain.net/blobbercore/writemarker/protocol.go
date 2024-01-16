@@ -162,8 +162,8 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context) error {
 
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 	t, err := transaction.VerifyTransactionWithNonce(txn.Hash, txn.GetTransaction().GetTransactionNonce())
-	wme.CloseTxnID = t.Hash
-	wme.CloseTxnNonce = t.GetTransaction().GetTransactionNonce()
+	wme.CloseTxnID = txn.Hash
+	wme.CloseTxnNonce = txn.GetTransaction().GetTransactionNonce()
 	if err != nil {
 		Logger.Error("Error verifying the close connection transaction", zap.String("err:", err.Error()), zap.String("txn", txn.Hash))
 		wme.Status = Failed
