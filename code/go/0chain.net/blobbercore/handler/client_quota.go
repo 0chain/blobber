@@ -111,8 +111,8 @@ func saveClientStats() {
 	mpLock.Lock()
 	for _, cs := range clientMap {
 		dbStats = append(dbStats, cs)
-		delete(clientMap, cs.ClientID)
 	}
+	clear(clientMap)
 	mpLock.Unlock()
 	_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		if len(dbStats) > 0 {
