@@ -438,7 +438,6 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	reference.FileBlockDownloaded(ctx, fileref, dr.NumBlocks)
 	go func() {
 		addDailyBlocks(clientID, dr.NumBlocks)
-		AddDownloadedData(clientID, dr.NumBlocks)
 	}()
 	if !dr.VerifyDownload {
 		return fileDownloadResponse.Data, nil
@@ -731,7 +730,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
 	}
 	go allocation.DeleteConnectionObjEntry(connectionID)
-	go AddWriteMarkerCount(clientID, 1)
+	go AddWriteMarkerCount(clientID, connectionObj.Size)
 
 	Logger.Info("[commit]"+commitOperation,
 		zap.String("alloc_id", allocationID),

@@ -25,9 +25,10 @@ const (
 type ClientStats struct {
 	ClientID      string           `gorm:"column:client_id;size:64;primaryKey" json:"client_id"`
 	CreatedAt     common.Timestamp `gorm:"created_at;primaryKey" json:"created"`
-	TotalUpload   uint64           `gorm:"column:total_upload" json:"total_upload"`
-	TotalDownload uint64           `gorm:"column:total_download" json:"total_download"`
-	TotalWM       uint64           `gorm:"column:total_write_marker" json:"total_write_marker"`
+	TotalUpload   int64            `gorm:"column:total_upload" json:"total_upload"`
+	TotalDownload int64            `gorm:"column:total_download" json:"total_download"`
+	TotalWM       int64            `gorm:"column:total_write_marker" json:"total_write_marker"`
+	TotalZeroWM   int64            `gorm:"-" json:"total_zero_write_marker"`
 }
 
 func (ClientStats) TableName() string {
@@ -39,7 +40,7 @@ func (cs *ClientStats) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-func GetUploadedData(clientID string) uint64 {
+func GetUploadedData(clientID string) int64 {
 	mpLock.RLock()
 	defer mpLock.RUnlock()
 	cs := clientMap[clientID]
@@ -57,28 +58,10 @@ func AddUploadedData(clientID string, data int64) {
 		cs = &ClientStats{ClientID: clientID}
 		clientMap[clientID] = cs
 	}
-	cs.TotalUpload += uint64(data)
+	cs.TotalUpload += data
 }
 
-func GetDownloadedData(clientID string) uint64 {
-	mpLock.RLock()
-	defer mpLock.RUnlock()
-	cs := clientMap[clientID]
-	return cs.TotalDownload
-}
-
-func AddDownloadedData(clientID string, data int64) {
-	mpLock.Lock()
-	defer mpLock.Unlock()
-	cs := clientMap[clientID]
-	if cs == nil {
-		cs = &ClientStats{ClientID: clientID}
-		clientMap[clientID] = cs
-	}
-	cs.TotalDownload += uint64(data)
-}
-
-func GetWriteMarkerCount(clientID string) uint64 {
+func GetWriteMarkerCount(clientID string) int64 {
 	mpLock.RLock()
 	defer mpLock.RUnlock()
 	cs := clientMap[clientID]
@@ -88,7 +71,7 @@ func GetWriteMarkerCount(clientID string) uint64 {
 	return cs.TotalWM
 }
 
-func AddWriteMarkerCount(clientID string, count int64) {
+func AddWriteMarkerCount(clientID string, data int64) {
 	mpLock.Lock()
 	defer mpLock.Unlock()
 	cs := clientMap[clientID]
@@ -96,7 +79,19 @@ func AddWriteMarkerCount(clientID string, count int64) {
 		cs = &ClientStats{ClientID: clientID}
 		clientMap[clientID] = cs
 	}
-	cs.TotalWM += uint64(count)
+	cs.TotalWM++
+	if data <= 0 {
+		cs.TotalZeroWM++
+	}
+	if cs.TotalZeroWM > config.Configuration.CommitZeroLimitDaily || cs.TotalWM > config.Configuration.CommitLimitDaily {
+		SetBlacklist(clientID)
+	}
+}
+
+func SetBlacklist(clientID string) {
+	blMap.Lock()
+	blackListMap[clientID] = true
+	blMap.Unlock()
 }
 
 func CheckBlacklist(clientID string) bool {
@@ -109,10 +104,13 @@ func CheckBlacklist(clientID string) bool {
 func saveClientStats() {
 	dbStats := make([]*ClientStats, 0, len(clientMap))
 	mpLock.Lock()
+	now := common.Now()
 	for _, cs := range clientMap {
+		cs.CreatedAt = now
+		cs.TotalDownload = getDailyBlocks(cs.ClientID)
 		dbStats = append(dbStats, cs)
-		delete(clientMap, cs.ClientID)
 	}
+	clear(clientMap)
 	mpLock.Unlock()
 	_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		if len(dbStats) > 0 {
@@ -129,7 +127,7 @@ func saveClientStats() {
 	})
 	if err == nil {
 		blMap.Lock()
-		blackListMap = make(map[string]bool)
+		clear(blackListMap)
 		for _, clientID := range blackList {
 			blackListMap[clientID] = true
 		}
@@ -138,10 +136,11 @@ func saveClientStats() {
 }
 
 func startBlackListWorker(ctx context.Context) {
-	BlackListWorkerTime := 6 * time.Hour
+	BlackListWorkerTime := 24 * time.Hour
 	if config.Development() {
 		BlackListWorkerTime = 10 * time.Second
 	}
+	saveClientStats()
 
 	for {
 		select {
@@ -149,6 +148,7 @@ func startBlackListWorker(ctx context.Context) {
 			return
 		case <-time.After(BlackListWorkerTime):
 			saveClientStats()
+			cleanupDownloadLimit()
 		}
 	}
 }
