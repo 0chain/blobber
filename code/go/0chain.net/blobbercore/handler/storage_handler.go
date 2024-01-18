@@ -30,6 +30,7 @@ const (
 	DownloadContentThumb = "thumbnail"
 	MaxPageLimit         = 100 //100 rows will make up to 100 KB
 	DefaultPageLimit     = 20
+	DefaultListPageLimit = 50
 )
 
 type StorageHandler struct{}
@@ -346,6 +347,32 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 		return nil, common.NewError("invalid_parameters", "Invalid path: ref not found ")
 	}
 
+	var offset, pageLimit int
+
+	limitStr := r.FormValue("limit")
+	if limitStr == "" {
+		pageLimit, err = strconv.Atoi(limitStr)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Invalid limit value "+err.Error())
+		}
+
+		if pageLimit > DefaultListPageLimit {
+			pageLimit = DefaultListPageLimit
+		} else if pageLimit < -1 {
+			pageLimit = -1
+		}
+	} else {
+		pageLimit = DefaultListPageLimit
+
+	}
+	offsetStr := r.FormValue("offset")
+	if offsetStr == "" {
+		offset, err = strconv.Atoi(offsetStr)
+		if err != nil {
+			return nil, common.NewError("invalid_parameters", "Invalid offset value "+err.Error())
+		}
+	}
+
 	// If the reference is a file, build result with the file and parent dir.
 	var dirref *reference.Ref
 	if fileref != nil && fileref.Type == reference.FILE {
@@ -363,14 +390,13 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 
 		dirref = parent
 	} else {
-		r, err := reference.GetRefWithChildren(ctx, allocationID, filePath)
+		r, err := reference.GetRefWithChildren(ctx, allocationID, filePath, offset, pageLimit)
 		if err != nil {
 			return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
 		}
 
 		dirref = r
 	}
-	Logger.Info("ListDir RESULT", zap.Any("dirref", dirref))
 
 	var result blobberhttp.ListResult
 	result.AllocationRoot = allocationObj.AllocationRoot
