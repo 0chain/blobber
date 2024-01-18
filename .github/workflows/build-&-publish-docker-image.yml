@@ -139,10 +139,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Pull Build Base
-        run: |
-          docker pull $BLOBBER_BUILD_BASE_REGISTRY:staging
-          docker tag $BLOBBER_BUILD_BASE_REGISTRY:staging $BLOBBER_BUILDBASE
+      # - name: Pull Build Base
+      #   run: |
+      #     docker pull $BLOBBER_BUILD_BASE_REGISTRY:staging
+      #     docker tag $BLOBBER_BUILD_BASE_REGISTRY:staging $BLOBBER_BUILDBASE
 
       - name: Build Base image
         if: contains(steps.changed-files.outputs.modified_files, 'docker.local/base.Dockerfile')
