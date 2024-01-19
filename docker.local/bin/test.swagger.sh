@@ -40,7 +40,8 @@ INTERACTIVE=""
 # done
 
 echo "2> Build swagger_test docker image."
-DOCKER_BUILDKIT=1 docker $DOCKER_BUILD --progress=plain --build-arg DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE -f $dockerfile . -t $DOCKER_IMAGE_SWAGGER --network host
+# DOCKER_BUILDKIT=1 docker $DOCKER_BUILD --progress=plain --build-arg DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE -f $dockerfile . -t $DOCKER_IMAGE_SWAGGER --network host
+docker $DOCKER_BUILD --build-arg DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE -f $dockerfile . -t $DOCKER_IMAGE_SWAGGER --network host
 
 echo "3> Create swagger.yaml file."
 docker run $platform $INTERACTIVE -v $(pwd):/codecov $DOCKER_IMAGE_SWAGGER bash -c "\
