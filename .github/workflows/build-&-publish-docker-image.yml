@@ -24,11 +24,11 @@ jobs:
     timeout-minutes: 30
     runs-on: [arc-runner]
     steps:
-      - name: Cleanup before restarting conductor tests.
-        run: |
-          echo 'y' | docker system prune -a || true
-          cd /tmp
-          sudo rm -rf ./*
+      # - name: Cleanup before restarting conductor tests.
+      #   run: |
+      #     echo 'y' | docker system prune -a || true
+      #     cd /tmp
+      #     sudo rm -rf ./*
 
       - name: Set docker image tag
         run: |
@@ -41,6 +41,11 @@ jobs:
 
           echo "BRANCH=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF)" >> $GITHUB_ENV
           echo "SHA=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}')" >> $GITHUB_ENV
+
+    - name: Install Dependencies
+      run: |
+        sudo apt update -y
+        sudo apt -y install build-essential nghttp2 libnghttp2-dev libssl-dev wget
 
       - name: Setup go
         uses: actions/setup-go@v4
@@ -117,6 +122,11 @@ jobs:
 
           echo "BRANCH=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF)" >> $GITHUB_ENV
           echo "SHA=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}')" >> $GITHUB_ENV
+
+    - name: Install Dependencies
+      run: |
+        sudo apt update -y
+        sudo apt -y install build-essential nghttp2 libnghttp2-dev libssl-dev wget
 
       - name: Setup go
         uses: actions/setup-go@v4
