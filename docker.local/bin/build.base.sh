@@ -28,4 +28,4 @@ echo "2> download herumi"
 
 echo "3> docker build"
 # DOCKER_BUILDKIT=1 docker $DOCKER_BUILD --progress=plain --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/base.Dockerfile . -t $DOCKER_IMAGE_BASE --network host
-docker $DOCKER_BUILD --progress=plain --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/base.Dockerfile . -t $DOCKER_IMAGE_BASE --network host
+docker $DOCKER_BUILD --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/base.Dockerfile . -t $DOCKER_IMAGE_BASE --network host
