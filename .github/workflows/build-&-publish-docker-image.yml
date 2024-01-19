@@ -71,7 +71,7 @@ jobs:
           docker tag $BLOBBER_BUILD_BASE_REGISTRY:staging $BLOBBER_BUILDBASE
 
       - name: Build Base image
-        if: contains(steps.changed-files.outputs.modified_files, 'docker.local/base.Dockerfile')
+        # if: contains(steps.changed-files.outputs.modified_files, 'docker.local/base.Dockerfile')
         run: |
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
 
@@ -149,7 +149,7 @@ jobs:
           docker tag $BLOBBER_BUILD_BASE_REGISTRY:staging $BLOBBER_BUILDBASE
 
       - name: Build Base image
-        if: contains(steps.changed-files.outputs.modified_files, 'docker.local/base.Dockerfile')
+        # if: contains(steps.changed-files.outputs.modified_files, 'docker.local/base.Dockerfile')
         run: |
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
 
