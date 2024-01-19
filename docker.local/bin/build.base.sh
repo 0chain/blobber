@@ -27,4 +27,5 @@ echo "2> download herumi"
 [ ! -f ./docker.local/bin/bls.tar.gz ] && wget -O ./docker.local/bin/bls.tar.gz https://github.com/herumi/bls/archive/refs/tags/v1.22.tar.gz
 
 echo "3> docker build"
-DOCKER_BUILDKIT=1 docker $DOCKER_BUILD --progress=plain --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/base.Dockerfile . -t $DOCKER_IMAGE_BASE --network host
+# DOCKER_BUILDKIT=1 docker $DOCKER_BUILD --progress=plain --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/base.Dockerfile . -t $DOCKER_IMAGE_BASE --network host
+docker $DOCKER_BUILD --progress=plain --build-arg GIT_COMMIT=$GIT_COMMIT -f docker.local/base.Dockerfile . -t $DOCKER_IMAGE_BASE --network host
