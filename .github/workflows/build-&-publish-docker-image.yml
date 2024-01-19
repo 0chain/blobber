@@ -84,7 +84,7 @@ jobs:
       - name: Build blobber
         run: |
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
-          export DOCKER_IMAGE_BASE="${BLOBBER_BUILDBASE}"
+          export DOCKER_IMAGE_BASE="$BLOBBER_BUILDBASE"
           export DOCKER_IMAGE_SWAGGER="${BLOBBER_REGISTRY}:swagger_test"
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
           export DOCKER_IMAGE_BLOBBER="-t ${BLOBBER_REGISTRY}:${TAG} -t ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}"
@@ -158,7 +158,7 @@ jobs:
       - name: Build validator
         run: |
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
-          export DOCKER_IMAGE_BASE="${VALIDATOR_REGISTRY}:base"
+          export DOCKER_IMAGE_BASE="$BLOBBER_BUILDBASE"
           export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
           export DOCKER_IMAGE_VALIDATOR="-t ${VALIDATOR_REGISTRY}:${TAG} -t ${VALIDATOR_REGISTRY}:${TAG}-${SHORT_SHA}"
           export CONTEXT_NAME="$RUNNER_NAME" && (docker context inspect "$CONTEXT_NAME" >/dev/null 2>&1 || docker context create "$CONTEXT_NAME")
