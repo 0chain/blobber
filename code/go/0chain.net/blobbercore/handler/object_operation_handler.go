@@ -1209,9 +1209,8 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 	}
 	elapsedParseForm := time.Since(startTime)
 	st := time.Now()
-	connectionProcessor := allocation.GetConnectionProcessor(connectionID)
-	if connectionProcessor == nil {
-		connectionProcessor = allocation.CreateConnectionProcessor(connectionID, allocationID, clientID)
+	if allocation.GetConnectionProcessor(connectionID) == nil {
+		allocation.CreateConnectionProcessor(connectionID, allocationID, clientID)
 	}
 
 	elapsedGetConnectionProcessor := time.Since(st)
@@ -1270,6 +1269,9 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 			}
 			return cmd.UpdateChange(ctx, dbConnectionObj)
 		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	blocks := cmd.GetNumBlocks()
