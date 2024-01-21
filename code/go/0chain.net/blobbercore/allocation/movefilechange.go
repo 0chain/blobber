@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
@@ -89,6 +90,11 @@ func (rf *MoveFileChange) ApplyChange(ctx context.Context, rootRef *reference.Re
 						fmt.Sprintf("%s is of file type", child.Path))
 				}
 			}
+		}
+
+		if len(dirRef.Children) >= config.Configuration.MaxObjectsInDir {
+			return nil, common.NewErrorf("max_objects_in_dir_reached",
+				"maximum objects in directory %s reached: %v", dirRef.Path, config.Configuration.MaxObjectsInDir)
 		}
 
 		if !found {

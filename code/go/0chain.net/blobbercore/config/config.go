@@ -49,6 +49,7 @@ func SetupDefaultConfig() {
 	viper.SetDefault("finalize_allocations_interval", time.Duration(-1))
 
 	viper.SetDefault("max_dirs_files", 50000)
+	viper.SetDefault("max_objects_dir", 1000)
 }
 
 /*SetupConfig - setup the configuration system */
@@ -128,6 +129,7 @@ type Config struct {
 	FinalizeAllocationsInterval time.Duration
 
 	MaxAllocationDirFiles int
+	MaxObjectsInDir       int
 
 	// DelegateWallet for pool owner.
 	DelegateWallet string `json:"delegate_wallet"`
@@ -259,6 +261,8 @@ func ReadConfig(deploymentMode int) {
 
 	Configuration.MaxAllocationDirFiles =
 		viper.GetInt("max_dirs_files")
+
+	Configuration.MaxObjectsInDir = viper.GetInt("max_objects_dir")
 
 	Configuration.DelegateWallet = viper.GetString("delegate_wallet")
 	if w := Configuration.DelegateWallet; len(w) != 64 {
