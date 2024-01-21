@@ -322,11 +322,12 @@ func GetSubDirsFromPath(p string) []string {
 	return subDirs
 }
 
-func GetRefWithChildren(ctx context.Context, allocationID, path string) (*Ref, error) {
+func GetRefWithChildren(ctx context.Context, allocationID, path string, offset, pageLimit int) (*Ref, error) {
 	var refs []Ref
 	t := datastore.GetStore().GetTransaction(ctx)
 	db := t.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
-	err := db.Order("path").Find(&refs).Error
+	err := db.Order("path").Offset(offset).
+		Limit(pageLimit).Find(&refs).Error
 	if err != nil {
 		return nil, err
 	}
