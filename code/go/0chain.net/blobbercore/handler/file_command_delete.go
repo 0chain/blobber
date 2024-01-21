@@ -11,7 +11,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 )
 
 // DeleteFileCommand command for deleting file
@@ -50,11 +49,6 @@ func (cmd *DeleteFileCommand) IsValidated(ctx context.Context, req *http.Request
 	}
 	cmd.connectionID = connectionID
 	var err error
-	pathHash := encryption.Hash(path)
-	err = allocation.GetError(connectionID, pathHash)
-	if err != nil {
-		return err
-	}
 	lookUpHash := reference.GetReferenceLookup(allocationObj.ID, path)
 	cmd.existingFileRef, err = reference.GetLimitedRefFieldsByLookupHashWith(ctx, allocationObj.ID, lookUpHash, []string{"path", "name", "size", "hash", "fixed_merkle_root"})
 	if err != nil {
@@ -63,9 +57,7 @@ func (cmd *DeleteFileCommand) IsValidated(ctx context.Context, req *http.Request
 		}
 		return common.NewError("bad_db_operation", err.Error())
 	}
-	allocation.CreateConnectionChange(connectionID, pathHash, allocationObj)
-
-	return allocation.SetFinalized(connectionID, pathHash, cmd)
+	return nil
 }
 
 // UpdateChange add DeleteFileChange in db

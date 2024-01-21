@@ -83,11 +83,6 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 
 	fileChanger.PathHash = encryption.Hash(fileChanger.Path)
 
-	err = allocation.GetError(fileChanger.ConnectionID, fileChanger.PathHash)
-	if err != nil {
-		return err
-	}
-
 	if fileChanger.UploadOffset == 0 {
 		isExist, err := reference.IsRefExist(ctx, allocationObj.ID, fileChanger.Path)
 
@@ -100,7 +95,6 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 			msg := fmt.Sprintf("File at path :%s: already exists", fileChanger.Path)
 			return common.NewError("duplicate_file", msg)
 		}
-		allocation.CreateConnectionChange(fileChanger.ConnectionID, fileChanger.PathHash, allocationObj)
 	}
 
 	thumbFile, thumbHeader, _ := req.FormFile(UploadThumbnailFile)
@@ -123,11 +117,7 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 	}
 	cmd.contentFile = origfile
 	cmd.fileChanger = fileChanger
-	logging.Logger.Info("UploadFileCommand.IsValidated")
-	if fileChanger.IsFinal {
-		return allocation.SetFinalized(fileChanger.ConnectionID, fileChanger.PathHash, cmd)
-	}
-	return allocation.SendCommand(fileChanger.ConnectionID, fileChanger.PathHash, cmd)
+	return nil
 }
 
 // ProcessContent flush file to FileStorage
@@ -138,19 +128,8 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		cmd.reloadChange()
 	}
 	connectionID := cmd.fileChanger.ConnectionID
-	var hasher *filestore.CommitHasher
 	if cmd.fileChanger.Size == 0 {
 		return result, common.NewError("invalid_parameters", "Invalid parameters. Size cannot be zero")
-	}
-	if cmd.fileChanger.UploadOffset == 0 {
-		result.UpdateChange = true
-		hasher = filestore.GetNewCommitHasher(cmd.fileChanger.Size)
-		allocation.UpdateConnectionObjWithHasher(connectionID, cmd.fileChanger.PathHash, hasher)
-	} else {
-		hasher = allocation.GetHasher(connectionID, cmd.fileChanger.PathHash)
-		if hasher == nil {
-			return result, common.NewError("invalid_parameters", "Error getting hasher for upload.")
-		}
 	}
 
 	fileInputData := &filestore.FileInputData{
@@ -161,7 +140,6 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		UploadOffset: cmd.fileChanger.UploadOffset,
 		IsFinal:      cmd.fileChanger.IsFinal,
 		FilePathHash: cmd.fileChanger.PathHash,
-		Hasher:       hasher,
 		Size:         cmd.fileChanger.Size,
 	}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionID, fileInputData, cmd.contentFile)
@@ -170,29 +148,11 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		return result, common.NewError("upload_error", "Failed to write file. "+err.Error())
 	}
 
-	if cmd.fileChanger.IsFinal {
-		err = hasher.Finalize()
-		if err != nil {
-			return result, common.NewError("upload_error", "Failed to finalize the hasher. "+err.Error())
-		}
-		result.IsFinal = true
-	}
-
 	result.Filename = cmd.fileChanger.Filename
 	result.ValidationRoot = fileOutputData.ValidationRoot
 	result.Size = fileOutputData.Size
 
 	allocationSize := allocation.GetConnectionObjSize(connectionID)
-
-	// only update connection size when the chunk is uploaded.
-	if fileOutputData.ChunkUploaded {
-		allocationSize += fileOutputData.Size
-		allocation.UpdateConnectionObjSize(connectionID, fileOutputData.Size)
-	}
-
-	if allocationObj.BlobberSizeUsed+allocationSize > allocationObj.BlobberSize {
-		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
-	}
 
 	cmd.fileChanger.AllocationID = allocationObj.ID
 
@@ -200,7 +160,30 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 	cmd.allocationChange.ConnectionID = connectionID
 	cmd.allocationChange.Size = cmd.fileChanger.Size
 	cmd.allocationChange.Operation = constants.FileOperationInsert
-	logging.Logger.Info("Chunk processed")
+
+	// only update connection size when the chunk is uploaded.
+	if fileOutputData.ChunkUploaded {
+		allocationSize += fileOutputData.Size
+		allocation.UpdateConnectionObjSize(connectionID, fileOutputData.Size)
+		err = allocation.SaveFileChange(connectionID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, fileOutputData.Size, cmd.fileChanger.Size)
+		if err != nil {
+			logging.Logger.Error("UploadFileCommand.ProcessContent", zap.Error(err))
+			return result, err
+		}
+	}
+
+	if allocationObj.BlobberSizeUsed+allocationSize > allocationObj.BlobberSize {
+		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
+	}
+
+	if cmd.thumbFile != nil {
+		err = cmd.ProcessThumbnail(allocationObj)
+		if err != nil {
+			logging.Logger.Error("UploadFileCommand.ProcessContent", zap.Error(err))
+			return result, err
+		}
+	}
+
 	return result, nil
 }
 

@@ -55,7 +55,7 @@ const (
 	PreCommitDir    = "precommit"
 	MerkleChunkSize = 64
 	ChunkSize       = 64 * KB
-	BufferSize      = 10 * MB
+	BufferSize      = 100 * ChunkSize
 )
 
 func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error) {
@@ -104,16 +104,6 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 
 	currentSize := finfo.Size()
 	if currentSize > initialSize { // Is chunk new or rewritten
-		if !fileData.IsThumbnail {
-			_, err = f.Seek(offset, io.SeekStart)
-			if err != nil {
-				return nil, common.NewError("file_seek_error", err.Error())
-			}
-			_, err = io.CopyBuffer(fileData.Hasher, f, buf)
-			if err != nil {
-				return nil, common.NewError("file_read_error", err.Error())
-			}
-		}
 		fileRef.ChunkUploaded = true
 		fs.updateAllocTempFileSize(allocID, currentSize-initialSize)
 	}
@@ -122,6 +112,31 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 	fileRef.Name = fileData.Name
 	fileRef.Path = fileData.Path
 	return fileRef, nil
+}
+
+func (fs *FileStore) WriteDataToTree(allocID, connID, fileName, filePathHash string, hasher *CommitHasher) error {
+	tempFilePath := fs.getTempPathForFile(allocID, fileName, filePathHash, connID)
+
+	offset := getNodesSize(hasher.dataSize, util.MaxMerkleLeavesSize) + FMTSize
+	f, err := os.Open(tempFilePath)
+	if err != nil {
+		return common.NewError("file_open_error", err.Error())
+	}
+	defer f.Close()
+	_, err = f.Seek(offset, io.SeekStart)
+	if err != nil {
+		return common.NewError("file_seek_error", err.Error())
+	}
+	bufSize := BufferSize * 5
+	if int64(bufSize) > hasher.dataSize {
+		bufSize = int(hasher.dataSize)
+	}
+	buf := make([]byte, bufSize)
+	_, err = io.CopyBuffer(hasher, f, buf)
+	if err != nil {
+		return common.NewError("hasher_write_error", err.Error())
+	}
+	return nil
 }
 
 func (fs *FileStore) MoveToFilestore(allocID, hash string) error {
@@ -251,6 +266,10 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	}
 	nodeSie := getNodesSize(fileData.Size, util.MaxMerkleLeavesSize)
 	fileSize := rStat.Size() - nodeSie - FMTSize
+	err = fileData.Hasher.Wait()
+	if err != nil {
+		return false, common.NewError("hasher_wait_error", err.Error())
+	}
 	fmtRootBytes, err := fileData.Hasher.fmt.CalculateRootAndStoreNodes(r)
 	if err != nil {
 		return false, common.NewError("fmt_hash_calculation_error", err.Error())

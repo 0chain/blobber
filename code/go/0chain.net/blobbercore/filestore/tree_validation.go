@@ -404,6 +404,9 @@ type CommitHasher struct {
 	fmt           *fixedMerkleTree
 	vt            *validationTree
 	isInitialized bool
+	wg            sync.WaitGroup
+	hashErr       error
+	dataSize      int64
 }
 
 func GetNewCommitHasher(dataSize int64) *CommitHasher {
@@ -411,7 +414,24 @@ func GetNewCommitHasher(dataSize int64) *CommitHasher {
 	c.fmt = getNewFixedMerkleTree()
 	c.vt = getNewValidationTree(dataSize)
 	c.isInitialized = true
+	c.dataSize = dataSize
+	c.wg.Add(1)
 	return c
+}
+
+func (c *CommitHasher) Start(connID, allocID, fileName, filePathHash string) {
+	defer c.wg.Done()
+	err := GetFileStore().WriteDataToTree(allocID, connID, fileName, filePathHash, c)
+	if err != nil {
+		c.hashErr = err
+		return
+	}
+	c.hashErr = c.Finalize()
+}
+
+func (c *CommitHasher) Wait() error {
+	c.wg.Wait()
+	return c.hashErr
 }
 
 func (c *CommitHasher) Write(b []byte) (int, error) {
