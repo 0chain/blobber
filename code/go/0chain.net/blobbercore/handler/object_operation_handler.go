@@ -730,7 +730,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
 	}
 	go allocation.DeleteConnectionObjEntry(connectionID)
-	go AddWriteMarkerCount(clientID, connectionObj.Size)
+	go AddWriteMarkerCount(clientID, connectionObj.Size <= 0)
 
 	Logger.Info("[commit]"+commitOperation,
 		zap.String("alloc_id", allocationID),

@@ -71,7 +71,7 @@ func GetWriteMarkerCount(clientID string) int64 {
 	return cs.TotalWM
 }
 
-func AddWriteMarkerCount(clientID string, data int64) {
+func AddWriteMarkerCount(clientID string, zeroSizeWM bool) {
 	mpLock.Lock()
 	defer mpLock.Unlock()
 	cs := clientMap[clientID]
@@ -80,7 +80,7 @@ func AddWriteMarkerCount(clientID string, data int64) {
 		clientMap[clientID] = cs
 	}
 	cs.TotalWM++
-	if data <= 0 {
+	if zeroSizeWM {
 		cs.TotalZeroWM++
 	}
 	if cs.TotalZeroWM > config.Configuration.CommitZeroLimitDaily || cs.TotalWM > config.Configuration.CommitLimitDaily {
