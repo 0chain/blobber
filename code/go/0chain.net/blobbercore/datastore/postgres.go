@@ -68,8 +68,8 @@ func (store *postgresStore) Open() error {
 
 	sqldb.SetMaxIdleConns(100)
 	sqldb.SetMaxOpenConns(200)
-	sqldb.SetConnMaxLifetime(60 * time.Second)
-	sqldb.SetConnMaxIdleTime(60 * time.Second)
+	sqldb.SetConnMaxLifetime(20 * time.Minute)
+	sqldb.SetConnMaxIdleTime(5 * time.Minute)
 	// Enable Logger, show detailed log
 	//db.LogMode(true)
 	store.db = db
