@@ -45,6 +45,7 @@ type FileStorer interface {
 	// WriteFile write chunk file into disk
 	Initialize() error
 	WriteFile(allocID, connID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error)
+	WriteDataToTree(allocID, connID, fileName, filePathHash string, hahser *CommitHasher) error
 	CommitWrite(allocID, connID string, fileData *FileInputData) (bool, error)
 	DeleteTempFile(allocID, connID string, fileData *FileInputData) error
 	DeleteFile(allocID, contentHash string) error

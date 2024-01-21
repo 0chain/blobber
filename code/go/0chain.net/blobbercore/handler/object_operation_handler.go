@@ -1195,7 +1195,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use multi-part form POST / PUT / DELETE / PATCH instead")
 	}
 
-	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
+	allocationID := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	connectionID, ok := common.GetField(r, "connection_id")
@@ -1212,17 +1212,20 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 	st := time.Now()
 	connectionProcessor := allocation.GetConnectionProcessor(connectionID)
 	if connectionProcessor == nil {
-		connectionProcessor = allocation.CreateConnectionProcessor(connectionID)
+		connectionProcessor = allocation.CreateConnectionProcessor(connectionID, allocationID, clientID)
 	}
 
 	elapsedGetConnectionProcessor := time.Since(st)
 	st = time.Now()
 
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationID, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
-	connectionProcessor.ClientID = clientID
+
+	if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
+	}
 
 	elapsedAllocation := time.Since(st)
 
@@ -1249,15 +1252,27 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 
 	elapsedVerifySig := time.Since(st)
 
-	allocationID := allocationObj.ID
 	cmd := createFileCommand(r)
 	err = cmd.IsValidated(ctx, r, allocationObj, clientID)
 	if err != nil {
 		return nil, err
 	}
-	result := allocation.UploadResult{
-		Filename: cmd.GetPath(),
+	// call process content, which writes to file checks if conn obj needs to be updated and if commit hasher needs to be called
+	res, err := cmd.ProcessContent(allocationObj)
+	if err != nil {
+		return nil, err
 	}
+	// Save the change
+	if res.IsFinal {
+		err = datastore.GetStore().WithTransaction(ctx, func(ctx context.Context) error {
+			dbConnectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+			if err != nil {
+				return err
+			}
+			return cmd.UpdateChange(ctx, dbConnectionObj)
+		})
+	}
+
 	blocks := cmd.GetNumBlocks()
 	if blocks > 0 {
 		go AddUploadedData(clientID, blocks)
@@ -1271,8 +1286,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 		zap.Duration("sig", elapsedVerifySig),
 		zap.Duration("validate", time.Since(st)),
 		zap.Duration("total", time.Since(startTime)))
-	return &result, nil
-
+	return &res, nil
 }
 
 func sanitizeString(input string) string {
