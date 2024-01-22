@@ -9,6 +9,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 )
 
 var (
@@ -270,6 +272,7 @@ func UpdateConnectionObjSize(connectionID string, addSize int64) {
 	}
 
 	connectionObj.Size = connectionObj.Size + addSize
+	logging.Logger.Info("UpdateConnectionObjSize", zap.String("connection_id", connectionID), zap.Int64("add_size", addSize), zap.Int64("size", connectionObj.Size))
 	connectionObj.UpdatedAt = time.Now()
 }
 
