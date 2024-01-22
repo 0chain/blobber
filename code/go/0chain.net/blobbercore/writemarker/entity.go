@@ -50,6 +50,7 @@ type WriteMarkerEntity struct {
 	StatusMessage   string            `gorm:"column:status_message"`
 	ReedeemRetries  int64             `gorm:"column:redeem_retries;not null;default:0"`
 	CloseTxnID      string            `gorm:"column:close_txn_id;size:64"`
+	CloseTxnNonce   int64             `gorm:"column:close_txn_nonce"`
 	ConnectionID    string            `gorm:"column:connection_id;size:64"`
 	ClientPublicKey string            `gorm:"column:client_key;size:256"`
 	Latest          bool              `gorm:"column:latest;not null;default:true"`
@@ -84,6 +85,7 @@ func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context, status WriteMarke
 				StatusMessage:  string(statusBytes),
 				CloseTxnID:     redeemTxn,
 				ReedeemRetries: wm.ReedeemRetries,
+				CloseTxnNonce:  wm.CloseTxnNonce,
 			}).Error
 			return err
 		}
@@ -92,6 +94,7 @@ func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context, status WriteMarke
 			Status:        status,
 			StatusMessage: string(statusBytes),
 			CloseTxnID:    redeemTxn,
+			CloseTxnNonce: wm.CloseTxnNonce,
 		}).Error
 		if err != nil {
 			return err
@@ -128,6 +131,20 @@ func GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*WriteMa
 	// err := db.First(wm, "allocation_root = ?", allocation_root).Error
 	err := db.Table((WriteMarkerEntity{}).TableName()).
 		Where("allocation_root=?", allocation_root).
+		Order("timestamp desc").
+		Take(wm).Error
+	if err != nil {
+		return nil, err
+	}
+	return wm, nil
+}
+
+// GetPreviousWM get previous WriteMarkerEntity from postgres for rollback WM
+func GetPreviousWM(ctx context.Context, allocation_root string, timestamp common.Timestamp) (*WriteMarkerEntity, error) {
+	db := datastore.GetStore().GetTransaction(ctx)
+	wm := &WriteMarkerEntity{}
+	err := db.Table((WriteMarkerEntity{}).TableName()).
+		Where("allocation_root <> ? AND prev_allocation_root=? AND timestamp=?", allocation_root, allocation_root, timestamp).
 		Order("timestamp desc").
 		Take(wm).Error
 	if err != nil {

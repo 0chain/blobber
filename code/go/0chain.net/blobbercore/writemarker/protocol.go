@@ -135,7 +135,21 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context) error {
 	sn.PrevAllocationRoot = wme.WM.PreviousAllocationRoot
 	sn.WriteMarker = &wme.WM
 
-	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CLOSE_CONNECTION_SC_NAME, sn, 0)
+	if sn.AllocationRoot == sn.PrevAllocationRoot {
+		// get nonce of prev WM
+		var prevWM *WriteMarkerEntity
+		prevWM, err = GetPreviousWM(ctx, sn.AllocationRoot, wme.WM.Timestamp)
+		if err != nil {
+			wme.StatusMessage = "Error getting previous write marker. " + err.Error()
+			if err := wme.UpdateStatus(ctx, Failed, "Error getting previous write marker. "+err.Error(), ""); err != nil {
+				Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
+			}
+			return err
+		}
+		err = txn.ExecuteRollbackWM(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CLOSE_CONNECTION_SC_NAME, sn, 0, prevWM.CloseTxnNonce)
+	} else {
+		err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CLOSE_CONNECTION_SC_NAME, sn, 0)
+	}
 	if err != nil {
 		Logger.Error("Failed during sending close connection to the miner. ", zap.String("err:", err.Error()))
 		wme.Status = Failed
@@ -148,11 +162,12 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context) error {
 
 	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
 	t, err := transaction.VerifyTransactionWithNonce(txn.Hash, txn.GetTransaction().GetTransactionNonce())
+	wme.CloseTxnID = txn.Hash
+	wme.CloseTxnNonce = txn.GetTransaction().GetTransactionNonce()
 	if err != nil {
 		Logger.Error("Error verifying the close connection transaction", zap.String("err:", err.Error()), zap.String("txn", txn.Hash))
 		wme.Status = Failed
 		wme.StatusMessage = "Error verifying the close connection transaction." + err.Error()
-		wme.CloseTxnID = txn.Hash
 		// TODO Is this single try?
 		if err := wme.UpdateStatus(ctx, Failed, "Error verifying the close connection transaction."+err.Error(), txn.Hash); err != nil {
 			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
@@ -161,7 +176,6 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context) error {
 	}
 	wme.Status = Committed
 	wme.StatusMessage = t.TransactionOutput
-	wme.CloseTxnID = t.Hash
 	_ = wme.UpdateStatus(ctx, Committed, t.TransactionOutput, t.Hash)
 	return nil
 }
