@@ -122,6 +122,7 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 
 // ProcessContent flush file to FileStorage
 func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocation) (allocation.UploadResult, error) {
+	logging.Logger.Info("UploadFileCommand.ProcessContent", zap.Any("fileChanger", cmd.fileChanger.Path), zap.Any("uploadOffset", cmd.fileChanger.UploadOffset), zap.Any("isFinal", cmd.fileChanger.IsFinal))
 	result := allocation.UploadResult{}
 	defer cmd.contentFile.Close()
 	if cmd.fileChanger.IsFinal {
