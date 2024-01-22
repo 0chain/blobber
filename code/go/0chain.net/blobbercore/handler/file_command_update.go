@@ -112,6 +112,7 @@ func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 	result.Filename = cmd.fileChanger.Filename
 	defer cmd.contentFile.Close()
 	if cmd.fileChanger.IsFinal {
+		result.IsFinal = true
 		cmd.reloadChange()
 	}
 
@@ -133,10 +134,6 @@ func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connID, fileInputData, cmd.contentFile)
 	if err != nil {
 		return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
-	}
-
-	if cmd.fileChanger.IsFinal {
-		result.IsFinal = true
 	}
 
 	result.ValidationRoot = fileOutputData.ValidationRoot
