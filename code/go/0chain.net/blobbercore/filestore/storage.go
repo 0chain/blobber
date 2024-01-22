@@ -104,8 +104,11 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 
 	currentSize := finfo.Size()
 	if currentSize > initialSize { // Is chunk new or rewritten
-		fileRef.ChunkUploaded = true
 		fs.updateAllocTempFileSize(allocID, currentSize-initialSize)
+	}
+	if currentSize > fileData.Size+nodeSize+FMTSize {
+		_ = os.Remove(tempFilePath)
+		return nil, common.NewError("file_size_mismatch", "File size is greater than expected")
 	}
 	logging.Logger.Info("temp_file_write: ", zap.String("filePath", fileData.Path), zap.Int64("currentSize", currentSize), zap.Int64("initialSize", initialSize), zap.Int64("writtenSize", writtenSize), zap.Int64("offset", fileData.UploadOffset), zap.Bool("ChunkUploaded", fileRef.ChunkUploaded))
 	fileRef.Size = writtenSize
