@@ -1260,8 +1260,8 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 	if err != nil {
 		return nil, err
 	}
-	// Save the change
-	if res.IsFinal {
+	// Update/Save the change
+	if res.UpdateChange {
 		dbConnectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 		if err != nil {
 			return nil, err

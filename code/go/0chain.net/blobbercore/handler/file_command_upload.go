@@ -125,7 +125,7 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 	result := allocation.UploadResult{}
 	defer cmd.contentFile.Close()
 	if cmd.fileChanger.IsFinal {
-		result.IsFinal = true
+		result.UpdateChange = true
 		cmd.reloadChange()
 	}
 	connectionID := cmd.fileChanger.ConnectionID
@@ -166,10 +166,13 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 	if fileOutputData.ChunkUploaded {
 		allocationSize += fileOutputData.Size
 		allocation.UpdateConnectionObjSize(connectionID, fileOutputData.Size)
-		err = allocation.SaveFileChange(connectionID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, fileOutputData.Size, cmd.fileChanger.Size)
+		saveChange, err := allocation.SaveFileChange(connectionID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, fileOutputData.Size, cmd.fileChanger.Size)
 		if err != nil {
 			logging.Logger.Error("UploadFileCommand.ProcessContent", zap.Error(err))
 			return result, err
+		}
+		if saveChange {
+			result.UpdateChange = false
 		}
 	}
 
