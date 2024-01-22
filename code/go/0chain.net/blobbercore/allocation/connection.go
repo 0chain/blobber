@@ -273,15 +273,16 @@ func UpdateConnectionObjSize(connectionID string, addSize int64) {
 	connectionObj.UpdatedAt = time.Now()
 }
 
-func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, addSize, totalSize int64) error {
+func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, addSize, totalSize int64) (bool, error) {
 	connectionObjMutex.RLock()
 	connectionObj := connectionProcessor[connectionID]
 	connectionObjMutex.RUnlock()
 	if connectionObj == nil {
-		return common.NewError("connection_not_found", "connection not found for save file change")
+		return false, common.NewError("connection_not_found", "connection not found for save file change")
 	}
 	connectionObj.lock.Lock()
 	change := connectionObj.changes[pathHash]
+	saveChange := false
 	if change == nil {
 		change = &ConnectionChange{}
 		connectionObj.changes[pathHash] = change
@@ -294,8 +295,9 @@ func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, ad
 		})
 		if err != nil {
 			connectionObj.lock.Unlock()
-			return err
+			return false, err
 		}
+		saveChange = true
 		change.contentSize = totalSize
 	}
 	connectionObj.lock.Unlock()
@@ -303,7 +305,7 @@ func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, ad
 	defer change.lock.Unlock()
 	change.writtenSize += addSize
 	if change.isFinalized {
-		return nil
+		return false, nil
 	}
 	if change.writtenSize == change.contentSize {
 		change.isFinalized = true
@@ -311,7 +313,7 @@ func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, ad
 		change.hasher = hasher
 		go hasher.Start(connectionID, connectionObj.AllocationID, fileName, pathHash)
 	}
-	return nil
+	return saveChange, nil
 }
 
 func GetHasher(connectionID, pathHash string) *filestore.CommitHasher {

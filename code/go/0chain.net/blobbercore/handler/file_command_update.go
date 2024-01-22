@@ -112,7 +112,7 @@ func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 	result.Filename = cmd.fileChanger.Filename
 	defer cmd.contentFile.Close()
 	if cmd.fileChanger.IsFinal {
-		result.IsFinal = true
+		result.UpdateChange = true
 		cmd.reloadChange()
 	}
 
@@ -156,9 +156,12 @@ func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 	if fileOutputData.ChunkUploaded {
 		allocationSize += fileOutputData.Size
 		allocation.UpdateConnectionObjSize(connID, fileOutputData.Size)
-		err = allocation.SaveFileChange(connID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, fileOutputData.Size, cmd.fileChanger.Size)
+		saveChange, err := allocation.SaveFileChange(connID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, fileOutputData.Size, cmd.fileChanger.Size)
 		if err != nil {
 			return result, err
+		}
+		if saveChange {
+			result.UpdateChange = false
 		}
 	}
 
