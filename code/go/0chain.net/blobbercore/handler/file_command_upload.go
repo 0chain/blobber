@@ -125,6 +125,7 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 	result := allocation.UploadResult{}
 	defer cmd.contentFile.Close()
 	if cmd.fileChanger.IsFinal {
+		result.IsFinal = true
 		cmd.reloadChange()
 	}
 	connectionID := cmd.fileChanger.ConnectionID

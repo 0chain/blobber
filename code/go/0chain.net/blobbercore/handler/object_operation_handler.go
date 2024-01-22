@@ -1263,13 +1263,11 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 	}
 	// Save the change
 	if res.IsFinal {
-		err = datastore.GetStore().WithTransaction(ctx, func(ctx context.Context) error {
-			dbConnectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
-			if err != nil {
-				return err
-			}
-			return cmd.UpdateChange(ctx, dbConnectionObj)
-		})
+		dbConnectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+		if err != nil {
+			return nil, err
+		}
+		err = cmd.UpdateChange(ctx, dbConnectionObj)
 		if err != nil {
 			return nil, err
 		}
