@@ -153,16 +153,14 @@ func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		allocation.UpdateConnectionObjSize(connID, -cmd.existingFileRef.Size)
 	}
 
-	if fileOutputData.ChunkUploaded {
-		allocationSize += fileOutputData.Size
-		allocation.UpdateConnectionObjSize(connID, fileOutputData.Size)
-		saveChange, err := allocation.SaveFileChange(connID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, fileOutputData.Size, cmd.fileChanger.Size)
-		if err != nil {
-			return result, err
-		}
-		if saveChange {
-			result.UpdateChange = false
-		}
+	// allocationSize += fileOutputData.Size
+	saveChange, err := allocation.SaveFileChange(connID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, fileOutputData.Size, cmd.fileChanger.Size)
+	if err != nil {
+		return result, err
+	}
+	if saveChange {
+		allocation.UpdateConnectionObjSize(connID, cmd.fileChanger.Size)
+		result.UpdateChange = false
 	}
 
 	if allocationObj.BlobberSizeUsed+(allocationSize-cmd.existingFileRef.Size) > allocationObj.BlobberSize {

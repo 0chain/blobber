@@ -164,17 +164,17 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 	cmd.allocationChange.Operation = constants.FileOperationInsert
 
 	// only update connection size when the chunk is uploaded.
-	if fileOutputData.ChunkUploaded {
-		allocationSize += fileOutputData.Size
-		allocation.UpdateConnectionObjSize(connectionID, fileOutputData.Size)
-		saveChange, err := allocation.SaveFileChange(connectionID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, fileOutputData.Size, cmd.fileChanger.Size)
-		if err != nil {
-			logging.Logger.Error("UploadFileCommand.ProcessContent", zap.Error(err))
-			return result, err
-		}
-		if saveChange {
-			result.UpdateChange = false
-		}
+
+	// allocationSize += fileOutputData.Size
+	// allocation.UpdateConnectionObjSize(connectionID, fileOutputData.Size)
+	saveChange, err := allocation.SaveFileChange(connectionID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, fileOutputData.Size, cmd.fileChanger.Size)
+	if err != nil {
+		logging.Logger.Error("UploadFileCommand.ProcessContent", zap.Error(err))
+		return result, err
+	}
+	if saveChange {
+		allocation.UpdateConnectionObjSize(connectionID, cmd.fileChanger.Size)
+		result.UpdateChange = false
 	}
 
 	if allocationObj.BlobberSizeUsed+allocationSize > allocationObj.BlobberSize {
