@@ -30,7 +30,7 @@ echo "  DOCKER_IMAGE_BLOBBER=$DOCKER_IMAGE_BLOBBER"
 echo ""
 
 echo "generating swagger"
-# docker.local/bin/test.swagger.sh
+docker.local/bin/test.swagger.sh
 
 echo "2> docker build blobber"
 DOCKER_BUILDKIT=1 docker $DOCKER_BUILD --progress=plain --build-arg GIT_COMMIT=$GIT_COMMIT --build-arg DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE -f docker.local/blobber.Dockerfile . $DOCKER_IMAGE_BLOBBER  --network host
