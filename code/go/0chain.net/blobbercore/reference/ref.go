@@ -343,8 +343,7 @@ func GetRefWithChildren(ctx context.Context, parentRef *Ref, allocationID, path 
 	var refs []*Ref
 	t := datastore.GetStore().GetTransaction(ctx)
 	logging.Logger.Info("GetRefWithChildren", zap.String("path", path), zap.Int("offset", offset), zap.Int("pageLimit", pageLimit))
-	db := t.Select(dirListFields).
-		Where(Ref{ParentPath: path, AllocationID: allocationID})
+	db := t.Where(Ref{ParentPath: path, AllocationID: allocationID})
 	err := db.Order("path").
 		Offset(offset).
 		Limit(pageLimit).
