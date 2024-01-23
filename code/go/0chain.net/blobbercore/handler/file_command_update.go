@@ -116,13 +116,6 @@ func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		return result, common.NewError("invalid_parameters", "Invalid parameters. Size cannot be zero")
 	}
 
-	if cmd.thumbFile != nil {
-		err := cmd.ProcessThumbnail(allocationObj)
-		if err != nil {
-			return result, err
-		}
-	}
-
 	filePathHash := cmd.fileChanger.PathHash
 	connID := cmd.fileChanger.ConnectionID
 
@@ -175,6 +168,13 @@ func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 
 	if allocationObj.BlobberSizeUsed+(allocationSize-cmd.existingFileRef.Size) > allocationObj.BlobberSize {
 		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
+	}
+
+	if cmd.thumbFile != nil {
+		err := cmd.ProcessThumbnail(allocationObj)
+		if err != nil {
+			return result, err
+		}
 	}
 
 	return result, nil

@@ -1199,6 +1199,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	connectionID, ok := common.GetField(r, "connection_id")
 	if !ok {
+		logging.Logger.Error("no_connection_id", zap.String("alloc_id", allocationID))
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 	if clientID == "" {
