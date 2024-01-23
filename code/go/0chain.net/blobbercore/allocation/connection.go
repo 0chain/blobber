@@ -41,8 +41,6 @@ type ConnectionChange struct {
 	// processError error
 	// ProcessChan  chan FileCommand
 	// wg           sync.WaitGroup
-	contentSize int64
-	writtenSize int64
 	isFinalized bool
 	lock        sync.Mutex
 }
@@ -276,7 +274,7 @@ func UpdateConnectionObjSize(connectionID string, addSize int64) {
 	connectionObj.UpdatedAt = time.Now()
 }
 
-func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, addSize, totalSize int64) (bool, error) {
+func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, isFinal bool, contentSize int64) (bool, error) {
 	connectionObjMutex.RLock()
 	connectionObj := connectionProcessor[connectionID]
 	connectionObjMutex.RUnlock()
@@ -301,18 +299,16 @@ func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, ad
 			return false, err
 		}
 		saveChange = true
-		change.contentSize = totalSize
 	}
 	connectionObj.lock.Unlock()
 	change.lock.Lock()
 	defer change.lock.Unlock()
-	change.writtenSize += addSize
 	if change.isFinalized {
 		return false, nil
 	}
-	if change.writtenSize == change.contentSize {
+	if isFinal {
 		change.isFinalized = true
-		hasher := filestore.GetNewCommitHasher(change.contentSize)
+		hasher := filestore.GetNewCommitHasher(contentSize)
 		change.hasher = hasher
 		go hasher.Start(connectionID, connectionObj.AllocationID, fileName, pathHash)
 	}

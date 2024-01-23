@@ -37,6 +37,7 @@ type FileOutputData struct {
 	Size int64
 	// ChunkUploaded the chunk is uploaded or not.
 	ChunkUploaded bool
+	ContentSize   int64
 }
 
 type FileObjectHandler func(contentHash string, contentSize int64)

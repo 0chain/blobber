@@ -111,13 +111,16 @@ func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 
 	result.Filename = cmd.fileChanger.Filename
 	defer cmd.contentFile.Close()
-	if cmd.fileChanger.IsFinal {
-		result.UpdateChange = true
-		cmd.reloadChange()
-	}
 
 	if cmd.fileChanger.Size == 0 {
 		return result, common.NewError("invalid_parameters", "Invalid parameters. Size cannot be zero")
+	}
+
+	if cmd.thumbFile != nil {
+		err := cmd.ProcessThumbnail(allocationObj)
+		if err != nil {
+			return result, err
+		}
 	}
 
 	filePathHash := cmd.fileChanger.PathHash
@@ -150,28 +153,28 @@ func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 	cmd.allocationChange.Operation = sdkConst.FileOperationUpdate
 
 	if cmd.fileChanger.IsFinal {
+		result.UpdateChange = true
+		cmd.reloadChange()
+		if fileOutputData.ContentSize != cmd.fileChanger.Size {
+			return result, common.NewError("upload_error", fmt.Sprintf("File size mismatch. Expected: %d, Actual: %d", cmd.fileChanger.Size, fileOutputData.ContentSize))
+		}
 		allocation.UpdateConnectionObjSize(connID, -cmd.existingFileRef.Size)
 	}
 
 	// allocationSize += fileOutputData.Size
-	saveChange, err := allocation.SaveFileChange(connID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, fileOutputData.Size, cmd.fileChanger.Size)
-	if err != nil {
-		return result, err
-	}
-	if saveChange {
-		allocation.UpdateConnectionObjSize(connID, cmd.fileChanger.Size)
-		result.UpdateChange = false
+	if cmd.fileChanger.UploadOffset == 0 || cmd.fileChanger.IsFinal {
+		saveChange, err := allocation.SaveFileChange(connID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, cmd.fileChanger.IsFinal, cmd.fileChanger.Size)
+		if err != nil {
+			return result, err
+		}
+		if saveChange {
+			allocation.UpdateConnectionObjSize(connID, cmd.fileChanger.Size)
+			result.UpdateChange = false
+		}
 	}
 
 	if allocationObj.BlobberSizeUsed+(allocationSize-cmd.existingFileRef.Size) > allocationObj.BlobberSize {
 		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
-	}
-
-	if cmd.thumbFile != nil {
-		err = cmd.ProcessThumbnail(allocationObj)
-		if err != nil {
-			return result, err
-		}
 	}
 
 	return result, nil

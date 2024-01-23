@@ -114,6 +114,7 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 	fileRef.Size = writtenSize
 	fileRef.Name = fileData.Name
 	fileRef.Path = fileData.Path
+	fileRef.ContentSize = currentSize - nodeSize - FMTSize
 	return fileRef, nil
 }
 
