@@ -40,7 +40,7 @@ func init() {
 		dirListTag := field.Tag.Get(DIR_LIST_TAG)
 
 		if dirListTag != "" {
-			dirListFields = append(dirListFields, field.Name)
+			dirListFields = append(dirListFields, dirListTag)
 		}
 	}
 }
