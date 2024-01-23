@@ -125,13 +125,18 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 	logging.Logger.Info("UploadFileCommand.ProcessContent", zap.Any("fileChanger", cmd.fileChanger.Path), zap.Any("uploadOffset", cmd.fileChanger.UploadOffset), zap.Any("isFinal", cmd.fileChanger.IsFinal))
 	result := allocation.UploadResult{}
 	defer cmd.contentFile.Close()
-	if cmd.fileChanger.IsFinal {
-		result.UpdateChange = true
-		cmd.reloadChange()
-	}
+
 	connectionID := cmd.fileChanger.ConnectionID
 	if cmd.fileChanger.Size == 0 {
 		return result, common.NewError("invalid_parameters", "Invalid parameters. Size cannot be zero")
+	}
+
+	if cmd.thumbFile != nil {
+		err := cmd.ProcessThumbnail(allocationObj)
+		if err != nil {
+			logging.Logger.Error("UploadFileCommand.ProcessContent", zap.Error(err))
+			return result, err
+		}
 	}
 
 	fileInputData := &filestore.FileInputData{
@@ -163,30 +168,30 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 	cmd.allocationChange.Size = cmd.fileChanger.Size
 	cmd.allocationChange.Operation = constants.FileOperationInsert
 
-	// only update connection size when the chunk is uploaded.
+	if cmd.fileChanger.IsFinal {
+		result.UpdateChange = true
+		cmd.reloadChange()
+		if fileOutputData.ContentSize != cmd.fileChanger.Size {
+			return result, common.NewError("upload_error", fmt.Sprintf("File size mismatch. Expected: %d, Actual: %d", cmd.fileChanger.Size, fileOutputData.ContentSize))
+		}
+	}
 
 	// allocationSize += fileOutputData.Size
 	// allocation.UpdateConnectionObjSize(connectionID, fileOutputData.Size)
-	saveChange, err := allocation.SaveFileChange(connectionID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, fileOutputData.Size, cmd.fileChanger.Size)
-	if err != nil {
-		logging.Logger.Error("UploadFileCommand.ProcessContent", zap.Error(err))
-		return result, err
-	}
-	if saveChange {
-		allocation.UpdateConnectionObjSize(connectionID, cmd.fileChanger.Size)
-		result.UpdateChange = false
-	}
-
-	if allocationObj.BlobberSizeUsed+allocationSize > allocationObj.BlobberSize {
-		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
-	}
-
-	if cmd.thumbFile != nil {
-		err = cmd.ProcessThumbnail(allocationObj)
+	if cmd.fileChanger.UploadOffset == 0 || cmd.fileChanger.IsFinal {
+		saveChange, err := allocation.SaveFileChange(connectionID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, cmd.fileChanger.IsFinal, cmd.fileChanger.Size)
 		if err != nil {
 			logging.Logger.Error("UploadFileCommand.ProcessContent", zap.Error(err))
 			return result, err
 		}
+		if saveChange {
+			allocation.UpdateConnectionObjSize(connectionID, cmd.fileChanger.Size)
+			result.UpdateChange = false
+		}
+	}
+
+	if allocationObj.BlobberSizeUsed+allocationSize > allocationObj.BlobberSize {
+		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
 	}
 
 	return result, nil
