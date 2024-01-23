@@ -86,7 +86,7 @@ jobs:
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
           export DOCKER_IMAGE_BASE="$BLOBBER_BUILD_BASE_REGISTRY:$TAG"
           export DOCKER_IMAGE_SWAGGER="${BLOBBER_REGISTRY}:swagger_test"
-          export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
+          export DOCKER_BUILD="buildx build --platform linux/arm64 --push"
           export DOCKER_IMAGE_BLOBBER="-t ${BLOBBER_REGISTRY}:${TAG} -t ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}"
           export CONTEXT_NAME="$RUNNER_NAME" && (docker context inspect "$CONTEXT_NAME" >/dev/null 2>&1 || docker context create "$CONTEXT_NAME")
           docker buildx inspect "blobber-$RUNNER_NAME" || docker buildx create --name "blobber-$RUNNER_NAME" --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement security.insecure' "$CONTEXT_NAME"
