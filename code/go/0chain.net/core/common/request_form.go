@@ -1,6 +1,11 @@
 package common
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
+)
 
 const (
 	FormFileParseMaxMemory = 32 * 1024 * 1024
@@ -13,7 +18,10 @@ func TryParseForm(r *http.Request) {
 		if ct == "application/x-www-form-urlencoded" {
 			r.ParseForm() //nolint: errcheck
 		} else {
-			r.ParseMultipartForm(FormFileParseMaxMemory) //nolint: errcheck
+			err := r.ParseMultipartForm(FormFileParseMaxMemory) //nolint: errcheck
+			if err != nil {
+				logging.Logger.Error("TryParseForm: ParseMultipartForm", zap.Error(err))
+			}
 		}
 	}
 }
