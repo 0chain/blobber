@@ -131,14 +131,6 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		return result, common.NewError("invalid_parameters", "Invalid parameters. Size cannot be zero")
 	}
 
-	if cmd.thumbFile != nil {
-		err := cmd.ProcessThumbnail(allocationObj)
-		if err != nil {
-			logging.Logger.Error("UploadFileCommand.ProcessContent", zap.Error(err))
-			return result, err
-		}
-	}
-
 	fileInputData := &filestore.FileInputData{
 		Name: cmd.fileChanger.Filename,
 		Path: cmd.fileChanger.Path,
@@ -192,6 +184,14 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 
 	if allocationObj.BlobberSizeUsed+allocationSize > allocationObj.BlobberSize {
 		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
+	}
+
+	if cmd.thumbFile != nil {
+		err := cmd.ProcessThumbnail(allocationObj)
+		if err != nil {
+			logging.Logger.Error("UploadFileCommand.ProcessContent", zap.Error(err))
+			return result, err
+		}
 	}
 
 	return result, nil
