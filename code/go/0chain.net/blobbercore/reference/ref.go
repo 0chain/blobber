@@ -325,6 +325,10 @@ func GetSubDirsFromPath(p string) []string {
 func GetRefWithChildren(ctx context.Context, allocationID, path string, offset, pageLimit int) (*Ref, error) {
 	var refs []Ref
 	t := datastore.GetStore().GetTransaction(ctx)
+	if pageLimit > 0 {
+		pageLimit += 1 // add one for parent dir
+	}
+	logging.Logger.Info("GetRefWithChildren", zap.String("path", path), zap.Int("offset", offset), zap.Int("pageLimit", pageLimit))
 	db := t.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
 	err := db.Order("path").Offset(offset).
 		Limit(pageLimit).Find(&refs).Error

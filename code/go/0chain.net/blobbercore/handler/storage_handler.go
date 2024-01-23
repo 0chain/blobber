@@ -350,7 +350,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 	var offset, pageLimit int
 
 	limitStr := r.FormValue("limit")
-	if limitStr == "" {
+	if limitStr != "" {
 		pageLimit, err = strconv.Atoi(limitStr)
 		if err != nil {
 			return nil, common.NewError("invalid_parameters", "Invalid limit value "+err.Error())
@@ -363,10 +363,9 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 		}
 	} else {
 		pageLimit = DefaultListPageLimit
-
 	}
 	offsetStr := r.FormValue("offset")
-	if offsetStr == "" {
+	if offsetStr != "" {
 		offset, err = strconv.Atoi(offsetStr)
 		if err != nil {
 			return nil, common.NewError("invalid_parameters", "Invalid offset value "+err.Error())
