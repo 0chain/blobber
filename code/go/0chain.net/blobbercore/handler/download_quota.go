@@ -1,10 +1,8 @@
 package handler
 
 import (
-	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
@@ -38,17 +36,10 @@ func getDailyBlocks(key string) int64 {
 	return downloadLimit[key]
 }
 
-func startDownloadLimitCleanup(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(24 * time.Hour):
-			downloadLock.Lock()
-			downloadLimit = make(map[string]int64)
-			downloadLock.Unlock()
-		}
-	}
+func cleanupDownloadLimit() {
+	downloadLock.Lock()
+	defer downloadLock.Unlock()
+	clear(downloadLimit)
 }
 
 func getQuotaManager() *QuotaManager {

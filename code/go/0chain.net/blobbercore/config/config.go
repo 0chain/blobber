@@ -30,6 +30,8 @@ func SetupDefaultConfig() {
 	viper.SetDefault("rate_limiters.block_limit_monthly", 31250000)
 	viper.SetDefault("rate_limiters.upload_limit_monthly", 31250000)
 	viper.SetDefault("rate_limiters.commit_limit_monthly", 30000)
+	viper.SetDefault("rate_limiters.commit_limit_daily", 1600)
+	viper.SetDefault("rate_limiters.commit_zero_limit_daily", 400)
 
 	viper.SetDefault("healthcheck.frequency", "60s")
 
@@ -110,6 +112,8 @@ type Config struct {
 	BlockLimitMonthly             int64
 	UploadLimitMonthly            int64
 	CommitLimitMonthly            int64
+	CommitLimitDaily              int64
+	CommitZeroLimitDaily          int64
 	ChallengeCleanupGap           int64
 
 	HealthCheckWorkerFreq time.Duration
@@ -283,6 +287,8 @@ func ReadConfig(deploymentMode int) {
 	Configuration.BlockLimitMonthly = viper.GetInt64("rate_limiters.block_limit_monthly")
 	Configuration.UploadLimitMonthly = viper.GetInt64("rate_limiters.upload_limit_monthly")
 	Configuration.CommitLimitMonthly = viper.GetInt64("rate_limiters.commit_limit_monthly")
+	Configuration.CommitLimitDaily = viper.GetInt64("rate_limiters.commit_limit_daily")
+	Configuration.CommitZeroLimitDaily = viper.GetInt64("rate_limiters.commit_zero_limit_daily")
 }
 
 // StorageSCConfiguration will include all the required sc configs to operate blobber
