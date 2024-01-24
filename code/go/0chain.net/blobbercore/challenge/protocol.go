@@ -52,6 +52,7 @@ func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error)
 	deleteChallenge(cr.RoundCreatedAt)
 	cr.statusMutex.Lock()
 	cr.Status = Cancelled
+	cr.Result = ChallengeFailure
 	cr.statusMutex.Unlock()
 	cr.StatusMessage = errReason.Error()
 	cr.UpdatedAt = cancellation.UTC()

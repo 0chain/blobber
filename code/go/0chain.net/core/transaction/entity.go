@@ -2,9 +2,10 @@ package transaction
 
 import (
 	"encoding/json"
-	"github.com/0chain/gosdk/core/transaction"
 	"sync"
 	"time"
+
+	"github.com/0chain/gosdk/core/transaction"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
@@ -150,6 +151,63 @@ func (t *Transaction) ExecuteSmartContract(address, methodName string, input int
 	updateLast50Transactions(string(snBytes))
 
 	nonce := monitor.getNextUnusedNonce()
+	if err := t.zcntxn.SetTransactionNonce(nonce); err != nil {
+		logging.Logger.Error("Failed to set nonce.",
+			zap.Any("hash", t.zcntxn.GetTransactionHash()),
+			zap.Any("nonce", nonce),
+			zap.Any("error", err))
+	}
+
+	logging.Logger.Info("Transaction nonce set.",
+		zap.Any("hash", t.zcntxn.GetTransactionHash()),
+		zap.Any("nonce", nonce))
+
+	_, err = t.zcntxn.ExecuteSmartContract(address, methodName, input, uint64(val))
+	if err != nil {
+		t.wg.Done()
+		logging.Logger.Error("Failed to execute SC.",
+			zap.Any("hash", t.zcntxn.GetTransactionHash()),
+			zap.Any("nonce", t.zcntxn.GetTransactionNonce()),
+			zap.Any("error", err))
+		monitor.recordFailedNonce(t.zcntxn.GetTransactionNonce())
+		return err
+	}
+
+	t.wg.Wait()
+
+	t.Hash = t.zcntxn.GetTransactionHash()
+	if len(t.zcntxn.GetTransactionError()) > 0 {
+		logging.Logger.Error("Failed to submit SC.",
+			zap.Any("hash", t.zcntxn.GetTransactionHash()),
+			zap.Any("nonce", t.zcntxn.GetTransactionNonce()),
+			zap.Any("error", t.zcntxn.GetTransactionError()))
+		monitor.recordFailedNonce(t.zcntxn.GetTransactionNonce())
+		return common.NewError("transaction_send_error", t.zcntxn.GetTransactionError())
+	}
+	return nil
+}
+
+func (t *Transaction) ExecuteRollbackWM(address, methodName string, input interface{}, val uint64, prevNonce int64) error {
+	t.wg.Add(1)
+
+	sn := transaction.SmartContractTxnData{Name: methodName, InputArgs: input}
+	snBytes, err := json.Marshal(sn)
+	if err != nil {
+		return err
+	}
+
+	updateLast50Transactions(string(snBytes))
+
+	nonce := monitor.getNextUnusedNonce()
+	if nonce < prevNonce {
+		t.wg.Done()
+		logging.Logger.Error("Failed to set nonce as prevNonce is greater",
+			zap.Any("nonce", nonce),
+			zap.Any("prevNonce", prevNonce),
+		)
+		monitor.recordFailedNonce(nonce)
+		return common.NewError("transaction_send_error", "Failed to set nonce as prevNonce is greater")
+	}
 	if err := t.zcntxn.SetTransactionNonce(nonce); err != nil {
 		logging.Logger.Error("Failed to set nonce.",
 			zap.Any("hash", t.zcntxn.GetTransactionHash()),

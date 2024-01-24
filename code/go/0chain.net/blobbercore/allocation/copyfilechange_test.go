@@ -375,6 +375,7 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 			tc.setupDbMock()
 
 			config.Configuration.MaxAllocationDirFiles = tc.maxDirFilesPerAlloc
+			config.Configuration.MaxObjectsInDir = 1000
 
 			ctx := datastore.GetStore().CreateTransaction(context.TODO())
 

@@ -232,6 +232,6 @@ func cleanUpWorker() {
 	currentRound := roundInfo.CurrentRound + int64(float64(roundInfo.LastRoundDiff)*(float64(time.Since(roundInfo.CurrentRoundCaptureTime).Milliseconds())/float64(GetRoundInterval.Milliseconds())))
 	_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		db := datastore.GetStore().GetTransaction(ctx)
-		return db.Model(&ChallengeEntity{}).Unscoped().Delete(&ChallengeEntity{}, "status <> ? AND round_created_at < ?", Cancelled, currentRound-config.Configuration.ChallengeCleanupGap).Error
+		return db.Model(&ChallengeEntity{}).Unscoped().Delete(&ChallengeEntity{}, "round_created_at < ?", currentRound-config.Configuration.ChallengeCleanupGap).Error
 	})
 }
