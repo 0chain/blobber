@@ -267,15 +267,16 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	// get client and allocation ids
 
 	var (
-		clientID     = ctx.Value(constants.ContextKeyClient).(string)
-		allocationTx = ctx.Value(constants.ContextKeyAllocation).(string)
-		allocationID = ctx.Value(constants.ContextKeyAllocationID).(string)
-		alloc        *allocation.Allocation
-		blobberID    = node.Self.ID
-		quotaManager = getQuotaManager()
+		clientID        = ctx.Value(constants.ContextKeyClient).(string)
+		clientPublicKey = ctx.Value(constants.ContextKeyClientKey).(string)
+		allocationTx    = ctx.Value(constants.ContextKeyAllocation).(string)
+		allocationID    = ctx.Value(constants.ContextKeyAllocationID).(string)
+		alloc           *allocation.Allocation
+		blobberID       = node.Self.ID
+		quotaManager    = getQuotaManager()
 	)
 
-	if clientID == "" {
+	if clientID == "" || clientPublicKey == "" {
 		return nil, common.NewError("download_file", "invalid client")
 	}
 
@@ -319,6 +320,10 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 	if !isOwner {
 		if dr.AuthToken == "" {
 			return nil, common.NewError("invalid_authticket", "authticket is required")
+		}
+		valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), clientPublicKey)
+		if !valid || err != nil {
+			return nil, common.NewError("invalid_signature", "Invalid signature")
 		}
 		authTokenString, err := base64.StdEncoding.DecodeString(dr.AuthToken)
 		if err != nil {
