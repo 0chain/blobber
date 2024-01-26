@@ -22,6 +22,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 )
 
 const (
@@ -879,8 +880,8 @@ func verifySignatureFromRequest(alloc, sign, pbK string) (bool, error) {
 	if len(sign) < 64 {
 		return false, nil
 	}
-
-	hash := encryption.Hash(alloc)
+	hashData := alloc + node.Self.GetURLBase()
+	hash := encryption.Hash(hashData)
 	return encryption.Verify(pbK, sign, hash)
 }
 
