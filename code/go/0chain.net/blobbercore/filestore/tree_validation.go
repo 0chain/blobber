@@ -408,6 +408,7 @@ type CommitHasher struct {
 	wg            sync.WaitGroup
 	hashErr       error
 	dataSize      int64
+	mu            sync.Mutex
 }
 
 func GetNewCommitHasher(dataSize int64) *CommitHasher {
@@ -420,9 +421,15 @@ func GetNewCommitHasher(dataSize int64) *CommitHasher {
 }
 
 func (c *CommitHasher) Start(connID, allocID, fileName, filePathHash string) {
+	c.mu.Lock()
+	if c.isStarted {
+		c.mu.Unlock()
+		return
+	}
+	c.isStarted = true
+	c.mu.Unlock()
 	c.wg.Add(1)
 	defer c.wg.Done()
-	c.isStarted = true
 	err := GetFileStore().WriteDataToTree(allocID, connID, fileName, filePathHash, c)
 	if err != nil {
 		c.hashErr = err
@@ -431,10 +438,13 @@ func (c *CommitHasher) Start(connID, allocID, fileName, filePathHash string) {
 	c.hashErr = c.Finalize()
 }
 
-func (c *CommitHasher) Wait() error {
+func (c *CommitHasher) Wait(connID, allocID, fileName, filePathHash string) error {
+	c.mu.Lock()
 	if !c.isStarted {
-		return errors.New("commit hasher is not started")
+		c.isStarted = true
+		c.hashErr = GetFileStore().WriteDataToTree(allocID, connID, fileName, filePathHash, c)
 	}
+	c.mu.Unlock()
 	c.wg.Wait()
 	return c.hashErr
 }
