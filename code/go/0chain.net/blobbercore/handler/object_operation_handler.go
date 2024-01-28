@@ -321,9 +321,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		if dr.AuthToken == "" {
 			return nil, common.NewError("invalid_authticket", "authticket is required")
 		}
-		valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), clientPublicKey)
-		if !valid || err != nil {
-			return nil, common.NewError("invalid_signature", "Invalid signature")
+		if dr.Version == "v2" {
+			valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), clientPublicKey)
+			if !valid || err != nil {
+				return nil, common.NewError("invalid_signature", "Invalid signature")
+			}
 		}
 		authTokenString, err := base64.StdEncoding.DecodeString(dr.AuthToken)
 		if err != nil {
@@ -349,9 +351,11 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		}
 
 	} else {
-		valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), alloc.OwnerPublicKey)
-		if !valid || err != nil {
-			return nil, common.NewError("invalid_signature", "Invalid signature")
+		if dr.Version == "v2" {
+			valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), alloc.OwnerPublicKey)
+			if !valid || err != nil {
+				return nil, common.NewError("invalid_signature", "Invalid signature")
+			}
 		}
 	}
 
