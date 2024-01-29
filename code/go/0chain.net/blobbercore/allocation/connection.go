@@ -17,7 +17,7 @@ var (
 	// ConnectionObjCleanInterval start to clean the connectionObjMap
 	ConnectionObjCleanInterval = 10 * time.Minute
 	// ConnectionObjTimout after which connectionObj entry should be invalid
-	ConnectionObjTimeout = 20 * time.Minute
+	ConnectionObjTimeout = 30 * time.Minute
 )
 
 var (
@@ -43,45 +43,6 @@ type ConnectionChange struct {
 	// wg           sync.WaitGroup
 	isFinalized bool
 	lock        sync.Mutex
-}
-
-// func CreateConnectionChange(connectionID, pathHash string, allocationObj *Allocation) *ConnectionChange {
-// 	connectionObjMutex.Lock()
-// 	connectionObj := connectionProcessor[connectionID]
-// 	if connectionObj == nil {
-// 		ctx, cancel := context.WithCancel(context.Background())
-// 		connectionObj = &ConnectionProcessor{
-// 			UpdatedAt: time.Now(),
-// 			changes:   make(map[string]*ConnectionChange),
-// 			ctx:       ctx,
-// 			ctxCancel: cancel,
-// 		}
-// 		connectionProcessor[connectionID] = connectionObj
-// 	}
-// 	connectionObjMutex.Unlock()
-// 	connectionObj.lock.Lock()
-// 	connChange := &ConnectionChange{
-// 		ProcessChan: make(chan FileCommand, 2),
-// 		wg:          sync.WaitGroup{},
-// 	}
-// 	connectionObj.changes[pathHash] = connChange
-// 	connectionObj.lock.Unlock()
-// 	connChange.wg.Add(1)
-// 	go func() {
-// 		processCommand(connectionObj.ctx, connChange.ProcessChan, allocationObj, connectionID, connectionObj.ClientID, pathHash)
-// 		connChange.wg.Done()
-// 	}()
-// 	return connChange
-// }
-
-func GetConnectionChange(connectionID, pathHash string) *ConnectionChange {
-	connectionObjMutex.RLock()
-	connectionObj := connectionProcessor[connectionID]
-	connectionObjMutex.RUnlock()
-	if connectionObj == nil {
-		return nil
-	}
-	return connectionObj.changes[pathHash]
 }
 
 func GetFileChanger(connectionID, pathHash string) *BaseFileChanger {
@@ -146,52 +107,6 @@ func GetExistingRef(connectionID, pathHash string) *reference.Ref {
 	return connectionObj.changes[pathHash].existingRef
 }
 
-// func SetFinalized(connectionID, pathHash string, cmd FileCommand) error {
-// 	connectionObjMutex.RLock()
-// 	connectionObj := connectionProcessor[connectionID]
-// 	connectionObjMutex.RUnlock()
-// 	if connectionObj == nil {
-// 		return common.NewError("connection_not_found", "connection not found")
-// 	}
-// 	connectionObj.lock.Lock()
-// 	connChange := connectionObj.changes[pathHash]
-// 	// Can happen due to resume or redundant call
-// 	if connChange.isFinalized {
-// 		connectionObj.lock.Unlock()
-// 		connChange.wg.Wait()
-// 		return nil
-// 	}
-// 	connChange.isFinalized = true
-// 	connectionObj.lock.Unlock()
-// 	connChange.ProcessChan <- cmd
-// 	close(connChange.ProcessChan)
-// 	connChange.wg.Wait()
-// 	return GetError(connectionID, pathHash)
-// }
-
-// func SendCommand(connectionID, pathHash string, cmd FileCommand) error {
-// 	connectionObjMutex.RLock()
-// 	connectionObj := connectionProcessor[connectionID]
-// 	connectionObjMutex.RUnlock()
-// 	if connectionObj == nil {
-// 		return common.NewError("connection_not_found", "connection not found")
-// 	}
-// 	connectionObj.lock.RLock()
-// 	defer connectionObj.lock.RUnlock()
-// 	connChange := connectionObj.changes[pathHash]
-// 	if connChange == nil {
-// 		return common.NewError("connection_change_not_found", "connection change not found")
-// 	}
-// 	if connChange.processError != nil {
-// 		return connChange.processError
-// 	}
-// 	if connChange.isFinalized {
-// 		return common.NewError("connection_change_finalized", "connection change finalized")
-// 	}
-// 	connChange.ProcessChan <- cmd
-// 	return nil
-// }
-
 func GetConnectionProcessor(connectionID string) *ConnectionProcessor {
 	connectionObjMutex.RLock()
 	defer connectionObjMutex.RUnlock()
@@ -213,36 +128,6 @@ func CreateConnectionProcessor(connectionID, allocationID, clientID string) *Con
 	}
 	return connectionObj
 }
-
-// func SetError(connectionID, pathHash string, err error) {
-// 	connectionObjMutex.RLock()
-// 	connectionObj := connectionProcessor[connectionID]
-// 	connectionObjMutex.RUnlock()
-// 	if connectionObj == nil {
-// 		return
-// 	}
-// 	connectionObj.lock.Lock()
-// 	connChange := connectionObj.changes[pathHash]
-// 	connChange.processError = err
-// 	connectionObj.lock.Unlock()
-// 	drainChan(connChange.ProcessChan) // drain the channel so that the no commands are blocked
-// }
-
-// func GetError(connectionID, pathHash string) error {
-// 	connectionObjMutex.RLock()
-// 	connectionObj := connectionProcessor[connectionID]
-// 	connectionObjMutex.RUnlock()
-// 	if connectionObj == nil {
-// 		return nil
-// 	}
-// 	connectionObj.lock.RLock()
-// 	defer connectionObj.lock.RUnlock()
-// 	connChange := connectionObj.changes[pathHash]
-// 	if connChange == nil {
-// 		return nil
-// 	}
-// 	return connChange.processError
-// }
 
 // GetConnectionObjSize gets the connection size from the memory
 func GetConnectionObjSize(connectionID string) int64 {
@@ -329,97 +214,6 @@ func GetHasher(connectionID, pathHash string) *filestore.CommitHasher {
 	}
 	return connectionObj.changes[pathHash].hasher
 }
-
-// func UpdateConnectionObjWithHasher(connectionID, pathHash string) {
-// 	connectionObjMutex.Lock()
-// 	connectionObj := connectionProcessor[connectionID]
-// 	if connectionObj == nil {
-// 		connectionObj = &ConnectionProcessor{
-// 			UpdatedAt: time.Now(),
-// 			changes:   make(map[string]*ConnectionChange),
-// 		}
-// 		connectionProcessor[connectionID] = connectionObj
-// 	}
-// 	connectionObjMutex.Unlock()
-// 	connectionObj.lock.Lock()
-// 	connectionObj.changes[pathHash].hasher = filestore.GetNewCommitHasher(contentSize)
-// 	connectionObj.lock.Unlock()
-// }
-
-// func processCommand(ctx context.Context, processorChan chan FileCommand, allocationObj *Allocation, connectionID, clientID, pathHash string) {
-
-// 	defer func() {
-// 		if r := recover(); r != nil {
-// 			logging.Logger.Error("Recovered panic", zap.String("connection_id", connectionID), zap.Any("error", r))
-// 			SetError(connectionID, pathHash, common.NewError("panic", "Recovered panic"))
-// 		}
-// 	}()
-
-// 	for {
-// 		select {
-// 		case <-ctx.Done():
-// 			return
-// 		case cmd, ok := <-processorChan:
-// 			if cmd == nil || !ok {
-// 				return
-// 			}
-// 			res, err := cmd.ProcessContent(allocationObj)
-// 			if err != nil {
-// 				logging.Logger.Error("Error processing command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()), zap.Error(err))
-// 				SetError(connectionID, pathHash, err)
-// 				return
-// 			}
-// 			err = cmd.ProcessThumbnail(allocationObj)
-// 			if err != nil && err != common.ErrNoThumbnail {
-// 				logging.Logger.Error("Error processing command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()), zap.Error(err))
-// 				SetError(connectionID, pathHash, err)
-// 				return
-// 			}
-// 			if res.UpdateChange {
-// 				err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-// 					connectionObj, err := GetAllocationChanges(ctx, connectionID, allocationObj.ID, clientID)
-// 					if err != nil {
-// 						return err
-// 					}
-// 					return cmd.UpdateChange(ctx, connectionObj)
-// 				})
-// 				if err != nil {
-// 					logging.Logger.Error("Error processing command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()), zap.Error(err))
-// 					SetError(connectionID, pathHash, err)
-// 					return
-// 				}
-// 			}
-// 			if res.IsFinal {
-// 				err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-// 					connectionObj, err := GetAllocationChanges(ctx, connectionID, allocationObj.ID, clientID)
-// 					if err != nil {
-// 						return err
-// 					}
-// 					return cmd.UpdateChange(ctx, connectionObj)
-// 				})
-// 				if err != nil {
-// 					logging.Logger.Error("Error processing command", zap.String("connection_id", connectionID), zap.String("path", cmd.GetPath()), zap.Error(err))
-// 					SetError(connectionID, pathHash, err)
-// 				}
-// 				return
-// 			}
-// 		}
-// 	}
-
-// }
-
-// func drainChan(processorChan chan FileCommand) {
-// 	for {
-// 		select {
-// 		case _, ok := <-processorChan:
-// 			if !ok {
-// 				return
-// 			}
-// 		default:
-// 			return
-// 		}
-// 	}
-// }
 
 // DeleteConnectionObjEntry remove the connectionID entry from map
 // If the given connectionID is not present, then it is no-op.
