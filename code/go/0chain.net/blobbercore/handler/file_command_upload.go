@@ -168,8 +168,6 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		}
 	}
 
-	// allocationSize += fileOutputData.Size
-	// allocation.UpdateConnectionObjSize(connectionID, fileOutputData.Size)
 	if cmd.fileChanger.UploadOffset == 0 || cmd.fileChanger.IsFinal {
 		saveChange, err := allocation.SaveFileChange(connectionID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, cmd.fileChanger.IsFinal, cmd.fileChanger.Size)
 		if err != nil {
