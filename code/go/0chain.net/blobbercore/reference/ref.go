@@ -28,6 +28,24 @@ const (
 	FILE_LIST_TAG = "filelist"
 )
 
+var (
+	dirListFields []string
+)
+
+func init() {
+	refType := reflect.TypeOf(Ref{})
+
+	for i := 0; i < refType.NumField(); i++ {
+		field := refType.Field(i)
+		dirListTag := field.Tag.Get(DIR_LIST_TAG)
+
+		if dirListTag != "" {
+			dirListFields = append(dirListFields, dirListTag)
+		}
+	}
+	dirListFields = append(dirListFields, "parent_path")
+}
+
 type Ref struct {
 	ID                      int64  `gorm:"column:id;primaryKey"`
 	FileID                  string `gorm:"column:file_id" dirlist:"file_id" filelist:"file_id"`
@@ -322,30 +340,26 @@ func GetSubDirsFromPath(p string) []string {
 	return subDirs
 }
 
-func GetRefWithChildren(ctx context.Context, allocationID, path string, offset, pageLimit int) (*Ref, error) {
-	var refs []Ref
+func GetRefWithChildren(ctx context.Context, parentRef *Ref, allocationID, path string, offset, pageLimit int) (*Ref, error) {
+	var refs []*Ref
 	t := datastore.GetStore().GetTransaction(ctx)
-	db := t.Where(Ref{ParentPath: path, AllocationID: allocationID}).Or(Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID})
-	err := db.Order("path").Offset(offset).
-		Limit(pageLimit).Find(&refs).Error
+	db := t.Where(Ref{ParentPath: path, AllocationID: allocationID})
+	err := db.Order("path").
+		Offset(offset).
+		Limit(pageLimit).
+		Find(&refs).Error
 	if err != nil {
 		return nil, err
 	}
 	if len(refs) == 0 {
 		return &Ref{Type: DIRECTORY, Path: path, AllocationID: allocationID}, nil
 	}
-	curRef := &refs[0]
-	if curRef.Path != path {
+
+	if parentRef.Path != path {
 		return nil, common.NewError("invalid_dir_tree", "DB has invalid tree. Root not found in DB")
 	}
-	for i := 1; i < len(refs); i++ {
-		if refs[i].ParentPath == curRef.Path {
-			curRef.Children = append(curRef.Children, &refs[i])
-		} else {
-			return nil, common.NewError("invalid_dir_tree", "DB has invalid tree.")
-		}
-	}
-	return &refs[0], nil
+	parentRef.Children = refs
+	return parentRef, nil
 }
 
 func GetRefWithSortedChildren(ctx context.Context, allocationID, path string) (*Ref, error) {
@@ -378,6 +392,19 @@ func GetRefWithSortedChildren(ctx context.Context, allocationID, path string) (*
 	}
 
 	return refs[0], nil
+}
+
+func GetRefWithDirListFields(ctx context.Context, pathHash string) (*Ref, error) {
+	ref := &Ref{}
+	// get all ref fields with dirlist tag
+	db := datastore.GetStore().GetTransaction(ctx)
+	err := db.Select(dirListFields).
+		Where(&Ref{LookupHash: pathHash}).
+		First(ref).Error
+	if err != nil {
+		return nil, err
+	}
+	return ref, nil
 }
 
 func (r *Ref) GetFileMetaHashData() string {

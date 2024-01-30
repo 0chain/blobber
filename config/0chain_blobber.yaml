@@ -75,6 +75,11 @@ rate_limiters:
   upload_limit_monthly: 31250000
   # Max commit limit in a month for a client. Default is 30000
   commit_limit_monthly: 30000
+  # Max commit limit in a day for a client. Default is 1600
+  commit_limit_daily: 1600
+  # Max commit limit with size zero or less in a day for a client. Default is 400
+  commit_zero_limit_daily: 400
+  
 server_chain:
   id: "0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe"
   owner: "edb90b850f2e7e7cbd0a1fa370fdcc5cd378ffbec95363a7bc0e5a98b8ba5759"
