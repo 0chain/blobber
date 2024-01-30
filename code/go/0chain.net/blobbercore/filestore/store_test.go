@@ -266,8 +266,6 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 			defer f.Close()
 			_, err = fs.WriteFile(test.allocID, test.connID, fid, f)
 			require.Nil(t, err)
-			err = hasher.Finalize()
-			require.Nil(t, err)
 
 			tempFilePath := fs.getTempPathForFile(test.allocID, test.fileName, pathHash, test.connID)
 			tF, err := os.Stat(tempFilePath)
@@ -352,8 +350,6 @@ func TestDeletePreCommitDir(t *testing.T) {
 	_, err = fs.WriteFile(allocID, connID, fid, f)
 	require.Nil(t, err)
 	f.Close()
-	err = hasher.Finalize()
-	require.Nil(t, err)
 	// check if file is written to temp location
 	tempFilePath := fs.getTempPathForFile(allocID, fileName, pathHash, connID)
 	tF, err := os.Stat(tempFilePath)
@@ -388,8 +384,6 @@ func TestDeletePreCommitDir(t *testing.T) {
 	f.Close()
 	tempFilePath = fs.getTempPathForFile(allocID, fileName, pathHash, connID)
 	_, err = os.Stat(tempFilePath)
-	require.Nil(t, err)
-	err = hasher.Finalize()
 	require.Nil(t, err)
 
 	success, err = fs.CommitWrite(allocID, connID, fid)
@@ -453,8 +447,6 @@ func TestStorageUploadUpdate(t *testing.T) {
 	_, err = fs.WriteFile(allocID, connID, fid, f)
 	require.Nil(t, err)
 	f.Close()
-	err = hasher.Finalize()
-	require.Nil(t, err)
 	// check if file is written to temp location
 	tempFilePath := fs.getTempPathForFile(allocID, fileName, pathHash, connID)
 	tF, err := os.Stat(tempFilePath)
@@ -605,7 +597,6 @@ func TestStorageUploadUpdate(t *testing.T) {
 	require.Equal(t, hex.EncodeToString(h.Sum(nil)), fid.ThumbnailHash)
 	fPath, err = fs.GetPathForFile(allocID, prevThumbHash)
 	require.Nil(t, err)
-	fmt.Println("prev thumb hash: ", prevThumbHash)
 	f, err = os.Open(fPath)
 	require.Nil(t, err)
 	h = sha3.New256()
@@ -866,6 +857,7 @@ func setupStorage(t *testing.T) (*FileStore, func()) {
 		err := os.RemoveAll(mountPoint)
 		require.Nil(t, err)
 	}
+	SetFileStore(&fs)
 
 	return &fs, f
 }
