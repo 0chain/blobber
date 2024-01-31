@@ -40,6 +40,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
@@ -270,10 +271,12 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	}
 	nodeSie := getNodesSize(fileData.Size, util.MaxMerkleLeavesSize)
 	fileSize := rStat.Size() - nodeSie - FMTSize
+	now := time.Now()
 	err = fileData.Hasher.Wait(conID, allocID, fileData.Name, filePathHash)
 	if err != nil {
 		return false, common.NewError("hasher_wait_error", err.Error())
 	}
+	elapsedWait := time.Since(now)
 	fmtRootBytes, err := fileData.Hasher.fmt.CalculateRootAndStoreNodes(r)
 	if err != nil {
 		return false, common.NewError("fmt_hash_calculation_error", err.Error())
@@ -285,7 +288,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	}
 	fmtRoot := hex.EncodeToString(fmtRootBytes)
 	validationRoot := hex.EncodeToString(validationRootBytes)
-
+	elapsedRoot := time.Since(now) - elapsedWait
 	if fmtRoot != fileData.FixedMerkleRoot {
 		return false, common.NewError("fixed_merkle_root_mismatch",
 			fmt.Sprintf("Expected %s got %s", fileData.FixedMerkleRoot, fmtRoot))
@@ -311,6 +314,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	// 5. Move: It is Copy + Delete. Delete will not delete file if ref exists in database. i.e. copy would create
 	// ref that refers to this file therefore it will be skipped
 	fs.incrDecrAllocFileSizeAndNumber(allocID, fileSize, 1)
+	logging.Logger.Info("Committing write done", zap.String("file_path", fileData.Path), zap.Duration("elapsed_wait", elapsedWait), zap.Duration("elapsed_root", elapsedRoot), zap.Duration("elapsed_total", time.Since(now)))
 	return true, nil
 }
 
