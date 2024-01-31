@@ -205,10 +205,13 @@ func ToStatusCode(handler StatusCodeResponderF) ReqRespHandlerf {
 			rawdata, ok := data.([]byte)
 			if ok {
 				w.Header().Set("Content-Type", "application/octet-stream")
+				w.Header().Set("Content-Length", fmt.Sprintf("%d", len(rawdata)))
 				w.Write(rawdata) //nolint:errcheck
 			} else {
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(data) //nolint:errcheck
+				jsonData, _ := json.Marshal(data)
+				w.Header().Set("Content-Length", fmt.Sprintf("%d", len(jsonData)))
+				w.Write(jsonData) //nolint:errcheck
 			}
 		}
 	}
