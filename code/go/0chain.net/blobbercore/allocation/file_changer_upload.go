@@ -80,6 +80,12 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context, rootRef *reference
 		}
 	}
 
+	for _, child := range dirRef.Children {
+		if child.Name == nf.Filename {
+			return nil, common.NewError("duplicate_file", "File already exists")
+		}
+	}
+
 	newFile := &reference.Ref{
 		ActualFileHash:          nf.ActualHash,
 		ActualFileHashSignature: nf.ActualFileHashSignature,
