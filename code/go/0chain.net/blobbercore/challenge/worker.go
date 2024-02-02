@@ -2,6 +2,7 @@ package challenge
 
 import (
 	"context"
+	"math"
 	"sync"
 	"time"
 
@@ -17,6 +18,9 @@ import (
 )
 
 const GetRoundInterval = 3 * time.Minute
+const HARDFORK_NAME = "apollo"
+
+var hardForkRound int64 = math.MaxInt64
 
 type TodoChallenge struct {
 	Id        string
@@ -82,7 +86,6 @@ func startWorkers(ctx context.Context) {
 
 func getRoundWorker(ctx context.Context) {
 	ticker := time.NewTicker(GetRoundInterval)
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -90,6 +93,10 @@ func getRoundWorker(ctx context.Context) {
 			return
 		case <-ticker.C:
 			setRound()
+			if hardForkRound == math.MaxInt64 {
+				hardForkRound, _ = zcncore.GetHardForkRound(HARDFORK_NAME)
+				logging.Logger.Info("hard_fork_round", zap.Any("round", hardForkRound))
+			}
 		}
 	}
 }

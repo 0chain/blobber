@@ -642,7 +642,7 @@ func TestValidationTicket_Sign(t *testing.T) {
 		Timestamp:    common.Now(),
 	}
 
-	err = vt.Sign()
+	err = vt.Sign(0)
 	require.NoError(t, err)
 }
 

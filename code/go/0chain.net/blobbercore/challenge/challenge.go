@@ -196,18 +196,26 @@ func (c *ChallengeEntity) getCommitTransaction(ctx context.Context) (*transactio
 
 	sn := &ChallengeResponse{}
 	sn.ChallengeID = c.ChallengeID
-	signatures := make([]string, 0, len(c.ValidationTickets))
-	for _, vt := range c.ValidationTickets {
-		if vt != nil && vt.Result {
-			sn.ValidationTickets = append(sn.ValidationTickets, vt)
-			signatures = append(signatures, vt.Signature)
+	if c.RoundCreatedAt >= hardForkRound {
+		signatures := make([]string, 0, len(c.ValidationTickets))
+		for _, vt := range c.ValidationTickets {
+			if vt != nil && vt.Result {
+				sn.ValidationTickets = append(sn.ValidationTickets, vt)
+				signatures = append(signatures, vt.Signature)
+			}
 		}
-	}
-	sn.AggregatedSignature, err = encryption.AggregateSig(signatures)
-	if err != nil {
-		logging.Logger.Error("[challenge]aggregateSig", zap.Error(err))
-		c.CancelChallenge(ctx, err)
-		return nil, nil
+		sn.AggregatedSignature, err = encryption.AggregateSig(signatures)
+		if err != nil {
+			logging.Logger.Error("[challenge]aggregateSig", zap.Error(err))
+			c.CancelChallenge(ctx, err)
+			return nil, nil
+		}
+	} else {
+		for _, vt := range c.ValidationTickets {
+			if vt != nil {
+				sn.ValidationTickets = append(sn.ValidationTickets, vt)
+			}
+		}
 	}
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CHALLENGE_RESPONSE, sn, 0)
 	if err != nil {

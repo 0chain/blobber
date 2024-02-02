@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common/handler"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/validatorcore/storage/writemarker"
@@ -380,6 +381,7 @@ type Challenge struct {
 	AllocationRoot string           `json:"allocation_root"`
 	BlobberID      string           `json:"blobber_id"`
 	Timestamp      common.Timestamp `json:"timestamp"`
+	RoundCreatedAt int64            `json:"round_created_at"`
 }
 
 type ValidationTicket struct {
@@ -394,8 +396,13 @@ type ValidationTicket struct {
 	Signature    string           `json:"signature"`
 }
 
-func (vt *ValidationTicket) Sign() error {
-	hashData := fmt.Sprintf("%v:%v:%v:%v", vt.ChallengeID, vt.BlobberID, vt.Result, vt.Timestamp)
+func (vt *ValidationTicket) Sign(round int64) error {
+	var hashData string
+	if round >= handler.HardForkRound {
+		hashData = fmt.Sprintf("%v:%v:%v:%v", vt.ChallengeID, vt.BlobberID, vt.Result, vt.Timestamp)
+	} else {
+		hashData = fmt.Sprintf("%v:%v:%v:%v:%v:%v", vt.ChallengeID, vt.BlobberID, vt.ValidatorID, vt.ValidatorKey, vt.Result, vt.Timestamp)
+	}
 	hash := encryption.Hash(hashData)
 	signature, err := node.Self.Sign(hash)
 	vt.Signature = signature

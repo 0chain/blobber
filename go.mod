@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.11.8-0.20240121220047-6f48750d0df4
+	github.com/0chain/gosdk v1.11.8-0.20240202182855-9568cf1b3c0d
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.2
 	github.com/go-openapi/runtime v0.26.0
@@ -21,9 +21,9 @@ require (
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/zap v1.24.0
-	golang.org/x/crypto v0.15.0
-	golang.org/x/net v0.10.0 // indirect
-	golang.org/x/sys v0.14.0
+	golang.org/x/crypto v0.16.0
+	golang.org/x/net v0.19.0 // indirect
+	golang.org/x/sys v0.15.0
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/genproto v0.0.0-20230526203410-71b5a4ffd15e //  indirect
 	google.golang.org/grpc v1.56.2
@@ -38,7 +38,7 @@ require (
 
 require (
 	github.com/lithammer/shortuuid/v3 v3.0.7
-	golang.org/x/sync v0.3.0
+	golang.org/x/sync v0.5.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20230530153820-e85fd2cbaebc
 )
 

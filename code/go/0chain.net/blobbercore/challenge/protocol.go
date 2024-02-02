@@ -292,7 +292,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 				zap.Any("numFailed", numFailed),
 			)
 
-			verified, err := validationTicket.VerifySign()
+			verified, err := validationTicket.VerifySign(cr.RoundCreatedAt)
 			if err != nil || !verified || !validationTicket.Result {
 				numFailed++
 				logging.Logger.Error(
