@@ -20,7 +20,6 @@ const HARDFORK_NAME = "apollo"
 var HardForkRound int64 = math.MaxInt64
 
 func StartHealthCheck(ctx context.Context, provider common.ProviderType) {
-	go setHardForkRound(ctx)
 	var t time.Duration
 
 	switch provider {
@@ -28,7 +27,7 @@ func StartHealthCheck(ctx context.Context, provider common.ProviderType) {
 		t = blobConfig.Configuration.HealthCheckWorkerFreq
 	case common.ProviderTypeValidator:
 		t = valConfig.Configuration.HealthCheckWorkerFreq
-
+		go setHardForkRound(ctx)
 	}
 
 	for {
