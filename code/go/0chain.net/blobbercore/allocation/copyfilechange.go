@@ -68,6 +68,11 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, rootRef *reference.Re
 			}
 		}
 
+		if len(dirRef.Children) >= config.Configuration.MaxObjectsInDir {
+			return nil, common.NewErrorf("max_objects_in_dir_reached",
+				"maximum objects in directory %s reached: %v", dirRef.Path, config.Configuration.MaxObjectsInDir)
+		}
+
 		if !found {
 			newRef := reference.NewDirectoryRef()
 			newRef.AllocationID = rf.AllocationID

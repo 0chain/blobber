@@ -30,6 +30,8 @@ func SetupDefaultConfig() {
 	viper.SetDefault("rate_limiters.block_limit_monthly", 31250000)
 	viper.SetDefault("rate_limiters.upload_limit_monthly", 31250000)
 	viper.SetDefault("rate_limiters.commit_limit_monthly", 30000)
+	viper.SetDefault("rate_limiters.commit_limit_daily", 1600)
+	viper.SetDefault("rate_limiters.commit_zero_limit_daily", 400)
 
 	viper.SetDefault("healthcheck.frequency", "60s")
 
@@ -47,6 +49,7 @@ func SetupDefaultConfig() {
 	viper.SetDefault("finalize_allocations_interval", time.Duration(-1))
 
 	viper.SetDefault("max_dirs_files", 50000)
+	viper.SetDefault("max_objects_dir", 1000)
 }
 
 /*SetupConfig - setup the configuration system */
@@ -109,6 +112,8 @@ type Config struct {
 	BlockLimitMonthly             int64
 	UploadLimitMonthly            int64
 	CommitLimitMonthly            int64
+	CommitLimitDaily              int64
+	CommitZeroLimitDaily          int64
 	ChallengeCleanupGap           int64
 
 	HealthCheckWorkerFreq time.Duration
@@ -124,6 +129,7 @@ type Config struct {
 	FinalizeAllocationsInterval time.Duration
 
 	MaxAllocationDirFiles int
+	MaxObjectsInDir       int
 
 	// DelegateWallet for pool owner.
 	DelegateWallet string `json:"delegate_wallet"`
@@ -256,6 +262,8 @@ func ReadConfig(deploymentMode int) {
 	Configuration.MaxAllocationDirFiles =
 		viper.GetInt("max_dirs_files")
 
+	Configuration.MaxObjectsInDir = viper.GetInt("max_objects_dir")
+
 	Configuration.DelegateWallet = viper.GetString("delegate_wallet")
 	if w := Configuration.DelegateWallet; len(w) != 64 {
 		log.Fatal("invalid delegate wallet:", w)
@@ -279,6 +287,8 @@ func ReadConfig(deploymentMode int) {
 	Configuration.BlockLimitMonthly = viper.GetInt64("rate_limiters.block_limit_monthly")
 	Configuration.UploadLimitMonthly = viper.GetInt64("rate_limiters.upload_limit_monthly")
 	Configuration.CommitLimitMonthly = viper.GetInt64("rate_limiters.commit_limit_monthly")
+	Configuration.CommitLimitDaily = viper.GetInt64("rate_limiters.commit_limit_daily")
+	Configuration.CommitZeroLimitDaily = viper.GetInt64("rate_limiters.commit_zero_limit_daily")
 }
 
 // StorageSCConfiguration will include all the required sc configs to operate blobber
