@@ -398,6 +398,7 @@ type ValidationTicket struct {
 
 func (vt *ValidationTicket) Sign(round int64) error {
 	var hashData string
+	logging.Logger.Info("signing_validation_ticket", zap.Int64("round", round), zap.Int64("hard_fork_round", handler.HardForkRound))
 	if round >= handler.HardForkRound {
 		hashData = fmt.Sprintf("%v:%v:%v:%v", vt.ChallengeID, vt.BlobberID, vt.Result, vt.Timestamp)
 	} else {
