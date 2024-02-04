@@ -76,6 +76,7 @@ func startPullWorker(ctx context.Context) {
 
 func startWorkers(ctx context.Context) {
 	setRound()
+	setHardFork()
 	go getRoundWorker(ctx)
 
 	// start challenge listeners
@@ -93,11 +94,15 @@ func getRoundWorker(ctx context.Context) {
 			return
 		case <-ticker.C:
 			setRound()
-			if hardForkRound == math.MaxInt64 {
-				hardForkRound, _ = zcncore.GetHardForkRound(HARDFORK_NAME)
-				logging.Logger.Info("hard_fork_round", zap.Any("round", hardForkRound))
-			}
+			setHardFork()
 		}
+	}
+}
+
+func setHardFork() {
+	if hardForkRound == math.MaxInt64 {
+		hardForkRound, _ = zcncore.GetHardForkRound(HARDFORK_NAME)
+		logging.Logger.Info("hard_fork_round", zap.Any("round", hardForkRound))
 	}
 }
 

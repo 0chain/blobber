@@ -53,6 +53,7 @@ func StartHealthCheck(ctx context.Context, provider common.ProviderType) {
 
 func setHardForkRound(ctx context.Context) {
 	HardForkRound, _ = zcncore.GetHardForkRound(HARDFORK_NAME)
+	logging.Logger.Info("hard_fork_round", zap.Any("round", HardForkRound))
 	if HardForkRound == math.MaxInt64 {
 		for {
 			select {
@@ -61,6 +62,7 @@ func setHardForkRound(ctx context.Context) {
 			case <-time.After(5 * time.Minute):
 				HardForkRound, _ = zcncore.GetHardForkRound(HARDFORK_NAME)
 				if HardForkRound != math.MaxInt64 {
+					logging.Logger.Info("hard_fork_round", zap.Any("round", HardForkRound))
 					return
 				}
 			}
