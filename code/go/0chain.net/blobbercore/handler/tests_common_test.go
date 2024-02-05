@@ -115,6 +115,10 @@ func (mfs *MockFileStore) DeletePreCommitDir(allocID string) error {
 	return nil
 }
 
+func (mfs *MockFileStore) GetTempFilePath(allocID, connID, fileName, filePathHash string) string {
+	return ""
+}
+
 func (mfs *MockFileStore) GetFileBlock(in *filestore.ReadBlockInput) (*filestore.FileDownloadResponse, error) {
 	return &filestore.FileDownloadResponse{
 		Data: mockFileBlock,

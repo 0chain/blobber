@@ -68,6 +68,10 @@ func (mfs *MockFileStore) GetFilePathSize(allocID, contentHash, thumbHash string
 	return 0, 0, nil
 }
 
+func (mfs *MockFileStore) GetTempFilePath(allocID, connID, fileName, filePathHash string) string {
+	return ""
+}
+
 func (mfs *MockFileStore) GetBlocksMerkleTreeForChallenge(cir *filestore.ChallengeReadBlockInput) (*filestore.ChallengeResponse, error) {
 	return nil, nil
 }

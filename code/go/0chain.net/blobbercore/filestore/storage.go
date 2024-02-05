@@ -56,7 +56,7 @@ const (
 	PreCommitDir    = "precommit"
 	MerkleChunkSize = 64
 	ChunkSize       = 64 * KB
-	BufferSize      = 100 * ChunkSize
+	BufferSize      = 80 * ChunkSize
 )
 
 func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error) {
@@ -142,6 +142,10 @@ func (fs *FileStore) WriteDataToTree(allocID, connID, fileName, filePathHash str
 		return common.NewError("hasher_write_error", err.Error())
 	}
 	return nil
+}
+
+func (fs *FileStore) GetTempFilePath(allocID, connID, fileName, filePathHash string) string {
+	return fs.getTempPathForFile(allocID, fileName, filePathHash, connID)
 }
 
 func (fs *FileStore) MoveToFilestore(allocID, hash string) error {

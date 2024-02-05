@@ -8,6 +8,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/seqpriorityqueue"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
@@ -32,17 +33,17 @@ type ConnectionProcessor struct {
 	changes      map[string]*ConnectionChange
 	ClientID     string
 	AllocationID string
+	ctx          context.Context
+	cnclCtx      context.CancelFunc
 }
 
 type ConnectionChange struct {
 	hasher      *filestore.CommitHasher
 	baseChanger *BaseFileChanger
 	existingRef *reference.Ref
-	// processError error
-	// ProcessChan  chan FileCommand
-	// wg           sync.WaitGroup
 	isFinalized bool
 	lock        sync.Mutex
+	seqPQ       *seqpriorityqueue.SeqPriorityQueue
 }
 
 func GetFileChanger(connectionID, pathHash string) *BaseFileChanger {
@@ -118,11 +119,14 @@ func CreateConnectionProcessor(connectionID, allocationID, clientID string) *Con
 	defer connectionObjMutex.Unlock()
 	connectionObj := connectionProcessor[connectionID]
 	if connectionObj == nil {
+		ctx, cnclCtx := context.WithCancel(context.Background())
 		connectionObj = &ConnectionProcessor{
 			UpdatedAt:    time.Now(),
 			changes:      make(map[string]*ConnectionChange),
 			AllocationID: allocationID,
 			ClientID:     clientID,
+			ctx:          ctx,
+			cnclCtx:      cnclCtx,
 		}
 		connectionProcessor[connectionID] = connectionObj
 	}
@@ -159,7 +163,7 @@ func UpdateConnectionObjSize(connectionID string, addSize int64) {
 	connectionObj.UpdatedAt = time.Now()
 }
 
-func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, isFinal bool, contentSize int64) (bool, error) {
+func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, isFinal bool, contentSize int64, offset, dataWritten int64) (bool, error) {
 	connectionObjMutex.RLock()
 	connectionObj := connectionProcessor[connectionID]
 	connectionObjMutex.RUnlock()
@@ -183,6 +187,10 @@ func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, is
 			connectionObj.lock.Unlock()
 			return false, err
 		}
+		hasher := filestore.GetNewCommitHasher(contentSize)
+		change.hasher = hasher
+		change.seqPQ = seqpriorityqueue.NewSeqPriorityQueue()
+		go hasher.Start(connectionObj.ctx, connectionID, connectionObj.AllocationID, fileName, pathHash, change.seqPQ)
 		saveChange = true
 	}
 	connectionObj.lock.Unlock()
@@ -193,9 +201,15 @@ func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, is
 	}
 	if isFinal {
 		change.isFinalized = true
-		hasher := filestore.GetNewCommitHasher(contentSize)
-		change.hasher = hasher
-		go hasher.Start(connectionID, connectionObj.AllocationID, fileName, pathHash)
+		change.seqPQ.Done(seqpriorityqueue.UploadData{
+			Offset:    offset,
+			DataBytes: dataWritten,
+		})
+	} else {
+		change.seqPQ.Push(seqpriorityqueue.UploadData{
+			Offset:    offset,
+			DataBytes: dataWritten,
+		})
 	}
 	return saveChange, nil
 }
@@ -219,6 +233,10 @@ func GetHasher(connectionID, pathHash string) *filestore.CommitHasher {
 // If the given connectionID is not present, then it is no-op.
 func DeleteConnectionObjEntry(connectionID string) {
 	connectionObjMutex.Lock()
+	connectionObj, ok := connectionProcessor[connectionID]
+	if ok {
+		connectionObj.cnclCtx()
+	}
 	delete(connectionProcessor, connectionID)
 	connectionObjMutex.Unlock()
 }
@@ -230,6 +248,13 @@ func cleanConnectionObj() {
 	for connectionID, connectionObj := range connectionProcessor {
 		diff := time.Since(connectionObj.UpdatedAt)
 		if diff >= ConnectionObjTimeout {
+			// Stop the context and hash worker
+			connectionObj.cnclCtx()
+			for _, change := range connectionObj.changes {
+				if change.seqPQ != nil {
+					change.seqPQ.Done(seqpriorityqueue.UploadData{})
+				}
+			}
 			delete(connectionProcessor, connectionID)
 		}
 	}

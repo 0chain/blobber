@@ -4,13 +4,16 @@
 package filestore
 
 import (
+	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"math"
+	"os"
 	"sync"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/seqpriorityqueue"
 	"github.com/0chain/gosdk/core/util"
 	"github.com/minio/sha256-simd"
 )
@@ -404,11 +407,9 @@ type CommitHasher struct {
 	fmt           *fixedMerkleTree
 	vt            *validationTree
 	isInitialized bool
-	isStarted     bool
 	wg            sync.WaitGroup
 	hashErr       error
 	dataSize      int64
-	mu            sync.Mutex
 }
 
 func GetNewCommitHasher(dataSize int64) *CommitHasher {
@@ -420,31 +421,65 @@ func GetNewCommitHasher(dataSize int64) *CommitHasher {
 	return c
 }
 
-func (c *CommitHasher) Start(connID, allocID, fileName, filePathHash string) {
-	c.mu.Lock()
-	if c.isStarted {
-		c.mu.Unlock()
-		return
-	}
-	c.isStarted = true
-	c.mu.Unlock()
+func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, filePathHash string, seqPQ *seqpriorityqueue.SeqPriorityQueue) {
 	c.wg.Add(1)
 	defer c.wg.Done()
-	err := GetFileStore().WriteDataToTree(allocID, connID, fileName, filePathHash, c)
+	tempFilePath := GetFileStore().GetTempFilePath(allocID, connID, fileName, filePathHash)
+	f, err := os.Open(tempFilePath)
 	if err != nil {
 		c.hashErr = err
 		return
 	}
-	c.hashErr = c.Finalize()
+	defer f.Close()
+	var toFinalize bool
+	for {
+		select {
+		case <-ctx.Done():
+			c.hashErr = ctx.Err()
+			return
+		default:
+		}
+		pq := seqPQ.Popup()
+		// If dataBytes is zero then it is the last data to be read from the file or context is cancelled
+		if pq.DataBytes == 0 {
+			// Check if ctx is done
+			select {
+			case <-ctx.Done():
+				c.hashErr = ctx.Err()
+				return
+			default:
+			}
+			pq.DataBytes = c.dataSize - pq.Offset
+			toFinalize = true
+		}
+		bufSize := 2 * BufferSize
+		if pq.DataBytes < int64(bufSize) {
+			bufSize = int(pq.DataBytes)
+		}
+		buf := make([]byte, bufSize)
+		for pq.DataBytes > 0 {
+			n, err := f.ReadAt(buf, pq.Offset)
+			if err != nil {
+				c.hashErr = err
+				return
+			}
+			pq.DataBytes -= int64(n)
+			pq.Offset += int64(n)
+			_, err = c.Write(buf[:n])
+			if err != nil {
+				c.hashErr = err
+				return
+			}
+		}
+		buf = nil
+		if toFinalize {
+			c.hashErr = c.Finalize()
+			return
+		}
+	}
 }
 
 func (c *CommitHasher) Wait(connID, allocID, fileName, filePathHash string) error {
-	c.mu.Lock()
-	if !c.isStarted {
-		c.isStarted = true
-		c.hashErr = GetFileStore().WriteDataToTree(allocID, connID, fileName, filePathHash, c)
-	}
-	c.mu.Unlock()
 	c.wg.Wait()
 	return c.hashErr
 }

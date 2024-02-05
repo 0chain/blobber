@@ -64,6 +64,7 @@ type FileStorer interface {
 	GetFilePathSize(allocID, filehash, thumbHash string) (int64, int64, error)
 	GetTotalFilesSize() uint64
 	GetTotalFilesSizeOfAllocation(allocID string) uint64
+	GetTempFilePath(allocID, connID, fileName, filePathHash string) string
 
 	IterateObjects(allocationID string, handler FileObjectHandler) error
 	// SetupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error)
