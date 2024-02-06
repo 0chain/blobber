@@ -14,10 +14,8 @@ import (
 	"sync"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/seqpriorityqueue"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/core/util"
 	"github.com/minio/sha256-simd"
-	"go.uber.org/zap"
 )
 
 const (
@@ -434,6 +432,7 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 	}
 	defer f.Close()
 	var toFinalize bool
+	rootOffset := getNodesSize(c.dataSize, util.MaxMerkleLeavesSize) + FMTSize
 	for {
 		select {
 		case <-ctx.Done():
@@ -460,7 +459,7 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 		}
 		buf := make([]byte, bufSize)
 		for pq.DataBytes > 0 {
-			n, err := f.ReadAt(buf, pq.Offset)
+			n, err := f.ReadAt(buf, pq.Offset+rootOffset)
 			if err != nil && !errors.Is(err, io.EOF) {
 				c.hashErr = err
 				return
@@ -472,11 +471,9 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 				c.hashErr = err
 				return
 			}
-			logging.Logger.Info("hasher_write", zap.Int("n", n), zap.Int64("offset", pq.Offset), zap.Int64("data_bytes", pq.DataBytes), zap.String("filename", fileName))
 		}
 		buf = nil
 		if toFinalize {
-			logging.Logger.Info("hasher_finalize", zap.String("filename", fileName), zap.Int("offset", int(pq.Offset)), zap.Int64("data_bytes", pq.DataBytes), zap.Int64("size", c.dataSize))
 			c.hashErr = c.Finalize()
 			return
 		}

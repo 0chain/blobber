@@ -2,6 +2,7 @@ package filestore
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/seqpriorityqueue"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/core/util"
@@ -270,7 +272,12 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 			tempFilePath := fs.getTempPathForFile(test.allocID, test.fileName, pathHash, test.connID)
 			tF, err := os.Stat(tempFilePath)
 			require.Nil(t, err)
-
+			seqPQ := seqpriorityqueue.NewSeqPriorityQueue()
+			go hasher.Start(context.TODO(), test.connID, test.allocID, test.fileName, pathHash, seqPQ)
+			seqPQ.Done(seqpriorityqueue.UploadData{
+				Offset:    0,
+				DataBytes: tF.Size(),
+			})
 			finfo, err := f.Stat()
 			require.Nil(t, err)
 			nodeSize := getNodesSize(int64(finfo.Size()), util.MaxMerkleLeavesSize)
@@ -356,6 +363,12 @@ func TestDeletePreCommitDir(t *testing.T) {
 	require.Nil(t, err)
 	nodeSize := getNodesSize(int64(size), util.MaxMerkleLeavesSize)
 	require.Equal(t, int64(size), tF.Size()-nodeSize-FMTSize)
+	seqPQ := seqpriorityqueue.NewSeqPriorityQueue()
+	go hasher.Start(context.TODO(), connID, allocID, fileName, pathHash, seqPQ)
+	seqPQ.Done(seqpriorityqueue.UploadData{
+		Offset:    0,
+		DataBytes: tF.Size(),
+	})
 
 	// Commit file to pre-commit location
 	success, err := fs.CommitWrite(allocID, connID, fid)
@@ -385,6 +398,12 @@ func TestDeletePreCommitDir(t *testing.T) {
 	tempFilePath = fs.getTempPathForFile(allocID, fileName, pathHash, connID)
 	_, err = os.Stat(tempFilePath)
 	require.Nil(t, err)
+	seqPQ = seqpriorityqueue.NewSeqPriorityQueue()
+	go hasher.Start(context.TODO(), connID, allocID, fileName, pathHash, seqPQ)
+	seqPQ.Done(seqpriorityqueue.UploadData{
+		Offset:    0,
+		DataBytes: tF.Size(),
+	})
 
 	success, err = fs.CommitWrite(allocID, connID, fid)
 	require.Nil(t, err)
@@ -453,6 +472,12 @@ func TestStorageUploadUpdate(t *testing.T) {
 	require.Nil(t, err)
 	nodeSize := getNodesSize(int64(size), util.MaxMerkleLeavesSize)
 	require.Equal(t, int64(size), tF.Size()-nodeSize-FMTSize)
+	seqPQ := seqpriorityqueue.NewSeqPriorityQueue()
+	go hasher.Start(context.TODO(), connID, allocID, fileName, pathHash, seqPQ)
+	seqPQ.Done(seqpriorityqueue.UploadData{
+		Offset:    0,
+		DataBytes: tF.Size(),
+	})
 
 	// Commit file to pre-commit location
 	success, err := fs.CommitWrite(allocID, connID, fid)
