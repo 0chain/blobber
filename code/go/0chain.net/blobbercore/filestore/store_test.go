@@ -272,7 +272,7 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 			tempFilePath := fs.getTempPathForFile(test.allocID, test.fileName, pathHash, test.connID)
 			tF, err := os.Stat(tempFilePath)
 			require.Nil(t, err)
-			seqPQ := seqpriorityqueue.NewSeqPriorityQueue()
+			seqPQ := seqpriorityqueue.NewSeqPriorityQueue(int64(size))
 			hasher.WG.Add(1)
 			go hasher.Start(context.TODO(), test.connID, test.allocID, test.fileName, pathHash, seqPQ)
 			seqPQ.Done(seqpriorityqueue.UploadData{
@@ -364,7 +364,7 @@ func TestDeletePreCommitDir(t *testing.T) {
 	require.Nil(t, err)
 	nodeSize := getNodesSize(int64(size), util.MaxMerkleLeavesSize)
 	require.Equal(t, int64(size), tF.Size()-nodeSize-FMTSize)
-	seqPQ := seqpriorityqueue.NewSeqPriorityQueue()
+	seqPQ := seqpriorityqueue.NewSeqPriorityQueue(int64(size))
 	hasher.WG.Add(1)
 	go hasher.Start(context.TODO(), connID, allocID, fileName, pathHash, seqPQ)
 	seqPQ.Done(seqpriorityqueue.UploadData{
@@ -400,7 +400,7 @@ func TestDeletePreCommitDir(t *testing.T) {
 	tempFilePath = fs.getTempPathForFile(allocID, fileName, pathHash, connID)
 	_, err = os.Stat(tempFilePath)
 	require.Nil(t, err)
-	seqPQ = seqpriorityqueue.NewSeqPriorityQueue()
+	seqPQ = seqpriorityqueue.NewSeqPriorityQueue(int64(size))
 	hasher.WG.Add(1)
 	go hasher.Start(context.TODO(), connID, allocID, fileName, pathHash, seqPQ)
 	seqPQ.Done(seqpriorityqueue.UploadData{
@@ -475,7 +475,7 @@ func TestStorageUploadUpdate(t *testing.T) {
 	require.Nil(t, err)
 	nodeSize := getNodesSize(int64(size), util.MaxMerkleLeavesSize)
 	require.Equal(t, int64(size), tF.Size()-nodeSize-FMTSize)
-	seqPQ := seqpriorityqueue.NewSeqPriorityQueue()
+	seqPQ := seqpriorityqueue.NewSeqPriorityQueue(int64(size))
 	hasher.WG.Add(1)
 	go hasher.Start(context.TODO(), connID, allocID, fileName, pathHash, seqPQ)
 	seqPQ.Done(seqpriorityqueue.UploadData{

@@ -6,7 +6,7 @@ import (
 )
 
 func TestSeqPriorityQueue(t *testing.T) {
-	pq := NewSeqPriorityQueue()
+	pq := NewSeqPriorityQueue(21)
 
 	go func() {
 		for i := 19; i >= 0; i-- {

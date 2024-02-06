@@ -433,6 +433,7 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 	}
 	defer f.Close()
 	var toFinalize bool
+	var totalWritten int64
 	rootOffset := getNodesSize(c.dataSize, util.MaxMerkleLeavesSize) + FMTSize
 	for {
 		select {
@@ -442,8 +443,8 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 		default:
 		}
 		pq := seqPQ.Popup()
-		// If dataBytes is zero then it is the last data to be read from the file or context is cancelled
-		if pq.DataBytes == 0 {
+		if pq.Offset+pq.DataBytes == c.dataSize {
+			// If dataBytes and offset is equal to data size then it is the last data to be read from the file or context is cancelled
 			// Check if ctx is done
 			select {
 			case <-ctx.Done():
@@ -451,12 +452,9 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 				return
 			default:
 			}
-			pq.DataBytes = c.dataSize - pq.Offset
-			toFinalize = true
-		} else if pq.Offset+pq.DataBytes == c.dataSize {
 			toFinalize = true
 		}
-		logging.Logger.Info("hasher_pop", zap.Int64("offset", pq.Offset), zap.Int64("dataBytes", pq.DataBytes), zap.Any("toFinalize", toFinalize), zap.Int64("dataSize", c.dataSize), zap.String("filename", fileName))
+		logging.Logger.Info("hasher_pop", zap.Int64("offset", pq.Offset), zap.Int64("dataBytes", pq.DataBytes), zap.Any("toFinalize", toFinalize), zap.Int64("dataSize", c.dataSize), zap.String("filename", fileName), zap.Int64("totalWritten", totalWritten))
 		bufSize := 2 * BufferSize
 		if pq.DataBytes < int64(bufSize) {
 			bufSize = int(pq.DataBytes)
@@ -470,8 +468,10 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 			}
 			pq.DataBytes -= int64(n)
 			pq.Offset += int64(n)
+			totalWritten += int64(n)
 			_, err = c.Write(buf[:n])
 			if err != nil {
+				logging.Logger.Error("hasher_write", zap.Error(err), zap.Int("n", n), zap.Int64("offset", pq.Offset), zap.Int64("dataBytes", pq.DataBytes), zap.Int64("dataSize", c.dataSize), zap.String("filename", fileName), zap.Int64("totalWritten", totalWritten))
 				c.hashErr = err
 				return
 			}
