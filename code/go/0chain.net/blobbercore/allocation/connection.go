@@ -150,10 +150,13 @@ func UpdateConnectionObjSize(connectionID string, addSize int64) {
 	defer connectionObjMutex.Unlock()
 	connectionObj := connectionProcessor[connectionID]
 	if connectionObj == nil {
+		ctx, cnclCtx := context.WithCancel(context.Background())
 		connectionProcessor[connectionID] = &ConnectionProcessor{
 			Size:      addSize,
 			UpdatedAt: time.Now(),
 			changes:   make(map[string]*ConnectionChange),
+			ctx:       ctx,
+			cnclCtx:   cnclCtx,
 		}
 		return
 	}
