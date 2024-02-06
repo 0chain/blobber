@@ -461,6 +461,9 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 		}
 		buf := make([]byte, bufSize)
 		for pq.DataBytes > 0 {
+			if pq.DataBytes < int64(bufSize) {
+				buf = buf[:pq.DataBytes]
+			}
 			n, err := f.ReadAt(buf, pq.Offset+rootOffset)
 			if err != nil && !errors.Is(err, io.EOF) {
 				c.hashErr = err

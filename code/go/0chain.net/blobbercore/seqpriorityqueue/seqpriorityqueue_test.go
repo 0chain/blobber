@@ -31,7 +31,7 @@ func TestSeqPriorityQueue(t *testing.T) {
 		if ud.Offset != expectedOffset {
 			t.Errorf("expected offset %v, got %v", expectedOffset, ud.Offset)
 		}
-		if ud.DataBytes == 0 {
+		if ud.Offset+ud.DataBytes == 21 {
 			if expectedOffset+(21-ud.Offset) != 21 {
 				t.Errorf("expected 21, got %v", expectedOffset+(21-ud.Offset))
 			}
