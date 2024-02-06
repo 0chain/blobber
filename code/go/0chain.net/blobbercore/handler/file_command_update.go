@@ -154,15 +154,13 @@ func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		allocation.UpdateConnectionObjSize(connID, -cmd.existingFileRef.Size)
 	}
 
-	if cmd.fileChanger.UploadOffset == 0 || cmd.fileChanger.IsFinal {
-		saveChange, err := allocation.SaveFileChange(connID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, cmd.fileChanger.IsFinal, cmd.fileChanger.Size, cmd.fileChanger.UploadOffset, fileOutputData.Size)
-		if err != nil {
-			return result, err
-		}
-		if saveChange {
-			allocation.UpdateConnectionObjSize(connID, cmd.fileChanger.Size)
-			result.UpdateChange = false
-		}
+	saveChange, err := allocation.SaveFileChange(connID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, cmd.fileChanger.IsFinal, cmd.fileChanger.Size, cmd.fileChanger.UploadOffset, fileOutputData.Size)
+	if err != nil {
+		return result, err
+	}
+	if saveChange {
+		allocation.UpdateConnectionObjSize(connID, cmd.fileChanger.Size)
+		result.UpdateChange = false
 	}
 
 	if allocationObj.BlobberSizeUsed+(allocationSize-cmd.existingFileRef.Size) > allocationObj.BlobberSize {
