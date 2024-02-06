@@ -14,8 +14,10 @@ import (
 	"sync"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/seqpriorityqueue"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/core/util"
 	"github.com/minio/sha256-simd"
+	"go.uber.org/zap"
 )
 
 const (
@@ -454,6 +456,7 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 		} else if pq.Offset+pq.DataBytes == c.dataSize {
 			toFinalize = true
 		}
+		logging.Logger.Info("hasher_pop", zap.Int64("offset", pq.Offset), zap.Int64("dataBytes", pq.DataBytes), zap.Any("toFinalize", toFinalize), zap.Int64("dataSize", c.dataSize), zap.String("filename", fileName))
 		bufSize := 2 * BufferSize
 		if pq.DataBytes < int64(bufSize) {
 			bufSize = int(pq.DataBytes)
