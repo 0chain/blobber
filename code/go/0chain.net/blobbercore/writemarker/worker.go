@@ -98,6 +98,8 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 		if wm.ReedeemRetries == 0 && !alloc.IsRedeemRequired {
 			wm.ReedeemRetries++
 			go tryAgain(wm)
+			shouldRollback = true
+			return nil
 		}
 		_ = wm.UpdateStatus(ctx, Rollbacked, "rollbacked", "")
 		err = db.Commit().Error
@@ -116,6 +118,11 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 			zap.Any("wm", wm), zap.Any("error", err), zap.Any("elapsedTime", elapsedTime))
 		if retryRedeem(err.Error()) {
 			go tryAgain(wm)
+		} else {
+			mut := GetLock(allocationID)
+			if mut != nil {
+				mut.Release(1)
+			}
 		}
 		shouldRollback = true
 
