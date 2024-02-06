@@ -193,6 +193,7 @@ func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, is
 		hasher := filestore.GetNewCommitHasher(contentSize)
 		change.hasher = hasher
 		change.seqPQ = seqpriorityqueue.NewSeqPriorityQueue()
+		hasher.WG.Add(1)
 		go hasher.Start(connectionObj.ctx, connectionID, connectionObj.AllocationID, fileName, pathHash, change.seqPQ)
 		saveChange = true
 	}

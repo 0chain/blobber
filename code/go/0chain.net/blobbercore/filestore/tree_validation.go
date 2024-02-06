@@ -407,7 +407,7 @@ type CommitHasher struct {
 	fmt           *fixedMerkleTree
 	vt            *validationTree
 	isInitialized bool
-	wg            sync.WaitGroup
+	WG            sync.WaitGroup
 	hashErr       error
 	dataSize      int64
 }
@@ -422,8 +422,7 @@ func GetNewCommitHasher(dataSize int64) *CommitHasher {
 }
 
 func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, filePathHash string, seqPQ *seqpriorityqueue.SeqPriorityQueue) {
-	c.wg.Add(1)
-	defer c.wg.Done()
+	defer c.WG.Done()
 	tempFilePath := GetFileStore().GetTempFilePath(allocID, connID, fileName, filePathHash)
 	f, err := os.Open(tempFilePath)
 	if err != nil {
@@ -451,6 +450,8 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 			default:
 			}
 			pq.DataBytes = c.dataSize - pq.Offset
+			toFinalize = true
+		} else if pq.Offset+pq.DataBytes == c.dataSize {
 			toFinalize = true
 		}
 		bufSize := 2 * BufferSize
@@ -481,7 +482,7 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 }
 
 func (c *CommitHasher) Wait(connID, allocID, fileName, filePathHash string) error {
-	c.wg.Wait()
+	c.WG.Wait()
 	return c.hashErr
 }
 
