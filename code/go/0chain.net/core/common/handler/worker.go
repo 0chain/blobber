@@ -15,7 +15,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const HARDFORK_NAME = "apollo"
+const HARDFORK_NAME = "hard_fork_2"
 
 var HardForkRound int64 = math.MaxInt64
 

@@ -18,7 +18,7 @@ import (
 )
 
 const GetRoundInterval = 3 * time.Minute
-const HARDFORK_NAME = "apollo"
+const HARDFORK_NAME = "hard_fork_2"
 
 var hardForkRound int64 = math.MaxInt64
 
