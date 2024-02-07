@@ -322,7 +322,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			return nil, common.NewError("invalid_authticket", "authticket is required")
 		}
 		if dr.Version == "v2" {
-			valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), clientPublicKey)
+			valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), r.Header.Get(common.ClientSignatureHeaderV2), clientPublicKey)
 			if !valid || err != nil {
 				return nil, common.NewError("invalid_signature", "Invalid signature")
 			}
@@ -352,7 +352,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 
 	} else {
 		if dr.Version == "v2" {
-			valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), alloc.OwnerPublicKey)
+			valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), r.Header.Get(common.ClientSignatureHeaderV2), alloc.OwnerPublicKey)
 			if !valid || err != nil {
 				return nil, common.NewError("invalid_signature", "Invalid signature")
 			}
@@ -479,7 +479,7 @@ func (fsh *StorageHandler) CreateConnection(ctx context.Context, r *http.Request
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
-	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), r.Header.Get(common.ClientSignatureHeaderV2), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -781,8 +781,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	_ = ctx.Value(constants.ContextKeyClientKey).(string)
-
-	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), r.Header.Get(common.ClientSignatureHeaderV2), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -863,7 +862,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("prohibited_allocation_file_options", "Cannot copy data from this allocation.")
 	}
 
-	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), r.Header.Get(common.ClientSignatureHeaderV2), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -972,8 +971,7 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("prohibited_allocation_file_options", "Cannot move data in this allocation.")
 	}
 
-	valid, err := verifySignatureFromRequest(
-		allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), r.Header.Get(common.ClientSignatureHeaderV2), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -1124,7 +1122,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*all
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
 
-	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), r.Header.Get(common.ClientSignatureHeaderV2), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -1255,7 +1253,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 	st = time.Now()
 	publicKey := allocationObj.OwnerPublicKey
 
-	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), r.Header.Get(common.ClientSignatureHeaderV2), publicKey)
 
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
