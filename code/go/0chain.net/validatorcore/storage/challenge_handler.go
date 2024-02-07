@@ -106,8 +106,8 @@ func ValidValidationTicket(challengeObj *Challenge, challengeID string, challeng
 	validationTicket.Message = "Challenge passed"
 	validationTicket.ValidatorID = node.Self.ID
 	validationTicket.ValidatorKey = node.Self.PublicKey
-	validationTicket.Timestamp = common.Now()
-	if err := validationTicket.Sign(); err != nil {
+	validationTicket.Timestamp = challengeObj.Timestamp
+	if err := validationTicket.Sign(challengeObj.RoundCreatedAt); err != nil {
 		return nil, common.NewError("invalid_parameters", err.Error())
 	}
 	logging.Logger.Info("Validation passed.", zap.String("challenge_id", challengeID))
@@ -135,7 +135,7 @@ func InvalidValidationTicket(challengeObj *Challenge, err error) (interface{}, e
 	validationTicket.ValidatorKey = node.Self.PublicKey
 	validationTicket.Timestamp = common.Now()
 
-	if err := validationTicket.Sign(); err != nil {
+	if err := validationTicket.Sign(challengeObj.RoundCreatedAt); err != nil {
 		return nil, common.NewError("invalid_parameters", err.Error())
 	}
 	return &validationTicket, nil

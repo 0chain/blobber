@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
@@ -195,12 +196,27 @@ func (c *ChallengeEntity) getCommitTransaction(ctx context.Context) (*transactio
 
 	sn := &ChallengeResponse{}
 	sn.ChallengeID = c.ChallengeID
-	for _, vt := range c.ValidationTickets {
-		if vt != nil {
-			sn.ValidationTickets = append(sn.ValidationTickets, vt)
+	if c.RoundCreatedAt >= hardForkRound {
+		signatures := make([]string, 0, len(c.ValidationTickets))
+		for _, vt := range c.ValidationTickets {
+			if vt != nil && vt.Result {
+				sn.ValidationTickets = append(sn.ValidationTickets, vt)
+				signatures = append(signatures, vt.Signature)
+			}
+		}
+		sn.AggregatedSignature, err = encryption.AggregateSig(signatures)
+		if err != nil {
+			logging.Logger.Error("[challenge]aggregateSig", zap.Error(err))
+			c.CancelChallenge(ctx, err)
+			return nil, nil
+		}
+	} else {
+		for _, vt := range c.ValidationTickets {
+			if vt != nil {
+				sn.ValidationTickets = append(sn.ValidationTickets, vt)
+			}
 		}
 	}
-
 	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CHALLENGE_RESPONSE, sn, 0)
 	if err != nil {
 		logging.Logger.Info("Failed submitting challenge to the mining network", zap.String("err:", err.Error()))

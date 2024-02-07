@@ -2,6 +2,7 @@ package challenge
 
 import (
 	"context"
+	"math"
 	"sync"
 	"time"
 
@@ -17,6 +18,9 @@ import (
 )
 
 const GetRoundInterval = 3 * time.Minute
+const HARDFORK_NAME = "hard_fork_2"
+
+var hardForkRound int64 = math.MaxInt64
 
 type TodoChallenge struct {
 	Id        string
@@ -72,6 +76,7 @@ func startPullWorker(ctx context.Context) {
 
 func startWorkers(ctx context.Context) {
 	setRound()
+	setHardFork()
 	go getRoundWorker(ctx)
 
 	// start challenge listeners
@@ -82,7 +87,6 @@ func startWorkers(ctx context.Context) {
 
 func getRoundWorker(ctx context.Context) {
 	ticker := time.NewTicker(GetRoundInterval)
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -90,7 +94,15 @@ func getRoundWorker(ctx context.Context) {
 			return
 		case <-ticker.C:
 			setRound()
+			setHardFork()
 		}
+	}
+}
+
+func setHardFork() {
+	if hardForkRound == math.MaxInt64 {
+		hardForkRound, _ = zcncore.GetHardForkRound(HARDFORK_NAME)
+		logging.Logger.Info("hard_fork_round", zap.Any("round", hardForkRound))
 	}
 }
 
@@ -178,8 +190,8 @@ func commitOnChainWorker(ctx context.Context) {
 			continue
 		}
 
-		logging.Logger.Info("committing_challenge_tickets", zap.Any("num", len(challenges)), zap.Any("challenges", challenges))
-
+		logging.Logger.Info("committing_challenge_tickets", zap.Any("num", len(challenges)))
+		now := time.Now()
 		for _, challenge := range challenges {
 			chall := challenge
 			var (
@@ -204,6 +216,9 @@ func commitOnChainWorker(ctx context.Context) {
 						err := challenge.VerifyChallengeTransaction(ctx, txn)
 						if err == nil || err != ErrEntityNotFound {
 							deleteChallenge(challenge.RoundCreatedAt)
+							if err != nil {
+								logging.Logger.Error("verifyChallengeTransaction", zap.Any("challenge", *challenge))
+							}
 						}
 						return nil
 					})
@@ -211,6 +226,7 @@ func commitOnChainWorker(ctx context.Context) {
 			}
 		}
 		wg.Wait()
+		logging.Logger.Info("committing_tickets_timing", zap.Any("num", len(challenges)), zap.Duration("elapsed", time.Since(now)))
 	}
 }
 

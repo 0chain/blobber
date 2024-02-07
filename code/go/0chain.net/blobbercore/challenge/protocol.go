@@ -41,8 +41,9 @@ var (
 )
 
 type ChallengeResponse struct {
-	ChallengeID       string              `json:"challenge_id"`
-	ValidationTickets []*ValidationTicket `json:"validation_tickets"`
+	ChallengeID         string              `json:"challenge_id"`
+	ValidationTickets   []*ValidationTicket `json:"validation_tickets"`
+	AggregatedSignature string              `json:"aggregated_signature"`
 }
 
 func (cr *ChallengeEntity) CancelChallenge(ctx context.Context, errReason error) {
@@ -291,18 +292,18 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 				zap.Any("numFailed", numFailed),
 			)
 
-			verified, err := validationTicket.VerifySign()
-			if err != nil || !verified {
+			verified, err := validationTicket.VerifySign(cr.RoundCreatedAt)
+			if err != nil || !verified || !validationTicket.Result {
 				numFailed++
 				logging.Logger.Error(
 					"[challenge]ticket: Validation ticket from validator could not be verified.",
 					zap.String("validator", validatorID),
+					zap.String("validator_response", validationTicket.Message),
 				)
 				updateMapAndSlice(validatorID, i, nil)
 				return
 			}
 			updateMapAndSlice(validatorID, i, &validationTicket)
-
 			numSuccess++
 		}(url, validator.ID, i)
 	}
@@ -373,7 +374,7 @@ func (cr *ChallengeEntity) VerifyChallengeTransaction(ctx context.Context, txn *
 		_ = cr.Save(ctx)
 		return err
 	}
-	logging.Logger.Info("Success response from BC for challenge response transaction", zap.String("txn", txn.TransactionOutput), zap.String("challenge_id", cr.ChallengeID))
+	logging.Logger.Info("Success response from BC for challenge response transaction", zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ChallengeID))
 	cr.SaveChallengeResult(ctx, t, true)
 	return nil
 }
@@ -383,7 +384,7 @@ func IsValueNotPresentError(err error) bool {
 }
 
 func IsEntityNotFoundError(err error) bool {
-	return strings.Contains(err.Error(), EntityNotFound)
+	return strings.Contains(err.Error(), EntityNotFound) || strings.Contains(err.Error(), "not present") || strings.Contains(err.Error(), "invalid challenge response")
 }
 
 func (cr *ChallengeEntity) SaveChallengeResult(ctx context.Context, t *transaction.Transaction, toAdd bool) {
