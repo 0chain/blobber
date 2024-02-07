@@ -137,7 +137,7 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 	if isOwner {
 		publicKey := alloc.OwnerPublicKey
 
-		valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
+		valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), r.Header.Get(common.ClientSignatureHeaderV2), publicKey)
 		if !valid || err != nil {
 			return nil, common.NewError("invalid_signature", "Invalid signature")
 		}
@@ -181,7 +181,7 @@ func (fsh *StorageHandler) GetFilesMetaByName(ctx context.Context, r *http.Reque
 	if isOwner {
 		publicKey := alloc.OwnerPublicKey
 
-		valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), publicKey)
+		valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), r.Header.Get(common.ClientSignatureHeaderV2), publicKey)
 		if !valid || err != nil {
 			return nil, common.NewError("invalid_signature", "Invalid signature")
 		}
@@ -224,7 +224,8 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	allocationID := allocationObj.ID
 
 	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
+	clientSignV2, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderV2Key).(string)
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, clientSignV2, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -432,8 +433,8 @@ func (fsh *StorageHandler) GetLatestWriteMarker(ctx context.Context, r *http.Req
 
 	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
 	publicKey := allocationObj.OwnerPublicKey
-
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, publicKey)
+	clientSignV2 := ctx.Value(constants.ContextKeyClientSignatureHeaderV2Key).(string)
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, clientSignV2, publicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "could not verify the allocation owner")
 	}
@@ -514,7 +515,8 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 
 	publicKey := allocationObj.OwnerPublicKey
 
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, publicKey)
+	clientSignV2 := ctx.Value(constants.ContextKeyClientSignatureHeaderV2Key).(string)
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, clientSignV2, publicKey)
 	if !valid || err != nil {
 		errCh <- common.NewError("invalid_signature", "could not verify the allocation owner or collaborator")
 		return
@@ -576,7 +578,8 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 	allocationID := allocationObj.ID
 
 	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
+	clientSignV2 := ctx.Value(constants.ContextKeyClientSignatureHeaderV2Key).(string)
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, clientSignV2, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -645,8 +648,8 @@ func (fsh *StorageHandler) GetRecentlyAddedRefs(ctx context.Context, r *http.Req
 	}
 
 	clientSign := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
-
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, allocationObj.OwnerPublicKey)
+	clientSignV2 := ctx.Value(constants.ContextKeyClientSignatureHeaderV2Key).(string)
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, clientSignV2, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature or invalid access")
 	}
@@ -732,7 +735,8 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 
 	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
 
-	valid, err := verifySignatureFromRequest(allocationTx, clientSign, publicKey)
+	clientSignV2 := ctx.Value(constants.ContextKeyClientSignatureHeaderV2Key).(string)
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, clientSignV2, publicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -897,14 +901,24 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 }
 
 // verifySignatureFromRequest verifies signature passed as common.ClientSignatureHeader header.
-func verifySignatureFromRequest(alloc, sign, pbK string) (bool, error) {
-	sign = encryption.MiraclToHerumiSig(sign)
-
+func verifySignatureFromRequest(alloc, signV1, signV2, pbK string) (bool, error) {
+	var (
+		sign     string
+		hashData string
+		hash     string
+	)
+	if signV2 != "" {
+		sign = encryption.MiraclToHerumiSig(signV2)
+		hashData = alloc + node.Self.GetURLBase()
+		hash = encryption.Hash(hashData)
+	} else {
+		sign = encryption.MiraclToHerumiSig(signV1)
+		hashData = alloc
+		hash = encryption.Hash(hashData)
+	}
 	if len(sign) < 64 {
 		return false, nil
 	}
-	hashData := alloc + node.Self.GetURLBase()
-	hash := encryption.Hash(hashData)
 	return encryption.Verify(pbK, sign, hash)
 }
 
