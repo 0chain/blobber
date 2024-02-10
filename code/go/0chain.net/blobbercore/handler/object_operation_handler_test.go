@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"time"
 
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -114,6 +115,8 @@ func TestDownloadFile(t *testing.T) {
 		req.Header.Set("X-Block-Num", fmt.Sprintf("%d", p.inData.blockNum))
 		req.Header.Set("X-Num-Blocks", fmt.Sprintf("%d", p.inData.numBlocks))
 		req.Header.Set(common.AllocationIdHeader, mockAllocationId)
+		sign, _ := client.Sign(encryption.Hash(mockAllocationTx))
+		req.Header.Set("X-App-Client-Signature", sign)
 
 		if p.useAuthTicket {
 			authTicket := &marker.AuthTicket{
