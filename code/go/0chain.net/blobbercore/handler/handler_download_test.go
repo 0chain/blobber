@@ -78,6 +78,7 @@ func TestHandlers_Download(t *testing.T) {
 	// setupEncryptionScheme()
 
 	router, handlers := setupDownloadHandlers()
+	signScheme := "bls0chain"
 
 	sch := zcncrypto.NewSignatureScheme("bls0chain")
 	//sch.Mnemonic = "expose culture dignity plastic digital couple promote best pool error brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe"
@@ -222,7 +223,7 @@ func TestHandlers_Download(t *testing.T) {
 					}
 
 					hash := encryption.Hash(alloc.Tx)
-					sign, err := sch.Sign(hash)
+					sign, err := ownerClient.Sign(hash, signScheme)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -291,7 +292,7 @@ func TestHandlers_Download(t *testing.T) {
 						t.Fatal(err)
 					}
 					hash := encryption.Hash(alloc.Tx)
-					sign, err := sch.Sign(hash)
+					sign, err := ownerClient.Sign(hash, signScheme)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -472,7 +473,7 @@ func TestHandlers_Download(t *testing.T) {
 						t.Fatal(err)
 					}
 					hash := encryption.Hash(alloc.Tx)
-					sign, err := sch.Sign(hash)
+					sign, err := guestClient.Sign(hash, signScheme)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -554,7 +555,7 @@ func TestHandlers_Download(t *testing.T) {
 						t.Fatal(err)
 					}
 					hash := encryption.Hash(alloc.Tx)
-					sign, err := sch.Sign(hash)
+					sign, err := guestClient.Sign(hash, signScheme)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -667,7 +668,7 @@ func TestHandlers_Download(t *testing.T) {
 					}
 
 					hash := encryption.Hash(alloc.Tx)
-					sign, err := sch.Sign(hash)
+					sign, err := guestClient.Sign(hash, signScheme)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -787,7 +788,7 @@ func TestHandlers_Download(t *testing.T) {
 					}
 
 					hash := encryption.Hash(alloc.Tx)
-					sign, err := sch.Sign(hash)
+					sign, err := guestClient.Sign(hash, signScheme)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -906,7 +907,7 @@ func TestHandlers_Download(t *testing.T) {
 					}
 
 					hash := encryption.Hash(alloc.Tx)
-					sign, err := sch.Sign(hash)
+					sign, err := guestClient.Sign(hash, signScheme)
 					if err != nil {
 						t.Fatal(err)
 					}

@@ -25,6 +25,7 @@ type DownloadRequestHeader struct {
 	VerifyDownload bool
 	DownloadMode   string
 	ConnectionID   string
+	Version        string
 }
 
 func FromDownloadRequest(allocationID string, req *http.Request, isRedeem bool) (*DownloadRequestHeader, error) {
@@ -103,6 +104,7 @@ func (dr *DownloadRequestHeader) Parse(isRedeem bool) error {
 
 	dr.DownloadMode = dr.Get("X-Mode")
 	dr.VerifyDownload = dr.Get("X-Verify-Download") == "true"
+	dr.Version = dr.Get("X-Version")
 	return nil
 }
 
