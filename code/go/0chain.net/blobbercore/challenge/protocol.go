@@ -303,7 +303,12 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 			}
 			updateMapAndSlice(validatorID, i, &validationTicket)
 
-			numSuccess++
+			if validationTicket.Result {
+				numSuccess++
+			} else {
+				numFailed++
+			}
+
 		}(url, validator.ID, i)
 	}
 

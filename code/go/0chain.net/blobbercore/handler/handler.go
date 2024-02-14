@@ -311,6 +311,8 @@ func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 
 	// signature is not requered for all requests, but if header is empty it won`t affect anything
 	ctx = context.WithValue(ctx, constants.ContextKeyClientSignatureHeaderKey, r.Header.Get(common.ClientSignatureHeader))
+	// signature V2
+	ctx = context.WithValue(ctx, constants.ContextKeyClientSignatureHeaderV2Key, r.Header.Get(common.ClientSignatureHeaderV2))
 	return ctx
 }
 
@@ -806,8 +808,9 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	}
 
 	sign := r.Header.Get(common.ClientSignatureHeader)
+	signV2 := r.Header.Get(common.ClientSignatureHeaderV2)
 
-	valid, err := verifySignatureFromRequest(allocationTx, sign, allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, sign, signV2, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -867,8 +870,9 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	}
 
 	sign := r.Header.Get(common.ClientSignatureHeader)
+	signV2 := r.Header.Get(common.ClientSignatureHeaderV2)
 
-	valid, err := verifySignatureFromRequest(allocationTx, sign, allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, sign, signV2, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
@@ -958,8 +962,9 @@ func ListShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	}
 
 	sign := r.Header.Get(common.ClientSignatureHeader)
+	signV2 := r.Header.Get(common.ClientSignatureHeaderV2)
 
-	valid, err := verifySignatureFromRequest(allocationTx, sign, allocationObj.OwnerPublicKey)
+	valid, err := verifySignatureFromRequest(allocationTx, sign, signV2, allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}

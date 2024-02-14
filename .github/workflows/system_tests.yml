@@ -13,7 +13,7 @@ on:
         required: true
       run_smoke_tests:
         description: 'Run subset of system tests (smoke tests) for faster feedback (NOT FOR PRS POINTED TO STAGING)'
-        default: 'false'
+        default: 'true'
         required: false
       test_file_filter:
         description: 'Comma separated list of test files to run (eg. zwalletcli_register_wallet_test.go, zwalletcli_send_and_balance_test.go). If supplied, the PR will NOT be notified of the test result'
