@@ -263,12 +263,13 @@ func GetMarkersForChain(ctx context.Context, allocationID string) ([]byte, error
 	if err != nil {
 		return nil, err
 	}
-	var unComittedMarkers []*WriteMarkerEntity
+	var seq int64
 	if commitedMarker != nil {
-		unComittedMarkers, err = GetUncommittedWriteMarkers(ctx, allocationID, commitedMarker.Sequence)
-		if err != nil {
-			return nil, err
-		}
+		seq = commitedMarker.Sequence
+	}
+	unComittedMarkers, err := GetUncommittedWriteMarkers(ctx, allocationID, seq)
+	if err != nil {
+		return nil, err
 	}
 	markers := make([]byte, 0, len(unComittedMarkers)+1)
 	if commitedMarker != nil {
