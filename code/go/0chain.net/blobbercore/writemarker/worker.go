@@ -111,6 +111,7 @@ func redeemWriteMarker(md *markerData) error {
 
 	res, _ := WriteMarkerMutext.Lock(ctx, allocationID, MARKER_CONNECTION)
 	if res.Status != LockStatusOK {
+		logging.Logger.Error("Error redeeming the write marker. Lock failed", zap.String("allocationID", allocationID), zap.Any("status", res.Status))
 		if common.Now()-md.firstMarkerTimestamp < 2*MAX_TIMESTAMP_GAP {
 			md.retries++
 			go tryAgain(md)
@@ -119,7 +120,7 @@ func redeemWriteMarker(md *markerData) error {
 		}
 		//Exceeded twice of max timestamp gap, can be a malicious client keeping the lock forever to block the redeem
 	} else {
-		defer WriteMarkerMutext.Unlock(ctx, allocationID, MARKER_CONNECTION) //nolint:errcheck
+		defer WriteMarkerMutext.Unlock(allocationID, MARKER_CONNECTION) //nolint:errcheck
 	}
 	allocMu := lock.GetMutex(allocation.Allocation{}.TableName(), allocationID)
 	allocMu.RLock()

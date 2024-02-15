@@ -23,7 +23,7 @@ func LockWriteMarker(ctx *Context) (interface{}, error) {
 func UnlockWriteMarker(ctx *Context) (interface{}, error) {
 	connectionID := ctx.Vars["connection"]
 
-	err := writemarker.WriteMarkerMutext.Unlock(ctx, ctx.AllocationId, connectionID)
+	err := writemarker.WriteMarkerMutext.Unlock(ctx.AllocationId, connectionID)
 	if err != nil {
 		return nil, err
 	}

@@ -576,12 +576,14 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 		}
 		refPathResult.LatestWM = &latestWM.WM
 	}
-	chainData, err := writemarker.GetMarkersForChain(ctx, allocationObj.ID)
-	if err != nil {
-		errCh <- common.NewError("markers_for_chain", "Error reading the chain data for allocation."+err.Error())
-		return
+	if _, ok := common.GetField(r, "chain_data"); ok {
+		chainData, err := writemarker.GetMarkersForChain(ctx, allocationObj.ID)
+		if err != nil {
+			errCh <- common.NewError("markers_for_chain", "Error reading the chain data for allocation."+err.Error())
+			return
+		}
+		refPathResult.ChainData = chainData
 	}
-	refPathResult.ChainData = chainData
 
 	resCh <- &refPathResult
 }

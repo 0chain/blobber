@@ -101,7 +101,7 @@ func (m *Mutex) Lock(ctx context.Context, allocationID, connectionID string) (*L
 	}, nil
 }
 
-func (*Mutex) Unlock(ctx context.Context, allocationID string, connectionID string) error {
+func (*Mutex) Unlock(allocationID string, connectionID string) error {
 	if allocationID == "" || connectionID == "" {
 		return nil
 	}

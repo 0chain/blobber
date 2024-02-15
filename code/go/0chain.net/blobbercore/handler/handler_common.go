@@ -162,7 +162,8 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 		} else {
 			Logger.Error("Invalid response type for commit handler")
 		}
-
+		connectionID, _ := common.GetField(r, "connection_id")
+		writemarker.WriteMarkerMutext.Unlock(allocationID, connectionID) //nolint:errcheck
 		return
 	}
 }
