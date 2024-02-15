@@ -228,12 +228,12 @@ func (wm *WriteMarkerEntity) Create(ctx context.Context) error {
 	return err
 }
 
-func GetUncommittedWriteMarkers(ctx context.Context, allocationID string) ([]*WriteMarkerEntity, error) {
+func GetUncommittedWriteMarkers(ctx context.Context, allocationID string, seq int64) ([]*WriteMarkerEntity, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 
 	unCommittedMarkers := make([]*WriteMarkerEntity, 0)
 	err := db.Table((WriteMarkerEntity{}).TableName()).
-		Where("allocation_id=? AND status=0", allocationID).
+		Where("allocation_id=? AND status=0 AND sequence > ?", allocationID, seq).
 		Order("sequence asc").
 		Find(&unCommittedMarkers).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
@@ -263,9 +263,12 @@ func GetMarkersForChain(ctx context.Context, allocationID string) ([]byte, error
 	if err != nil {
 		return nil, err
 	}
-	unComittedMarkers, err := GetUncommittedWriteMarkers(ctx, allocationID)
-	if err != nil {
-		return nil, err
+	var unComittedMarkers []*WriteMarkerEntity
+	if commitedMarker != nil {
+		unComittedMarkers, err = GetUncommittedWriteMarkers(ctx, allocationID, commitedMarker.Sequence)
+		if err != nil {
+			return nil, err
+		}
 	}
 	markers := make([]byte, 0, len(unComittedMarkers)+1)
 	if commitedMarker != nil {
