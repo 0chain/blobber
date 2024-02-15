@@ -17,7 +17,7 @@ import (
 
 var (
 	writeMarkerChan chan *markerData
-	markerDataMap   map[string]*markerData
+	markerDataMap   = make(map[string]*markerData)
 	markerDataMut   sync.Mutex
 )
 
@@ -95,7 +95,7 @@ func redeemWriteMarker(md *markerData) error {
 	allocationID := md.allocationID
 	shouldRollback := false
 	start := time.Now()
-	logging.Logger.Info("Redeeming the write marker", zap.String("allocationID", allocationID))
+	logging.Logger.Info("redeeming_write_marker", zap.String("allocationID", allocationID))
 	defer func() {
 		if shouldRollback {
 			if rollbackErr := db.Rollback().Error; rollbackErr != nil {
@@ -195,8 +195,8 @@ func startRedeem(ctx context.Context, res []allocation.Res) {
 	logging.Logger.Info("Start redeeming writemarkers")
 	writeMarkerChan = make(chan *markerData, 200)
 	go startRedeemWorker(ctx)
-
-	var writemarkers []*WriteMarkerEntity
+	markerDataMut.Lock()
+	defer markerDataMut.Unlock()
 	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		tx := datastore.GetStore().GetTransaction(ctx)
 		for _, r := range res {
@@ -208,7 +208,15 @@ func startRedeem(ctx context.Context, res []allocation.Res) {
 				return err
 			}
 			if wm.WM.AllocationID != "" && wm.Status == Accepted {
-				writemarkers = append(writemarkers, &wm)
+				md := &markerData{
+					firstMarkerTimestamp: wm.WM.Timestamp,
+					allocationID:         wm.WM.AllocationID,
+					chainLength:          wm.WM.ChainLength,
+					processing:           true,
+					retries:              int(wm.ReedeemRetries),
+				}
+				markerDataMap[wm.WM.AllocationID] = md
+				writeMarkerChan <- md
 			}
 		}
 		return nil
@@ -218,7 +226,6 @@ func startRedeem(ctx context.Context, res []allocation.Res) {
 			zap.Any("error", err))
 		return
 	}
-
 }
 
 func tryAgain(md *markerData) {

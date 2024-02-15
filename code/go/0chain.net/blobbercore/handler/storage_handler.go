@@ -472,6 +472,14 @@ func (fsh *StorageHandler) GetLatestWriteMarker(ctx context.Context, r *http.Req
 		result.PrevWM = &prevWM.WM
 	}
 
+	if _, ok := common.GetField(r, "chain_data"); ok {
+		chainData, err := writemarker.GetMarkersForChain(ctx, allocationObj.ID)
+		if err != nil {
+			return nil, common.NewError("markers_for_chain", "Error reading the chain data for allocation."+err.Error())
+		}
+		result.ChainData = chainData
+	}
+
 	return &result, nil
 }
 

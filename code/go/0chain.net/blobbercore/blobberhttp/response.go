@@ -64,6 +64,7 @@ type DownloadResponse struct {
 }
 
 type LatestWriteMarkerResult struct {
-	LatestWM *writemarker.WriteMarker `json:"latest_write_marker"`
-	PrevWM   *writemarker.WriteMarker `json:"prev_write_marker"`
+	LatestWM  *writemarker.WriteMarker `json:"latest_write_marker"`
+	PrevWM    *writemarker.WriteMarker `json:"prev_write_marker"`
+	ChainData []byte                   `json:"chain_data"`
 }
