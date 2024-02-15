@@ -19,7 +19,8 @@ const (
 	TimestampHeader = "X-App-Timestamp"
 
 	// ClientSignatureHeader represents http request header contains signature.
-	ClientSignatureHeader = "X-App-Client-Signature"
+	ClientSignatureHeader   = "X-App-Client-Signature"
+	ClientSignatureHeaderV2 = "X-App-Client-Signature-V2"
 
 	AllocationIdHeader = "ALLOCATION-ID"
 )

@@ -30,7 +30,8 @@ type Context struct {
 	// AllocationId optional. allocation id in request
 	AllocationId string
 	// Signature optional. signature in request
-	Signature string
+	Signature   string
+	SignatureV2 string
 
 	Allocation *allocation.Allocation
 
@@ -163,6 +164,7 @@ func WithTxHandler(handler func(ctx *Context) (interface{}, error)) func(w http.
 			ctx.ClientKey = r.Header.Get(common.ClientKeyHeader)
 			ctx.AllocationId = r.Header.Get(common.AllocationIdHeader)
 			ctx.Signature = r.Header.Get(common.ClientSignatureHeader)
+			ctx.SignatureV2 = r.Header.Get(common.ClientSignatureHeaderV2)
 
 			ctx, err := WithVerify(ctx, r)
 			statusCode = ctx.StatusCode
@@ -222,7 +224,7 @@ func WithVerify(ctx *Context, r *http.Request) (*Context, error) {
 
 		publicKey := alloc.OwnerPublicKey
 
-		valid, err := verifySignatureFromRequest(allocationTx, ctx.Signature, publicKey)
+		valid, err := verifySignatureFromRequest(allocationTx, ctx.Signature, ctx.SignatureV2, publicKey)
 
 		if !valid {
 			ctx.StatusCode = http.StatusBadRequest
