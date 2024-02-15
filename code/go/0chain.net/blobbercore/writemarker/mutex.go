@@ -38,6 +38,10 @@ type Mutex struct {
 	ML *common.MapLocker
 }
 
+var WriteMarkerMutext = &Mutex{
+	ML: common.GetNewLocker(),
+}
+
 // Lock will create/update lock in postgres.
 // If no lock exists for an allocation then new lock is created.
 // If lock exists and is of same connection ID then lock's createdAt is updated

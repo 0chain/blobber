@@ -2,6 +2,7 @@ package writemarker
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -20,6 +22,9 @@ type WriteMarker struct {
 	FileMetaRoot           string           `gorm:"column:file_meta_root;size:64" json:"file_meta_root"`
 	AllocationID           string           `gorm:"column:allocation_id;size:64;index:idx_seq,unique,priority:1" json:"allocation_id"`
 	Size                   int64            `gorm:"column:size" json:"size"`
+	ChainSize              int64            `gorm:"column:chain_size" json:"chain_size"`
+	ChainHash              string           `gorm:"column:chain_hash;size:64" json:"chain_hash"`
+	ChainLength            int              `gorm:"column:chain_length" json:"-"`
 	BlobberID              string           `gorm:"column:blobber_id;size:64" json:"blobber_id"`
 	Timestamp              common.Timestamp `gorm:"column:timestamp;primaryKey" json:"timestamp"`
 	ClientID               string           `gorm:"column:client_id;size:64" json:"client_id"`
@@ -27,10 +32,10 @@ type WriteMarker struct {
 }
 
 func (wm *WriteMarker) GetHashData() string {
-	hashData := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%d:%d",
+	hashData := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s:%d:%d:%d",
 		wm.AllocationRoot, wm.PreviousAllocationRoot,
-		wm.FileMetaRoot, wm.AllocationID, wm.BlobberID,
-		wm.ClientID, wm.Size, wm.Timestamp)
+		wm.FileMetaRoot, wm.ChainHash, wm.AllocationID, wm.BlobberID,
+		wm.ClientID, wm.Size, wm.ChainSize, wm.Timestamp)
 	return hashData
 }
 
@@ -41,6 +46,12 @@ const (
 	Committed  WriteMarkerStatus = 1
 	Failed     WriteMarkerStatus = 2
 	Rollbacked WriteMarkerStatus = 3
+)
+
+const (
+	MAX_CHAIN_LENGTH  = 3
+	MAX_TIMESTAMP_GAP = 60 * 30 // 30 minutes
+	MARKER_CONNECTION = "marker_connection"
 )
 
 type WriteMarkerEntity struct {
@@ -100,11 +111,6 @@ func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context, status WriteMarke
 			return err
 		}
 
-		err = db.Exec("UPDATE write_markers SET latest = false WHERE allocation_id = ? AND allocation_root = ? AND sequence < ?", wm.WM.AllocationID, wm.WM.PreviousAllocationRoot, wm.Sequence).Error
-		if err != nil {
-			return err
-		}
-
 		// TODO (sfxdx): what about failed write markers ?
 		if status != Committed || wm.WM.Size <= 0 {
 			return err // not committed or a deleting marker
@@ -135,6 +141,9 @@ func GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*WriteMa
 		Take(wm).Error
 	if err != nil {
 		return nil, err
+	}
+	if wm.Status == Committed {
+		wm.WM.ChainLength = 0
 	}
 	return wm, nil
 }
@@ -219,16 +228,75 @@ func (wm *WriteMarkerEntity) Create(ctx context.Context) error {
 	return err
 }
 
-func (wm *WriteMarkerEntity) SendToChan(ctx context.Context) error {
+func GetUncommittedWriteMarkers(ctx context.Context, allocationID string) ([]*WriteMarkerEntity, error) {
+	db := datastore.GetStore().GetTransaction(ctx)
 
-	sem := GetLock(wm.WM.AllocationID)
-	if sem == nil {
-		sem = SetLock(wm.WM.AllocationID)
+	unCommittedMarkers := make([]*WriteMarkerEntity, 0)
+	err := db.Table((WriteMarkerEntity{}).TableName()).
+		Where("allocation_id=? AND status=0", allocationID).
+		Order("sequence asc").
+		Find(&unCommittedMarkers).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, err
 	}
-	err := sem.Acquire(context.TODO(), 1)
-	if err != nil {
-		return err
-	}
-	writeMarkerChan <- wm
-	return nil
+	return unCommittedMarkers, nil
 }
+
+func GetLatestCommittedWriteMarker(ctx context.Context, allocationID string) (*WriteMarkerEntity, error) {
+	db := datastore.GetStore().GetTransaction(ctx)
+	wm := &WriteMarkerEntity{}
+	err := db.Table((WriteMarkerEntity{}).TableName()).
+		Where("allocation_id=? AND status=1", allocationID).
+		Order("sequence desc").
+		Take(wm).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return wm, nil
+}
+
+func GetMarkersForChain(ctx context.Context, allocationID string) ([]byte, error) {
+	commitedMarker, err := GetLatestCommittedWriteMarker(ctx, allocationID)
+	if err != nil {
+		return nil, err
+	}
+	unComittedMarkers, err := GetUncommittedWriteMarkers(ctx, allocationID)
+	if err != nil {
+		return nil, err
+	}
+	markers := make([]byte, 0, len(unComittedMarkers)+1)
+	if commitedMarker != nil {
+		decodedHash, err := hex.DecodeString(commitedMarker.WM.AllocationRoot)
+		if err != nil {
+			return nil, err
+		}
+		markers = append(markers, decodedHash...)
+	}
+	for _, marker := range unComittedMarkers {
+		decodedHash, err := hex.DecodeString(marker.WM.AllocationRoot)
+		if err != nil {
+			return nil, err
+		}
+		markers = append(markers, decodedHash...)
+	}
+	return markers, nil
+}
+
+func CalculateChainHash(ctx context.Context, allocationID, newRoot string) (string, error) {
+	prevRoots, err := GetMarkersForChain(ctx, allocationID)
+	if err != nil {
+		return "", err
+	}
+	decodedHash, err := hex.DecodeString(newRoot)
+	if err != nil {
+		return "", err
+	}
+	prevRoots = append(prevRoots, decodedHash...)
+	return encryption.Hash(prevRoots), nil
+}
+
+// client lock alloc -> commitMarker -> unlock alloc
+// don't want the worker to kick in between these steps, once alloc is unlocked, worker can pick it up

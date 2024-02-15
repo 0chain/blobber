@@ -461,6 +461,9 @@ func (fsh *StorageHandler) GetLatestWriteMarker(ctx context.Context, r *http.Req
 
 	var result blobberhttp.LatestWriteMarkerResult
 	if latestWM != nil {
+		if latestWM.Status == writemarker.Committed {
+			latestWM.WM.ChainSize = 0 // start a new chain
+		}
 		result.LatestWM = &latestWM.WM
 	}
 	if prevWM != nil {
@@ -557,6 +560,9 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 	var refPathResult blobberhttp.ReferencePathResult
 	refPathResult.ReferencePath = refPath
 	if latestWM != nil {
+		if latestWM.Status == writemarker.Committed {
+			latestWM.WM.ChainSize = 0 // start a new chain
+		}
 		refPathResult.LatestWM = &latestWM.WM
 	}
 
@@ -624,8 +630,16 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 	var refPathResult blobberhttp.ReferencePathResult
 	refPathResult.ReferencePath = refPath
 	if latestWM != nil {
+		if latestWM.Status == writemarker.Committed {
+			latestWM.WM.ChainSize = 0 // start a new chain
+		}
 		refPathResult.LatestWM = &latestWM.WM
 	}
+	chainData, err := writemarker.GetMarkersForChain(ctx, allocationObj.ID)
+	if err != nil {
+		return nil, common.NewError("markers_for_chain", "Error reading the chain data for allocation."+err.Error())
+	}
+	refPathResult.ChainData = chainData
 	return &refPathResult, nil
 }
 

@@ -89,18 +89,10 @@ func readPreRedeem(
 }
 
 func checkPendingMarkers(ctx context.Context, allocationID string) error {
-
-	mut := writemarker.GetLock(allocationID)
-	if mut == nil {
-		return nil
+	pending := writemarker.CheckProcessingMarker(allocationID)
+	if pending {
+		return common.NewError("pending_markers", "previous marker is still pending to be redeemed")
 	}
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	err := mut.Acquire(ctx, 1)
-	if err != nil {
-		return common.NewError("check_pending_markers", "write marker is still not redeemed")
-	}
-	mut.Release(1)
 	return nil
 }
 
@@ -584,6 +576,22 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			return nil, common.NewErrorf("latest_write_marker_read_error",
 				"Error reading the latest write marker for allocation: %v", err)
 		}
+		if latestWriteMarkerEntity.Status == writemarker.Failed {
+			return nil, common.NewError("latest_write_marker_failed",
+				"Latest write marker is in failed state")
+		}
+		if latestWriteMarkerEntity.Status != writemarker.Committed {
+			if latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size != writeMarker.ChainSize {
+				return nil, common.NewErrorf("invalid_chain_size",
+					"Invalid chain size. expected:%v got %v", latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size, writeMarker.ChainSize)
+			}
+			writeMarker.ChainLength = latestWriteMarkerEntity.WM.ChainLength
+		} else {
+			if writeMarker.ChainSize != connectionObj.Size {
+				return nil, common.NewErrorf("invalid_chain_size",
+					"Invalid chain size. expected:%v got %v", connectionObj.Size, writeMarker.ChainSize)
+			}
+		}
 	}
 
 	writemarkerEntity := &writemarker.WriteMarkerEntity{}
@@ -595,7 +603,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		result.ErrorMessage = "Verification of write marker failed: " + err.Error()
 		result.Success = false
 		if latestWriteMarkerEntity != nil {
-			result.WriteMarker = &latestWriteMarkerEntity.WM
+			result.WriteMarker = latestWriteMarkerEntity
 		}
 		Logger.Error("verify_writemarker_failed", zap.Error(err))
 		return &result, common.NewError("write_marker_verification_failed", result.ErrorMessage)
@@ -649,7 +657,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if allocationRoot != writeMarker.AllocationRoot {
 		result.AllocationRoot = allocationObj.AllocationRoot
 		if latestWriteMarkerEntity != nil {
-			result.WriteMarker = &latestWriteMarkerEntity.WM
+			result.WriteMarker = latestWriteMarkerEntity
 		}
 		result.Success = false
 		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root." +
@@ -657,10 +665,18 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
 	}
 
+	chainHash, err := writemarker.CalculateChainHash(ctx, allocationObj.ID, allocationRoot)
+	if err != nil {
+		return nil, common.NewError("chain_hash_error", "Error calculating chain hash")
+	}
+	if chainHash != writeMarker.ChainHash {
+		return nil, common.NewError("chain_hash_mismatch", "Chain hash in the write marker does not match the calculated chain hash")
+	}
+
 	if fileMetaRoot != writeMarker.FileMetaRoot {
 		// result.AllocationRoot = allocationObj.AllocationRoot
 		if latestWriteMarkerEntity != nil {
-			result.WriteMarker = &latestWriteMarkerEntity.WM
+			result.WriteMarker = latestWriteMarkerEntity
 		}
 		result.Success = false
 		result.ErrorMessage = "File meta root in the write marker does not match the calculated file meta root." +
@@ -670,6 +686,10 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	writemarkerEntity.ConnectionID = connectionObj.ID
 	writemarkerEntity.ClientPublicKey = clientKey
+	writemarkerEntity.WM.ChainLength += 1
+	if writemarkerEntity.WM.ChainLength > writemarker.MAX_CHAIN_LENGTH {
+		return nil, common.NewError("chain_length_exceeded", "Chain length exceeded")
+	}
 
 	db := datastore.GetStore().GetTransaction(ctx)
 	writemarkerEntity.Latest = true
@@ -716,7 +736,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	db.Model(connectionObj).Updates(allocation.AllocationChangeCollector{Status: allocation.CommittedConnection})
 	result.AllocationRoot = allocationObj.AllocationRoot
-	result.WriteMarker = &writeMarker
+	result.WriteMarker = writemarkerEntity
 	result.Success = true
 	result.ErrorMessage = ""
 	commitOperation := connectionObj.Changes[0].Operation
@@ -725,10 +745,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	//Delete connection object and its changes
 
 	db.Delete(connectionObj)
-	err = writemarkerEntity.SendToChan(ctx)
-	if err != nil {
-		return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
-	}
 	go allocation.DeleteConnectionObjEntry(connectionID)
 	go AddWriteMarkerCount(clientID, connectionObj.Size <= 0)
 
@@ -1359,6 +1375,10 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return nil, common.NewError("write_marker_verification_failed", "Verification of the write marker failed: "+err.Error())
 	}
 
+	if writemarkerEntity.WM.ChainLength > writemarker.MAX_CHAIN_LENGTH {
+		return nil, common.NewError("chain_length_exceeded", "Chain length exceeded")
+	}
+
 	elapsedVerifyWM := time.Since(startTime) - elapsedAllocation - elapsedGetLock
 
 	var clientIDForWriteRedeem = writeMarker.ClientID
@@ -1395,7 +1415,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	if allocationRoot != writeMarker.AllocationRoot {
 		result.AllocationRoot = allocationObj.AllocationRoot
 		if latestWriteMarkerEntity != nil {
-			result.WriteMarker = &latestWriteMarkerEntity.WM
+			result.WriteMarker = latestWriteMarkerEntity
 		}
 		result.Success = false
 		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root." +
@@ -1404,9 +1424,19 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
 	}
 
+	chainHash, err := writemarker.CalculateChainHash(ctx, allocationObj.ID, allocationRoot)
+	if err != nil {
+		txn.Rollback()
+		return nil, common.NewError("chain_hash_error", "Error calculating chain hash "+err.Error())
+	}
+	if chainHash != writeMarker.ChainHash {
+		txn.Rollback()
+		return nil, common.NewError("chain_hash_mismatch", "Chain hash in the write marker does not match the calculated chain hash")
+	}
+
 	if fileMetaRoot != writeMarker.FileMetaRoot {
 		if latestWriteMarkerEntity != nil {
-			result.WriteMarker = &latestWriteMarkerEntity.WM
+			result.WriteMarker = latestWriteMarkerEntity
 		}
 		result.Success = false
 		result.ErrorMessage = "File meta root in the write marker does not match the calculated file meta root." +
@@ -1461,10 +1491,6 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	if err != nil {
 		return &result, common.NewError("allocation_commit_error", "Error committing the transaction "+err.Error())
 	}
-	err = writemarkerEntity.SendToChan(ctx)
-	if err != nil {
-		return nil, common.NewError("write_marker_error", "Error redeeming the write marker")
-	}
 	err = allocation.CommitRollback(allocationID)
 	if err != nil {
 		Logger.Error("Error committing the rollback for allocation", zap.Error(err))
@@ -1472,7 +1498,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 
 	elapsedCommitRollback := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedVerifyWM - elapsedWritePreRedeem
 	result.AllocationRoot = allocationObj.AllocationRoot
-	result.WriteMarker = &writeMarker
+	result.WriteMarker = writemarkerEntity
 	result.Success = true
 	result.ErrorMessage = ""
 	commitOperation := "rollback"

@@ -19,6 +19,8 @@ type WriteMarker struct {
 	FileMetaRoot           string           `json:"file_meta_root"`
 	AllocationID           string           `json:"allocation_id"`
 	Size                   int64            `json:"size"`
+	ChainSize              int64            `json:"chain_size"`
+	ChainHash              string           `json:"chain_hash"`
 	BlobberID              string           `json:"blobber_id"`
 	Timestamp              common.Timestamp `json:"timestamp"`
 	ClientID               string           `json:"client_id"`
@@ -26,10 +28,10 @@ type WriteMarker struct {
 }
 
 func (wm *WriteMarker) GetHashData() string {
-	hashData := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%d:%d",
+	hashData := fmt.Sprintf("%s:%s:%s:%s:%s:%s:%s:%d:%d:%d",
 		wm.AllocationRoot, wm.PreviousAllocationRoot,
-		wm.FileMetaRoot, wm.AllocationID, wm.BlobberID,
-		wm.ClientID, wm.Size, wm.Timestamp)
+		wm.FileMetaRoot, wm.ChainHash, wm.AllocationID, wm.BlobberID,
+		wm.ClientID, wm.Size, wm.ChainSize, wm.Timestamp)
 	return hashData
 }
 

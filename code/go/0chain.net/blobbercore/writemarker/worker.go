@@ -8,17 +8,62 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
-	"golang.org/x/sync/semaphore"
 	"gorm.io/gorm"
 )
 
 var (
-	writeMarkerChan chan *WriteMarkerEntity
-	writeMarkerMap  map[string]*semaphore.Weighted
-	mut             sync.RWMutex
+	writeMarkerChan chan *markerData
+	markerDataMap   map[string]*markerData
+	markerDataMut   sync.Mutex
 )
+
+type markerData struct {
+	firstMarkerTimestamp common.Timestamp
+	allocationID         string
+	retries              int
+	chainLength          int
+	processing           bool
+}
+
+func SaveMarkerData(allocationID string, timestamp common.Timestamp, chainLength int) {
+	markerDataMut.Lock()
+	defer markerDataMut.Unlock()
+	if data, ok := markerDataMap[allocationID]; !ok {
+		markerDataMap[allocationID] = &markerData{
+			firstMarkerTimestamp: timestamp,
+			allocationID:         allocationID,
+			chainLength:          1,
+		}
+	} else {
+		data.chainLength = chainLength
+		if data.chainLength == 1 {
+			data.firstMarkerTimestamp = timestamp
+		}
+		if !data.processing && (data.chainLength == MAX_CHAIN_LENGTH || common.Now()-data.firstMarkerTimestamp > MAX_TIMESTAMP_GAP) {
+			data.processing = true
+			writeMarkerChan <- data
+		}
+	}
+}
+
+func CheckProcessingMarker(allocationID string) bool {
+	markerDataMut.Lock()
+	defer markerDataMut.Unlock()
+	if data, ok := markerDataMap[allocationID]; ok {
+		return data.processing
+	}
+	return false
+}
+
+func deleteMarkerData(allocationID string) {
+	markerDataMut.Lock()
+	delete(markerDataMap, allocationID)
+	markerDataMut.Unlock()
+}
 
 // const (
 // 	timestampGap          = 30 * 24 * 60 * 60  // 30 days
@@ -37,33 +82,15 @@ func SetupWorkers(ctx context.Context) {
 			zap.Any("error", err))
 	}
 
-	writeMarkerMap = make(map[string]*semaphore.Weighted)
-
-	for _, r := range res {
-		writeMarkerMap[r.ID] = semaphore.NewWeighted(1)
-	}
-
-	go startRedeem(ctx)
+	startRedeem(ctx, res)
+	go startCollector(ctx)
 	// go startCleanupWorker(ctx)
 }
 
-func GetLock(allocationID string) *semaphore.Weighted {
-	mut.RLock()
-	defer mut.RUnlock()
-	return writeMarkerMap[allocationID]
-}
-
-func SetLock(allocationID string) *semaphore.Weighted {
-	mut.Lock()
-	defer mut.Unlock()
-	writeMarkerMap[allocationID] = semaphore.NewWeighted(1)
-	return writeMarkerMap[allocationID]
-}
-
-func redeemWriteMarker(wm *WriteMarkerEntity) error {
+func redeemWriteMarker(md *markerData) error {
 	ctx := datastore.GetStore().CreateTransaction(context.TODO())
 	db := datastore.GetStore().GetTransaction(ctx)
-	allocationID := wm.WM.AllocationID
+	allocationID := md.allocationID
 	shouldRollback := false
 	start := time.Now()
 	defer func() {
@@ -71,42 +98,54 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 			if rollbackErr := db.Rollback().Error; rollbackErr != nil {
 				logging.Logger.Error("Error rollback on redeeming the write marker.",
 					zap.Any("allocation", allocationID),
-					zap.Any("wm", wm.WM.AllocationID), zap.Error(rollbackErr))
+					zap.Error(rollbackErr))
 			}
+
+		} else {
+			deleteMarkerData(allocationID)
 		}
 	}()
-	alloc, err := allocation.Repo.GetByIdAndLock(ctx, allocationID)
+
+	res, _ := WriteMarkerMutext.Lock(ctx, allocationID, MARKER_CONNECTION)
+	if res.Status != LockStatusOK {
+		if common.Now()-md.firstMarkerTimestamp < 2*MAX_TIMESTAMP_GAP {
+			md.retries++
+			go tryAgain(md)
+			shouldRollback = true
+			return nil
+		}
+		//Exceeded twice of max timestamp gap, can be a malicious client keeping the lock forever to block the redeem
+	} else {
+		defer WriteMarkerMutext.Unlock(ctx, allocationID, MARKER_CONNECTION)
+	}
+	allocMu := lock.GetMutex(allocation.Allocation{}.TableName(), allocationID)
+	allocMu.RLock()
+	defer allocMu.RUnlock()
+
+	alloc, err := allocation.Repo.GetAllocationFromDB(ctx, allocationID)
 	if err != nil {
-		logging.Logger.Error("Error redeeming the write marker.", zap.Any("allocation", allocationID), zap.Any("wm", wm.WM.AllocationID), zap.Any("error", err))
+		logging.Logger.Error("Error redeeming the write marker.", zap.Any("allocation", allocationID), zap.Any("wm", allocationID), zap.Any("error", err))
 		if err != gorm.ErrRecordNotFound {
-			go tryAgain(wm)
+			go tryAgain(md)
 		}
 		shouldRollback = true
 		return err
 	}
 
 	if alloc.Finalized {
-		logging.Logger.Info("Allocation is finalized. Skipping redeeming the write marker.", zap.Any("allocation", allocationID), zap.Any("wm", wm.WM.AllocationID))
+		logging.Logger.Info("Allocation is finalized. Skipping redeeming the write marker.", zap.Any("allocation", allocationID))
+		deleteMarkerData(allocationID)
 		shouldRollback = true
 		return nil
 	}
 
-	if alloc.AllocationRoot != wm.WM.AllocationRoot {
-		logging.Logger.Info("Stale write marker. Allocation root mismatch",
-			zap.Any("allocation", allocationID),
-			zap.Any("wm", wm.WM.AllocationRoot), zap.Any("alloc_root", alloc.AllocationRoot))
-		if wm.ReedeemRetries == 0 && !alloc.IsRedeemRequired {
-			wm.ReedeemRetries++
-			go tryAgain(wm)
-			shouldRollback = true
-			return nil
+	wm, err := GetWriteMarkerEntity(ctx, alloc.AllocationRoot)
+	if err != nil {
+		logging.Logger.Error("Error redeeming the write marker.", zap.Any("allocation", allocationID), zap.Any("wm", alloc.AllocationRoot), zap.Any("error", err))
+		if err != gorm.ErrRecordNotFound {
+			go tryAgain(md)
 		}
-		_ = wm.UpdateStatus(ctx, Rollbacked, "rollbacked", "")
-		err = db.Commit().Error
-		mut := GetLock(allocationID)
-		if mut != nil {
-			mut.Release(1)
-		}
+		shouldRollback = true
 		return err
 	}
 
@@ -117,23 +156,13 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 			zap.Any("allocation", allocationID),
 			zap.Any("wm", wm), zap.Any("error", err), zap.Any("elapsedTime", elapsedTime))
 		if retryRedeem(err.Error()) {
-			go tryAgain(wm)
-		} else {
-			mut := GetLock(allocationID)
-			if mut != nil {
-				mut.Release(1)
-			}
+			go tryAgain(md)
 		}
 		shouldRollback = true
-
 		return err
 	}
-	defer func() {
-		mut := GetLock(allocationID)
-		if mut != nil {
-			mut.Release(1)
-		}
-	}()
+	deleteMarkerData(allocationID)
+
 	err = allocation.Repo.UpdateAllocationRedeem(ctx, allocationID, wm.WM.AllocationRoot, alloc)
 	if err != nil {
 		logging.Logger.Error("Error redeeming the write marker. Allocation latest wm redeemed update failed",
@@ -159,15 +188,27 @@ func redeemWriteMarker(wm *WriteMarkerEntity) error {
 	return nil
 }
 
-func startRedeem(ctx context.Context) {
+func startRedeem(ctx context.Context, res []allocation.Res) {
 	logging.Logger.Info("Start redeeming writemarkers")
-	writeMarkerChan = make(chan *WriteMarkerEntity, 200)
+	writeMarkerChan = make(chan *markerData, 200)
 	go startRedeemWorker(ctx)
 
 	var writemarkers []*WriteMarkerEntity
 	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		tx := datastore.GetStore().GetTransaction(ctx)
-		return tx.Not(WriteMarkerEntity{Status: Committed}).Find(&writemarkers).Error
+		for _, r := range res {
+			wm := WriteMarkerEntity{}
+			err := tx.Where("allocation_id = ?", r.ID).
+				Order("sequence desc").
+				Take(&wm).Error
+			if err != nil && err != gorm.ErrRecordNotFound {
+				return err
+			}
+			if wm.WM.AllocationID != "" && wm.Status == Accepted {
+				writemarkers = append(writemarkers, &wm)
+			}
+		}
+		return nil
 	})
 	if err != nil && err != gorm.ErrRecordNotFound {
 		logging.Logger.Error("Error redeeming the write marker. failed to load allocation's writemarker ",
@@ -175,29 +216,36 @@ func startRedeem(ctx context.Context) {
 		return
 	}
 
-	for _, wm := range writemarkers {
-		mut := GetLock(wm.WM.AllocationID)
-		if mut == nil {
-			mut = SetLock(wm.WM.AllocationID)
-		}
-		err := mut.Acquire(ctx, 1)
-		if err != nil {
-			logging.Logger.Error("Error acquiring semaphore", zap.Error(err))
-			continue
-		}
-		writeMarkerChan <- wm
-	}
-
 }
 
-func tryAgain(wm *WriteMarkerEntity) {
-	time.Sleep(time.Duration(wm.ReedeemRetries) * 5 * time.Second)
-	writeMarkerChan <- wm
+func tryAgain(md *markerData) {
+	time.Sleep(time.Duration(md.retries) * 5 * time.Second)
+	writeMarkerChan <- md
 }
 
 // Can add more cases where we don't want to retry
 func retryRedeem(errString string) bool {
 	return !strings.Contains(errString, "value not present")
+}
+
+func startCollector(ctx context.Context) {
+	ticker := time.NewTicker(10 * time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			markerDataMut.Lock()
+			for _, data := range markerDataMap {
+				if !data.processing && (data.chainLength == MAX_CHAIN_LENGTH || common.Now()-data.firstMarkerTimestamp > MAX_TIMESTAMP_GAP) {
+					data.processing = true
+					writeMarkerChan <- data
+				}
+			}
+			markerDataMut.Unlock()
+		}
+	}
 }
 
 // TODO: don't delete prev WM
