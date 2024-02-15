@@ -116,7 +116,7 @@ func redeemWriteMarker(md *markerData) error {
 		}
 		//Exceeded twice of max timestamp gap, can be a malicious client keeping the lock forever to block the redeem
 	} else {
-		defer WriteMarkerMutext.Unlock(ctx, allocationID, MARKER_CONNECTION)
+		defer WriteMarkerMutext.Unlock(ctx, allocationID, MARKER_CONNECTION) //nolint:errcheck
 	}
 	allocMu := lock.GetMutex(allocation.Allocation{}.TableName(), allocationID)
 	allocMu.RLock()
