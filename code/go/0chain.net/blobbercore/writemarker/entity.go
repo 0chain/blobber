@@ -24,7 +24,7 @@ type WriteMarker struct {
 	Size                   int64            `gorm:"column:size" json:"size"`
 	ChainSize              int64            `gorm:"column:chain_size" json:"chain_size"`
 	ChainHash              string           `gorm:"column:chain_hash;size:64" json:"chain_hash"`
-	ChainLength            int              `gorm:"column:chain_length" json:"-"`
+	ChainLength            int              `gorm:"column:chain_length" json:"chain_length"`
 	BlobberID              string           `gorm:"column:blobber_id;size:64" json:"blobber_id"`
 	Timestamp              common.Timestamp `gorm:"column:timestamp;primaryKey" json:"timestamp"`
 	ClientID               string           `gorm:"column:client_id;size:64" json:"client_id"`
