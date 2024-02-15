@@ -30,6 +30,7 @@ type markerData struct {
 }
 
 func SaveMarkerData(allocationID string, timestamp common.Timestamp, chainLength int) {
+	logging.Logger.Info("SaveMarkerData", zap.Any("allocationID", allocationID), zap.Any("timestamp", timestamp), zap.Any("chainLength", chainLength))
 	markerDataMut.Lock()
 	defer markerDataMut.Unlock()
 	if data, ok := markerDataMap[allocationID]; !ok {
@@ -44,6 +45,7 @@ func SaveMarkerData(allocationID string, timestamp common.Timestamp, chainLength
 			data.firstMarkerTimestamp = timestamp
 		}
 		if !data.processing && (data.chainLength == MAX_CHAIN_LENGTH || common.Now()-data.firstMarkerTimestamp > MAX_TIMESTAMP_GAP) {
+			logging.Logger.Info("ProcessMarkerData", zap.Any("allocationID", allocationID), zap.Any("timestamp", timestamp), zap.Any("chainLength", chainLength))
 			data.processing = true
 			writeMarkerChan <- data
 		}
@@ -93,6 +95,7 @@ func redeemWriteMarker(md *markerData) error {
 	allocationID := md.allocationID
 	shouldRollback := false
 	start := time.Now()
+	logging.Logger.Info("Redeeming the write marker", zap.String("allocationID", allocationID))
 	defer func() {
 		if shouldRollback {
 			if rollbackErr := db.Rollback().Error; rollbackErr != nil {
@@ -239,6 +242,7 @@ func startCollector(ctx context.Context) {
 			markerDataMut.Lock()
 			for _, data := range markerDataMap {
 				if !data.processing && (data.chainLength == MAX_CHAIN_LENGTH || common.Now()-data.firstMarkerTimestamp > MAX_TIMESTAMP_GAP) {
+					logging.Logger.Info("ProcessMarkerData", zap.Any("allocationID", data.allocationID), zap.Any("timestamp", data.firstMarkerTimestamp), zap.Any("chainLength", data.chainLength))
 					data.processing = true
 					writeMarkerChan <- data
 				}
