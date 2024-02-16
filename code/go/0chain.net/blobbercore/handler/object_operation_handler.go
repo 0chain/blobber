@@ -501,7 +501,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use POST instead")
 	}
-	var prevChainHash string
+
 	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
@@ -593,15 +593,19 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		if latestWriteMarkerEntity.Status == writemarker.Failed {
 			return nil, common.NewError("latest_write_marker_failed",
 				"Latest write marker is in failed state")
-		} else if latestWriteMarkerEntity.Status == writemarker.Committed {
+		}
+		if latestWriteMarkerEntity.Status != writemarker.Committed {
+			if latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size != writeMarker.ChainSize {
+				return nil, common.NewErrorf("invalid_chain_size",
+					"Invalid chain size. expected:%v got %v", latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size, writeMarker.ChainSize)
+			}
 			writeMarker.ChainLength = latestWriteMarkerEntity.WM.ChainLength
+		} else {
+			if writeMarker.ChainSize != connectionObj.Size {
+				return nil, common.NewErrorf("invalid_chain_size",
+					"Invalid chain size. expected:%v got %v", connectionObj.Size, writeMarker.ChainSize)
+			}
 		}
-
-		if latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size != writeMarker.ChainSize {
-			return nil, common.NewError("invalid_chain_size",
-				"Invalid chain size")
-		}
-		prevChainHash = latestWriteMarkerEntity.WM.ChainHash
 	}
 
 	writemarkerEntity := &writemarker.WriteMarkerEntity{}
@@ -675,7 +679,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
 	}
 
-	chainHash, err := writemarker.CalculateChainHash(ctx, allocationObj.ID, allocationRoot, prevChainHash)
+	chainHash, err := writemarker.CalculateChainHash(ctx, allocationObj.ID, allocationRoot)
 	if err != nil {
 		return nil, common.NewError("chain_hash_error", "Error calculating chain hash")
 	}
@@ -1422,7 +1426,9 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 
 	if allocationRoot != writeMarker.AllocationRoot {
 		result.AllocationRoot = allocationObj.AllocationRoot
-		result.WriteMarker = latestWriteMarkerEntity
+		if latestWriteMarkerEntity != nil {
+			result.WriteMarker = latestWriteMarkerEntity
+		}
 		result.Success = false
 		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root." +
 			" Expected hash: " + allocationRoot
@@ -1430,7 +1436,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
 	}
 
-	chainHash, err := writemarker.CalculateChainHash(ctx, allocationObj.ID, allocationRoot, latestWriteMarkerEntity.WM.ChainHash)
+	chainHash, err := writemarker.CalculateChainHash(ctx, allocationObj.ID, allocationRoot)
 	if err != nil {
 		txn.Rollback()
 		return nil, common.NewError("chain_hash_error", "Error calculating chain hash "+err.Error())

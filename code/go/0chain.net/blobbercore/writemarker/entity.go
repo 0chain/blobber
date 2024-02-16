@@ -2,7 +2,6 @@ package writemarker
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -11,6 +10,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -24,7 +24,7 @@ type WriteMarker struct {
 	Size                   int64            `gorm:"column:size" json:"size"`
 	ChainSize              int64            `gorm:"column:chain_size" json:"chain_size"`
 	ChainHash              string           `gorm:"column:chain_hash;size:64" json:"chain_hash"`
-	ChainLength            int              `gorm:"column:chain_length" json:"-"`
+	ChainLength            int              `gorm:"column:chain_length" json:"chain_length"`
 	BlobberID              string           `gorm:"column:blobber_id;size:64" json:"blobber_id"`
 	Timestamp              common.Timestamp `gorm:"column:timestamp;primaryKey" json:"timestamp"`
 	ClientID               string           `gorm:"column:client_id;size:64" json:"client_id"`
@@ -272,6 +272,13 @@ func GetMarkersForChain(ctx context.Context, allocationID string) ([]byte, error
 		return nil, err
 	}
 	markers := make([]byte, 0, len(unComittedMarkers)+1)
+	if commitedMarker != nil {
+		decodedHash, err := hex.DecodeString(commitedMarker.WM.AllocationRoot)
+		if err != nil {
+			return nil, err
+		}
+		markers = append(markers, decodedHash...)
+	}
 	for _, marker := range unComittedMarkers {
 		decodedHash, err := hex.DecodeString(marker.WM.AllocationRoot)
 		if err != nil {
@@ -282,7 +289,7 @@ func GetMarkersForChain(ctx context.Context, allocationID string) ([]byte, error
 	return markers, nil
 }
 
-func CalculateChainHash(ctx context.Context, allocationID, newRoot, prevChainHash string) (string, error) {
+func CalculateChainHash(ctx context.Context, allocationID, newRoot string) (string, error) {
 	prevRoots, err := GetMarkersForChain(ctx, allocationID)
 	if err != nil {
 		return "", err
@@ -291,23 +298,8 @@ func CalculateChainHash(ctx context.Context, allocationID, newRoot, prevChainHas
 	if err != nil {
 		return "", err
 	}
-	prevChainBytes, err := hex.DecodeString(prevChainHash)
-	if err != nil {
-		return "", err
-	}
-	hasher := sha256.New()
-	if prevChainHash != "" {
-		_, err = hasher.Write(prevChainBytes)
-		if err != nil {
-			return "", err
-		}
-	}
 	prevRoots = append(prevRoots, decodedHash...)
-	_, err = hasher.Write(prevRoots)
-	if err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(hasher.Sum(nil)), nil
+	return encryption.Hash(prevRoots), nil
 }
 
 // client lock alloc -> commitMarker -> unlock alloc
