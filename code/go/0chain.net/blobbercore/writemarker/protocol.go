@@ -78,6 +78,10 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 		return common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker size %v does not match the connection size %v", wme.WM.Size, co.Size))
 	}
 
+	if wme.WM.ChainSize < 0 {
+		return common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker chain size %v is negative", wme.WM.ChainSize))
+	}
+
 	clientPublicKey := ctx.Value(constants.ContextKeyClientKey).(string)
 	if clientPublicKey == "" {
 		return common.NewError("write_marker_validation_failed", "Could not get the public key of the client")
@@ -210,14 +214,19 @@ func (wme *WriteMarkerEntity) VerifyRollbackMarker(ctx context.Context, dbAlloca
 	}
 
 	if wme.WM.Size != -latestWM.WM.Size {
-		return common.NewError("empty write_marker_validation_failed", fmt.Sprintf("Write Marker size is %v but should be 0", wme.WM.Size))
+		return common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker size is %v but should be 0", wme.WM.Size))
 	}
 
 	if latestWM.Status != Committed {
-		if wme.WM.ChainSize != latestWM.WM.ChainSize+wme.WM.Size {
-			return common.NewError("empty write_marker_validation_failed", fmt.Sprintf("Write Marker chain size is %v but should be %v", wme.WM.ChainSize, latestWM.WM.ChainSize+wme.WM.Size))
-		}
 		wme.WM.ChainLength = latestWM.WM.ChainLength
+	}
+
+	if wme.WM.ChainSize != latestWM.WM.ChainSize+wme.WM.Size {
+		return common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker chain size is %v but should be %v", wme.WM.ChainSize, latestWM.WM.ChainSize+wme.WM.Size))
+	}
+
+	if wme.WM.ChainSize < 0 {
+		return common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker chain size %v is negative", wme.WM.ChainSize))
 	}
 
 	if wme.WM.AllocationRoot == dbAllocation.AllocationRoot {
