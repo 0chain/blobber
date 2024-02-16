@@ -594,11 +594,13 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			return nil, common.NewError("latest_write_marker_failed",
 				"Latest write marker is in failed state")
 		}
+
+		if latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size != writeMarker.ChainSize {
+			return nil, common.NewErrorf("invalid_chain_size",
+				"Invalid chain size. expected:%v got %v", latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size, writeMarker.ChainSize)
+		}
+
 		if latestWriteMarkerEntity.Status != writemarker.Committed {
-			if latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size != writeMarker.ChainSize {
-				return nil, common.NewErrorf("invalid_chain_size",
-					"Invalid chain size. expected:%v got %v", latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size, writeMarker.ChainSize)
-			}
 			writeMarker.ChainLength = latestWriteMarkerEntity.WM.ChainLength
 		} else {
 			if writeMarker.ChainSize != connectionObj.Size {

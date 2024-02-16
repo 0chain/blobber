@@ -213,10 +213,11 @@ func (wme *WriteMarkerEntity) VerifyRollbackMarker(ctx context.Context, dbAlloca
 		return common.NewError("empty write_marker_validation_failed", fmt.Sprintf("Write Marker size is %v but should be 0", wme.WM.Size))
 	}
 
+	if wme.WM.ChainSize != latestWM.WM.ChainSize+wme.WM.Size {
+		return common.NewError("empty write_marker_validation_failed", fmt.Sprintf("Write Marker chain size is %v but should be %v", wme.WM.ChainSize, latestWM.WM.ChainSize+wme.WM.Size))
+	}
+
 	if latestWM.Status != Committed {
-		if wme.WM.ChainSize != latestWM.WM.ChainSize+wme.WM.Size {
-			return common.NewError("empty write_marker_validation_failed", fmt.Sprintf("Write Marker chain size is %v but should be %v", wme.WM.ChainSize, latestWM.WM.ChainSize+wme.WM.Size))
-		}
 		wme.WM.ChainLength = latestWM.WM.ChainLength
 	}
 
