@@ -232,6 +232,9 @@ func setupHandlers(r *mux.Router) {
 	// r.HandleFunc("/challengetimings", RateLimitByCommmitRL(common.ToJSONResponse(GetChallengeTimings)))
 	r.HandleFunc("/challenge-timings-by-challengeId", RateLimitByCommmitRL(common.ToJSONResponse(GetChallengeTiming)))
 
+	// Generate auth ticket
+	r.HandleFunc("/v1/auth/generate", common.ToJSONResponse(WithConnection(GenerateAuthTicket))).Methods(http.MethodPost, http.MethodOptions)
+
 	//marketplace related
 	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(InsertShare)))).
