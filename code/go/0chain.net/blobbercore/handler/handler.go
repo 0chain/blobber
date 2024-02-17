@@ -18,9 +18,11 @@ package handler
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/0chain/gosdk/core/zcncrypto"
 	"net/http"
 	"os"
 	"runtime/pprof"
@@ -233,7 +235,7 @@ func setupHandlers(r *mux.Router) {
 	r.HandleFunc("/challenge-timings-by-challengeId", RateLimitByCommmitRL(common.ToJSONResponse(GetChallengeTiming)))
 
 	// Generate auth ticket
-	r.HandleFunc("/v1/auth/generate", common.ToJSONResponse(WithConnection(GenerateAuthTicket))).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc("/v1/auth/generate", common.ToJSONResponse(With0boxAuth(GenerateAuthTicket))).Methods(http.MethodPost, http.MethodOptions)
 
 	//marketplace related
 	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}",
@@ -292,6 +294,36 @@ func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 			err  error
 		)
 		err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+			resp, err = handler(ctx, r)
+
+			return err
+		})
+		return resp, err
+	}
+}
+
+func With0boxAuth(handler common.JSONResponderF) common.JSONResponderF {
+	return func(ctx context.Context, r *http.Request) (interface{}, error) {
+		var (
+			resp interface{}
+			err  error
+		)
+		err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+			signature := ctx.Value("0box_signature").(string)
+			if signature == "" {
+				return common.NewError("invalid_parameters", "Invalid signature")
+			}
+
+			signatureScheme := zcncrypto.NewSignatureScheme(config.Configuration.SignatureScheme)
+			if err := signatureScheme.SetPublicKey(""); err != nil {
+				return err
+			}
+
+			success, err := signatureScheme.Verify(signature, hex.EncodeToString([]byte(common.PublicKey0box)))
+			if err != nil || !success {
+				return common.NewError("invalid_signature", "Invalid signature")
+			}
+
 			resp, err = handler(ctx, r)
 
 			return err

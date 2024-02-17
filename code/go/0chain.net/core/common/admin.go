@@ -9,6 +9,7 @@ import (
 // global username and password used to access endpoints only by admin
 var gUsername, gPassword string
 var isDevelopment bool
+var PublicKey0box string
 
 func SetAdminCredentials(devMode bool) {
 	gUsername = viper.GetString("admin.username")
@@ -35,4 +36,8 @@ func AuthenticateAdmin(handler ReqRespHandlerf) ReqRespHandlerf {
 
 		handler(w, r)
 	}
+}
+
+func Set0boxDetails() {
+	PublicKey0box = viper.GetString("0box.public_key")
 }

@@ -11,10 +11,8 @@ import (
 )
 
 func GenerateAuthTicket(ctx context.Context, r *http.Request) (interface{}, error) {
-	var (
-		clientID = r.URL.Query().Get("client_id")
-	)
 
+	clientID := r.URL.Query().Get("client_id")
 	ticket := fmt.Sprintf("%s:%s", node.ID(), clientID)
 
 	signatureScheme := zcncrypto.NewSignatureScheme(config.Configuration.SignatureScheme)
