@@ -111,14 +111,14 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 	return nil
 }
 
-func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context) error {
+func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context, startSeq int64) error {
 	if len(wme.CloseTxnID) > 0 {
 		t, err := transaction.VerifyTransaction(wme.CloseTxnID, chain.GetServerChain())
 		if err == nil {
 			wme.Status = Committed
 			wme.StatusMessage = t.TransactionOutput
 			wme.CloseTxnID = t.Hash
-			err = wme.UpdateStatus(ctx, Committed, t.TransactionOutput, t.Hash)
+			err = wme.UpdateStatus(ctx, Committed, t.TransactionOutput, t.Hash, startSeq, wme.Sequence)
 			return err
 		}
 	}
@@ -126,7 +126,7 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context) error {
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
 		wme.StatusMessage = "Error creating transaction entity. " + err.Error()
-		if err := wme.UpdateStatus(ctx, Failed, "Error creating transaction entity. "+err.Error(), ""); err != nil {
+		if err := wme.UpdateStatus(ctx, Failed, "Error creating transaction entity. "+err.Error(), "", startSeq, wme.Sequence); err != nil {
 			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
 		}
 		return err
@@ -137,12 +137,12 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context) error {
 	sn.PrevAllocationRoot = wme.WM.PreviousAllocationRoot
 	sn.WriteMarker = &wme.WM
 	err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-		sn.ChainData, err = GetMarkersForChain(ctx, wme.WM.AllocationID)
+		sn.ChainData, err = GetMarkersForChain(ctx, wme.WM.AllocationID, startSeq, wme.Sequence-1)
 		return err
 	})
 	if err != nil {
 		wme.StatusMessage = "Error getting chain data. " + err.Error()
-		if err := wme.UpdateStatus(ctx, Failed, "Error getting chain data. "+err.Error(), ""); err != nil {
+		if err := wme.UpdateStatus(ctx, Failed, "Error getting chain data. "+err.Error(), "", startSeq, wme.Sequence); err != nil {
 			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
 		}
 		return err
@@ -154,7 +154,7 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context) error {
 		prevWM, err = GetPreviousWM(ctx, sn.AllocationRoot, wme.WM.Timestamp)
 		if err != nil {
 			wme.StatusMessage = "Error getting previous write marker. " + err.Error()
-			if err := wme.UpdateStatus(ctx, Failed, "Error getting previous write marker. "+err.Error(), ""); err != nil {
+			if err := wme.UpdateStatus(ctx, Failed, "Error getting previous write marker. "+err.Error(), "", startSeq, wme.Sequence); err != nil {
 				Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
 			}
 			return err
@@ -167,7 +167,7 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context) error {
 		Logger.Error("Failed during sending close connection to the miner. ", zap.String("err:", err.Error()))
 		wme.Status = Failed
 		wme.StatusMessage = "Failed during sending close connection to the miner. " + err.Error()
-		if err := wme.UpdateStatus(ctx, Failed, "Failed during sending close connection to the miner. "+err.Error(), ""); err != nil {
+		if err := wme.UpdateStatus(ctx, Failed, "Failed during sending close connection to the miner. "+err.Error(), "", startSeq, wme.Sequence); err != nil {
 			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
 		}
 		return err
@@ -182,14 +182,14 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context) error {
 		wme.Status = Failed
 		wme.StatusMessage = "Error verifying the close connection transaction." + err.Error()
 		// TODO Is this single try?
-		if err := wme.UpdateStatus(ctx, Failed, "Error verifying the close connection transaction."+err.Error(), txn.Hash); err != nil {
+		if err := wme.UpdateStatus(ctx, Failed, "Error verifying the close connection transaction."+err.Error(), txn.Hash, startSeq, wme.Sequence); err != nil {
 			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
 		}
 		return err
 	}
 	wme.Status = Committed
 	wme.StatusMessage = t.TransactionOutput
-	err = wme.UpdateStatus(ctx, Committed, t.TransactionOutput, t.Hash)
+	err = wme.UpdateStatus(ctx, Committed, t.TransactionOutput, t.Hash, startSeq, wme.Sequence)
 	return err
 }
 

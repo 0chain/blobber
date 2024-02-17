@@ -109,19 +109,6 @@ func redeemWriteMarker(md *markerData) error {
 		}
 	}()
 
-	res, _ := WriteMarkerMutext.Lock(ctx, allocationID, MARKER_CONNECTION)
-	if res.Status != LockStatusOK {
-		logging.Logger.Error("Error redeeming the write marker. Lock failed", zap.String("allocationID", allocationID), zap.Any("status", res.Status))
-		if common.Now()-md.firstMarkerTimestamp < 2*MAX_TIMESTAMP_GAP {
-			md.retries++
-			go tryAgain(md)
-			shouldRollback = true
-			return nil
-		}
-		//Exceeded twice of max timestamp gap, can be a malicious client keeping the lock forever to block the redeem
-	} else {
-		defer WriteMarkerMutext.Unlock(allocationID, MARKER_CONNECTION) //nolint:errcheck
-	}
 	allocMu := lock.GetMutex(allocation.Allocation{}.TableName(), allocationID)
 	allocMu.RLock()
 	defer allocMu.RUnlock()
@@ -153,7 +140,7 @@ func redeemWriteMarker(md *markerData) error {
 		return err
 	}
 
-	err = wm.RedeemMarker(ctx)
+	err = wm.RedeemMarker(ctx, alloc.LastRedeemedSeq+1)
 	if err != nil {
 		elapsedTime := time.Since(start)
 		logging.Logger.Error("Error redeeming the write marker.",
@@ -165,14 +152,14 @@ func redeemWriteMarker(md *markerData) error {
 		shouldRollback = true
 		return err
 	}
-	deleteMarkerData(allocationID)
 
-	err = allocation.Repo.UpdateAllocationRedeem(ctx, allocationID, wm.WM.AllocationRoot, alloc)
+	err = allocation.Repo.UpdateAllocationRedeem(ctx, allocationID, wm.WM.AllocationRoot, alloc, wm.Sequence)
 	if err != nil {
 		logging.Logger.Error("Error redeeming the write marker. Allocation latest wm redeemed update failed",
 			zap.Any("allocation", allocationID),
 			zap.Any("wm", wm.WM.AllocationRoot), zap.Any("error", err))
 		shouldRollback = true
+		go tryAgain(md)
 		return err
 	}
 
@@ -182,6 +169,7 @@ func redeemWriteMarker(md *markerData) error {
 			zap.Any("allocation", allocationID),
 			zap.Any("wm", wm.WM.AllocationRoot), zap.Error(err))
 		shouldRollback = true
+		go tryAgain(md)
 		return err
 	}
 	elapsedTime := time.Since(start)

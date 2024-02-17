@@ -472,14 +472,6 @@ func (fsh *StorageHandler) GetLatestWriteMarker(ctx context.Context, r *http.Req
 		result.PrevWM = &prevWM.WM
 	}
 
-	if _, ok := common.GetField(r, "chain_data"); ok {
-		chainData, err := writemarker.GetMarkersForChain(ctx, allocationObj.ID)
-		if err != nil {
-			return nil, common.NewError("markers_for_chain", "Error reading the chain data for allocation."+err.Error())
-		}
-		result.ChainData = chainData
-	}
-
 	return &result, nil
 }
 
@@ -575,14 +567,6 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 			latestWM.WM.ChainLength = 0 // start a new chain
 		}
 		refPathResult.LatestWM = &latestWM.WM
-	}
-	if _, ok := common.GetField(r, "chain_data"); ok {
-		chainData, err := writemarker.GetMarkersForChain(ctx, allocationObj.ID)
-		if err != nil {
-			errCh <- common.NewError("markers_for_chain", "Error reading the chain data for allocation."+err.Error())
-			return
-		}
-		refPathResult.ChainData = chainData
 	}
 
 	resCh <- &refPathResult

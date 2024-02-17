@@ -497,6 +497,7 @@ func (fsh *StorageHandler) CreateConnection(ctx context.Context, r *http.Request
 }
 
 func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {
+	var prevChainHash string
 	startTime := time.Now()
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use POST instead")
@@ -602,12 +603,8 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 		if latestWriteMarkerEntity.Status != writemarker.Committed {
 			writeMarker.ChainLength = latestWriteMarkerEntity.WM.ChainLength
-		} else {
-			if writeMarker.ChainSize != connectionObj.Size {
-				return nil, common.NewErrorf("invalid_chain_size",
-					"Invalid chain size. expected:%v got %v", connectionObj.Size, writeMarker.ChainSize)
-			}
 		}
+		prevChainHash = latestWriteMarkerEntity.WM.ChainHash
 	}
 
 	writemarkerEntity := &writemarker.WriteMarkerEntity{}
@@ -681,10 +678,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
 	}
 
-	chainHash, err := writemarker.CalculateChainHash(ctx, allocationObj.ID, allocationRoot)
-	if err != nil {
-		return nil, common.NewError("chain_hash_error", "Error calculating chain hash")
-	}
+	chainHash := writemarker.CalculateChainHash(prevChainHash, allocationRoot)
 	if chainHash != writeMarker.ChainHash {
 		return nil, common.NewError("chain_hash_mismatch", "Chain hash in the write marker does not match the calculated chain hash")
 	}
@@ -1438,11 +1432,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
 	}
 
-	chainHash, err := writemarker.CalculateChainHash(ctx, allocationObj.ID, allocationRoot)
-	if err != nil {
-		txn.Rollback()
-		return nil, common.NewError("chain_hash_error", "Error calculating chain hash "+err.Error())
-	}
+	chainHash := writemarker.CalculateChainHash(latestWriteMarkerEntity.WM.ChainHash, allocationRoot)
 	if chainHash != writeMarker.ChainHash {
 		txn.Rollback()
 		return nil, common.NewError("chain_hash_mismatch", "Chain hash in the write marker does not match the calculated chain hash")

@@ -10,25 +10,26 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/minio/sha256-simd"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type WriteMarker struct {
-	AllocationRoot         string           `gorm:"column:allocation_root;size:64;primaryKey" json:"allocation_root"`
-	PreviousAllocationRoot string           `gorm:"column:prev_allocation_root;size:64" json:"prev_allocation_root"`
-	FileMetaRoot           string           `gorm:"column:file_meta_root;size:64" json:"file_meta_root"`
-	AllocationID           string           `gorm:"column:allocation_id;size:64;index:idx_seq,unique,priority:1" json:"allocation_id"`
-	Size                   int64            `gorm:"column:size" json:"size"`
-	ChainSize              int64            `gorm:"column:chain_size" json:"chain_size"`
-	ChainHash              string           `gorm:"column:chain_hash;size:64" json:"chain_hash"`
-	ChainLength            int              `gorm:"column:chain_length" json:"chain_length"`
-	BlobberID              string           `gorm:"column:blobber_id;size:64" json:"blobber_id"`
-	Timestamp              common.Timestamp `gorm:"column:timestamp;primaryKey" json:"timestamp"`
-	ClientID               string           `gorm:"column:client_id;size:64" json:"client_id"`
-	Signature              string           `gorm:"column:signature;size:64" json:"signature"`
+	AllocationRoot         string `gorm:"column:allocation_root;size:64;primaryKey" json:"allocation_root"`
+	PreviousAllocationRoot string `gorm:"column:prev_allocation_root;size:64" json:"prev_allocation_root"`
+	FileMetaRoot           string `gorm:"column:file_meta_root;size:64" json:"file_meta_root"`
+	AllocationID           string `gorm:"column:allocation_id;size:64;index:idx_seq,unique,priority:1" json:"allocation_id"`
+	Size                   int64  `gorm:"column:size" json:"size"`
+	ChainSize              int64  `gorm:"column:chain_size" json:"chain_size"`
+	// ChainHash is the sha256 hash of the previous chain hash and the current allocation root
+	ChainHash   string           `gorm:"column:chain_hash;size:64" json:"chain_hash"`
+	ChainLength int              `gorm:"column:chain_length" json:"chain_length"`
+	BlobberID   string           `gorm:"column:blobber_id;size:64" json:"blobber_id"`
+	Timestamp   common.Timestamp `gorm:"column:timestamp;primaryKey" json:"timestamp"`
+	ClientID    string           `gorm:"column:client_id;size:64" json:"client_id"`
+	Signature   string           `gorm:"column:signature;size:64" json:"signature"`
 }
 
 func (wm *WriteMarker) GetHashData() string {
@@ -84,7 +85,7 @@ func (w *WriteMarkerEntity) BeforeSave(tx *gorm.DB) error {
 	return nil
 }
 
-func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context, status WriteMarkerStatus, statusMessage, redeemTxn string) (err error) {
+func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context, status WriteMarkerStatus, statusMessage, redeemTxn string, startSeq, endSeq int64) (err error) {
 	err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		db := datastore.GetStore().GetTransaction(ctx)
 		statusBytes, _ := json.Marshal(statusMessage)
@@ -109,6 +110,13 @@ func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context, status WriteMarke
 		}).Error
 		if err != nil {
 			return err
+		}
+
+		if status == Committed {
+			err = db.Exec("UPDATE write_markers SET status=1 WHERE sequence BETWEEN ? AND ? AND allocation_id = ?", startSeq, endSeq).Error
+			if err != nil {
+				return err
+			}
 		}
 
 		// TODO (sfxdx): what about failed write markers ?
@@ -258,28 +266,19 @@ func GetLatestCommittedWriteMarker(ctx context.Context, allocationID string) (*W
 	return wm, nil
 }
 
-func GetMarkersForChain(ctx context.Context, allocationID string) ([]byte, error) {
-	commitedMarker, err := GetLatestCommittedWriteMarker(ctx, allocationID)
-	if err != nil {
+func GetMarkersForChain(ctx context.Context, allocationID string, startSeq, endSeq int64) ([]byte, error) {
+	db := datastore.GetStore().GetTransaction(ctx)
+
+	unCommittedMarkers := make([]*WriteMarkerEntity, 0)
+	err := db.Table((WriteMarkerEntity{}).TableName()).
+		Where("allocation_id=? AND status=0 AND sequence BETWEEN ? AND ?", allocationID, startSeq, endSeq).
+		Order("sequence asc").
+		Find(&unCommittedMarkers).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
 		return nil, err
 	}
-	var seq int64
-	if commitedMarker != nil {
-		seq = commitedMarker.Sequence
-	}
-	unComittedMarkers, err := GetUncommittedWriteMarkers(ctx, allocationID, seq)
-	if err != nil {
-		return nil, err
-	}
-	markers := make([]byte, 0, len(unComittedMarkers)+1)
-	if commitedMarker != nil {
-		decodedHash, err := hex.DecodeString(commitedMarker.WM.AllocationRoot)
-		if err != nil {
-			return nil, err
-		}
-		markers = append(markers, decodedHash...)
-	}
-	for _, marker := range unComittedMarkers {
+	markers := make([]byte, 0, len(unCommittedMarkers))
+	for _, marker := range unCommittedMarkers {
 		decodedHash, err := hex.DecodeString(marker.WM.AllocationRoot)
 		if err != nil {
 			return nil, err
@@ -289,17 +288,15 @@ func GetMarkersForChain(ctx context.Context, allocationID string) ([]byte, error
 	return markers, nil
 }
 
-func CalculateChainHash(ctx context.Context, allocationID, newRoot string) (string, error) {
-	prevRoots, err := GetMarkersForChain(ctx, allocationID)
-	if err != nil {
-		return "", err
+func CalculateChainHash(prevChainHash, newRoot string) string {
+	hasher := sha256.New()
+	if prevChainHash != "" {
+		prevBytes, _ := hex.DecodeString(prevChainHash)
+		hasher.Write(prevBytes) //nolint:errcheck
 	}
-	decodedHash, err := hex.DecodeString(newRoot)
-	if err != nil {
-		return "", err
-	}
-	prevRoots = append(prevRoots, decodedHash...)
-	return encryption.Hash(prevRoots), nil
+	newBytes, _ := hex.DecodeString(newRoot)
+	hasher.Write(newBytes) //nolint:errcheck
+	return hex.EncodeToString(hasher.Sum(nil))
 }
 
 // client lock alloc -> commitMarker -> unlock alloc

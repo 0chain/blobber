@@ -25,8 +25,7 @@ type CommitResult struct {
 // swagger:model ReferencePathResult
 type ReferencePathResult struct {
 	*reference.ReferencePath
-	LatestWM  *writemarker.WriteMarker `json:"latest_write_marker"`
-	ChainData []byte                   `json:"chain_data"`
+	LatestWM *writemarker.WriteMarker `json:"latest_write_marker"`
 }
 
 // swagger:model RefResult
@@ -64,7 +63,6 @@ type DownloadResponse struct {
 }
 
 type LatestWriteMarkerResult struct {
-	LatestWM  *writemarker.WriteMarker `json:"latest_write_marker"`
-	PrevWM    *writemarker.WriteMarker `json:"prev_write_marker"`
-	ChainData []byte                   `json:"chain_data"`
+	LatestWM *writemarker.WriteMarker `json:"latest_write_marker"`
+	PrevWM   *writemarker.WriteMarker `json:"prev_write_marker"`
 }
