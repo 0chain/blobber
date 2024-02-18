@@ -150,6 +150,8 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context, startSeq int64) 
 		return err
 	}
 
+	Logger.Info("redeem_marker_chain", zap.String("allocation_id", wme.WM.AllocationID), zap.Int("chain_data_length", len(sn.ChainData)), zap.Int("chain_length", wme.WM.ChainLength))
+
 	commitedMarker, err := GetLatestCommittedWriteMarker(ctx, wme.WM.AllocationID)
 	if err != nil {
 		return err
@@ -175,6 +177,8 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context, startSeq int64) 
 			}
 			return common.NewError("chain_hash_mismatch", "Chain hash does not match")
 		}
+	} else {
+		Logger.Info("no_committed_marker", zap.String("allocation_id", wme.WM.AllocationID))
 	}
 
 	if sn.AllocationRoot == sn.PrevAllocationRoot {
