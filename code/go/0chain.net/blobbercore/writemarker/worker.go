@@ -148,6 +148,8 @@ func redeemWriteMarker(md *markerData) error {
 			zap.Any("wm", wm), zap.Any("error", err), zap.Any("elapsedTime", elapsedTime))
 		if retryRedeem(err.Error()) {
 			go tryAgain(md)
+		} else {
+			deleteMarkerData(allocationID)
 		}
 		shouldRollback = true
 		return err
@@ -218,13 +220,14 @@ func startRedeem(ctx context.Context, res []allocation.Res) {
 }
 
 func tryAgain(md *markerData) {
+	md.retries++
 	time.Sleep(time.Duration(md.retries) * 5 * time.Second)
 	writeMarkerChan <- md
 }
 
 // Can add more cases where we don't want to retry
 func retryRedeem(errString string) bool {
-	return !strings.Contains(errString, "value not present")
+	return !strings.Contains(errString, "value not present") || !strings.Contains(errString, "Blobber is not part of the allocation")
 }
 
 func startCollector(ctx context.Context) {

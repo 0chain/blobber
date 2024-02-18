@@ -2,6 +2,7 @@ package writemarker
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/gosdk/constants"
+	"github.com/minio/sha256-simd"
 
 	"go.uber.org/zap"
 )
@@ -146,6 +148,33 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context, startSeq int64) 
 			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
 		}
 		return err
+	}
+
+	commitedMarker, err := GetLatestCommittedWriteMarker(ctx, wme.WM.AllocationID)
+	if err != nil {
+		return err
+	}
+	if commitedMarker != nil {
+		hasher := sha256.New()
+		prevChainHash, _ := hex.DecodeString(commitedMarker.WM.ChainHash)
+		hasher.Write(prevChainHash)
+		for i := 0; i < len(sn.ChainData); i += 32 {
+			hasher.Write(sn.ChainData[i : i+32])
+			sum := hasher.Sum(nil)
+			hasher.Reset()
+			hasher.Write(sum)
+		}
+		rootBytes, _ := hex.DecodeString(wme.WM.AllocationRoot)
+		hasher.Write(rootBytes)
+		hash := hex.EncodeToString(hasher.Sum(nil))
+		if hash != wme.WM.ChainHash {
+			Logger.Error("chain_hash_mismatch", zap.String("hash", hash), zap.String("wm_chain_hash", wme.WM.ChainHash))
+			wme.StatusMessage = "Chain hash does not match. " + err.Error()
+			if err := wme.UpdateStatus(ctx, Failed, "Chain hash does not match. "+err.Error(), "", startSeq, wme.Sequence); err != nil {
+				Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
+			}
+			return common.NewError("chain_hash_mismatch", "Chain hash does not match")
+		}
 	}
 
 	if sn.AllocationRoot == sn.PrevAllocationRoot {
