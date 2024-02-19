@@ -157,6 +157,7 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context, startSeq int64) 
 		return err
 	}
 	if commitedMarker != nil {
+		Logger.Info("committed_marker", zap.String("allocation_id", wme.WM.AllocationID), zap.String("chain_hash", commitedMarker.WM.ChainHash))
 		hasher := sha256.New()
 		prevChainHash, _ := hex.DecodeString(commitedMarker.WM.ChainHash)
 		hasher.Write(prevChainHash)
