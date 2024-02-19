@@ -113,7 +113,7 @@ func (wm *WriteMarkerEntity) UpdateStatus(ctx context.Context, status WriteMarke
 		}
 
 		if status == Committed {
-			err = db.Exec("UPDATE write_markers SET status=1 WHERE sequence BETWEEN ? AND ? AND allocation_id = ?", startSeq, endSeq, wm.WM.AllocationID).Error
+			err = db.Exec("UPDATE write_markers SET status=1 WHERE sequence BETWEEN ? AND ? AND allocation_id = ?", startSeq, endSeq).Error
 			if err != nil {
 				return err
 			}
