@@ -49,12 +49,6 @@ const (
 	Rollbacked WriteMarkerStatus = 3
 )
 
-const (
-	MAX_CHAIN_LENGTH  = 3
-	MAX_TIMESTAMP_GAP = 60 * 30 // 30 minutes
-	MARKER_CONNECTION = "marker_connection"
-)
-
 type WriteMarkerEntity struct {
 	// WM new WriteMarker from client
 	WM              WriteMarker       `gorm:"embedded"`

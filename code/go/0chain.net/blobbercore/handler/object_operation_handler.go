@@ -697,7 +697,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	writemarkerEntity.ConnectionID = connectionObj.ID
 	writemarkerEntity.ClientPublicKey = clientKey
 	writemarkerEntity.WM.ChainLength += 1
-	if writemarkerEntity.WM.ChainLength > writemarker.MAX_CHAIN_LENGTH {
+	if writemarkerEntity.WM.ChainLength > config.Configuration.MaxChainLength {
 		return nil, common.NewError("chain_length_exceeded", "Chain length exceeded")
 	}
 
@@ -1383,7 +1383,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return nil, common.NewError("write_marker_verification_failed", "Verification of the write marker failed: "+err.Error())
 	}
 
-	if writemarkerEntity.WM.ChainLength > writemarker.MAX_CHAIN_LENGTH {
+	if writemarkerEntity.WM.ChainLength > config.Configuration.MaxChainLength {
 		return nil, common.NewError("chain_length_exceeded", "Chain length exceeded")
 	}
 

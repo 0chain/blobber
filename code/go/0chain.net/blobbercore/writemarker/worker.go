@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
@@ -44,7 +45,7 @@ func SaveMarkerData(allocationID string, timestamp common.Timestamp, chainLength
 		if data.chainLength == 1 {
 			data.firstMarkerTimestamp = timestamp
 		}
-		if !data.processing && (data.chainLength == MAX_CHAIN_LENGTH || common.Now()-data.firstMarkerTimestamp > MAX_TIMESTAMP_GAP) {
+		if data.processMarker() {
 			logging.Logger.Info("ProcessMarkerData", zap.Any("allocationID", allocationID), zap.Any("timestamp", timestamp), zap.Any("chainLength", chainLength))
 			data.processing = true
 			writeMarkerChan <- data
@@ -184,7 +185,11 @@ func redeemWriteMarker(md *markerData) error {
 
 func startRedeem(ctx context.Context, res []allocation.Res) {
 	logging.Logger.Info("Start redeeming writemarkers")
-	writeMarkerChan = make(chan *markerData, 200)
+	chanSize := 200
+	if len(res) > chanSize {
+		chanSize = len(res)
+	}
+	writeMarkerChan = make(chan *markerData, chanSize)
 	go startRedeemWorker(ctx)
 	markerDataMut.Lock()
 	defer markerDataMut.Unlock()
@@ -231,7 +236,7 @@ func retryRedeem(errString string) bool {
 }
 
 func startCollector(ctx context.Context) {
-	ticker := time.NewTicker(10 * time.Minute)
+	ticker := time.NewTicker(config.Configuration.MarkerRedeemInterval)
 	defer ticker.Stop()
 	for {
 		select {
@@ -240,7 +245,7 @@ func startCollector(ctx context.Context) {
 		case <-ticker.C:
 			markerDataMut.Lock()
 			for _, data := range markerDataMap {
-				if !data.processing && (data.chainLength == MAX_CHAIN_LENGTH || common.Now()-data.firstMarkerTimestamp > MAX_TIMESTAMP_GAP) {
+				if data.processMarker() {
 					logging.Logger.Info("ProcessMarkerData", zap.Any("allocationID", data.allocationID), zap.Any("timestamp", data.firstMarkerTimestamp), zap.Any("chainLength", data.chainLength))
 					data.processing = true
 					writeMarkerChan <- data
@@ -249,6 +254,10 @@ func startCollector(ctx context.Context) {
 			markerDataMut.Unlock()
 		}
 	}
+}
+
+func (md *markerData) processMarker() bool {
+	return !md.processing && (md.chainLength >= config.Configuration.MaxChainLength || common.Now()-md.firstMarkerTimestamp > common.Timestamp(config.Configuration.MaxTimestampGap))
 }
 
 // TODO: don't delete prev WM
