@@ -339,11 +339,13 @@ func TestBlobberCore_UpdateFile(t *testing.T) {
 		tc.setupDbMock()
 
 		ctx := datastore.GetStore().CreateTransaction(context.TODO())
-		hasher := filestore.GetNewCommitHasher(2310)
 		pathHash := encryption.Hash(tc.path)
-		CreateConnectionChange("connection_id", pathHash, alloc)
-		UpdateConnectionObjWithHasher("connection_id", pathHash, hasher)
-
+		connectionProcessor["connection_id"] = &ConnectionProcessor{
+			changes: make(map[string]*ConnectionChange),
+		}
+		connectionProcessor["connection_id"].changes[pathHash] = &ConnectionChange{
+			hasher: filestore.GetNewCommitHasher(2310),
+		}
 		change := &UpdateFileChanger{
 			BaseFileChanger: BaseFileChanger{
 				Path:                tc.path,

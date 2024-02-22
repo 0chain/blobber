@@ -101,10 +101,13 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 			ctx := datastore.GetStore().CreateTransaction(context.TODO())
 
 			fPath := "/new"
-			hasher := filestore.GetNewCommitHasher(2310)
 			pathHash := encryption.Hash(fPath)
-			CreateConnectionChange("connection_id", pathHash, alloc)
-			UpdateConnectionObjWithHasher("connection_id", pathHash, hasher)
+			connectionProcessor["connection_id"] = &ConnectionProcessor{
+				changes: make(map[string]*ConnectionChange),
+			}
+			connectionProcessor["connection_id"].changes[pathHash] = &ConnectionChange{
+				hasher: filestore.GetNewCommitHasher(2310),
+			}
 			change := &UploadFileChanger{
 				BaseFileChanger: BaseFileChanger{
 					Filename:       filepath.Base(fPath),

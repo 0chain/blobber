@@ -2,6 +2,7 @@ package filestore
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/seqpriorityqueue"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/core/util"
@@ -266,13 +268,17 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 			defer f.Close()
 			_, err = fs.WriteFile(test.allocID, test.connID, fid, f)
 			require.Nil(t, err)
-			err = hasher.Finalize()
-			require.Nil(t, err)
 
 			tempFilePath := fs.getTempPathForFile(test.allocID, test.fileName, pathHash, test.connID)
 			tF, err := os.Stat(tempFilePath)
 			require.Nil(t, err)
-
+			seqPQ := seqpriorityqueue.NewSeqPriorityQueue(int64(size))
+			hasher.WG.Add(1)
+			go hasher.Start(context.TODO(), test.connID, test.allocID, test.fileName, pathHash, seqPQ)
+			seqPQ.Done(seqpriorityqueue.UploadData{
+				Offset:    0,
+				DataBytes: tF.Size(),
+			})
 			finfo, err := f.Stat()
 			require.Nil(t, err)
 			nodeSize := getNodesSize(int64(finfo.Size()), util.MaxMerkleLeavesSize)
@@ -352,14 +358,19 @@ func TestDeletePreCommitDir(t *testing.T) {
 	_, err = fs.WriteFile(allocID, connID, fid, f)
 	require.Nil(t, err)
 	f.Close()
-	err = hasher.Finalize()
-	require.Nil(t, err)
 	// check if file is written to temp location
 	tempFilePath := fs.getTempPathForFile(allocID, fileName, pathHash, connID)
 	tF, err := os.Stat(tempFilePath)
 	require.Nil(t, err)
 	nodeSize := getNodesSize(int64(size), util.MaxMerkleLeavesSize)
 	require.Equal(t, int64(size), tF.Size()-nodeSize-FMTSize)
+	seqPQ := seqpriorityqueue.NewSeqPriorityQueue(int64(size))
+	hasher.WG.Add(1)
+	go hasher.Start(context.TODO(), connID, allocID, fileName, pathHash, seqPQ)
+	seqPQ.Done(seqpriorityqueue.UploadData{
+		Offset:    0,
+		DataBytes: tF.Size(),
+	})
 
 	// Commit file to pre-commit location
 	success, err := fs.CommitWrite(allocID, connID, fid)
@@ -389,8 +400,13 @@ func TestDeletePreCommitDir(t *testing.T) {
 	tempFilePath = fs.getTempPathForFile(allocID, fileName, pathHash, connID)
 	_, err = os.Stat(tempFilePath)
 	require.Nil(t, err)
-	err = hasher.Finalize()
-	require.Nil(t, err)
+	seqPQ = seqpriorityqueue.NewSeqPriorityQueue(int64(size))
+	hasher.WG.Add(1)
+	go hasher.Start(context.TODO(), connID, allocID, fileName, pathHash, seqPQ)
+	seqPQ.Done(seqpriorityqueue.UploadData{
+		Offset:    0,
+		DataBytes: tF.Size(),
+	})
 
 	success, err = fs.CommitWrite(allocID, connID, fid)
 	require.Nil(t, err)
@@ -453,14 +469,19 @@ func TestStorageUploadUpdate(t *testing.T) {
 	_, err = fs.WriteFile(allocID, connID, fid, f)
 	require.Nil(t, err)
 	f.Close()
-	err = hasher.Finalize()
-	require.Nil(t, err)
 	// check if file is written to temp location
 	tempFilePath := fs.getTempPathForFile(allocID, fileName, pathHash, connID)
 	tF, err := os.Stat(tempFilePath)
 	require.Nil(t, err)
 	nodeSize := getNodesSize(int64(size), util.MaxMerkleLeavesSize)
 	require.Equal(t, int64(size), tF.Size()-nodeSize-FMTSize)
+	seqPQ := seqpriorityqueue.NewSeqPriorityQueue(int64(size))
+	hasher.WG.Add(1)
+	go hasher.Start(context.TODO(), connID, allocID, fileName, pathHash, seqPQ)
+	seqPQ.Done(seqpriorityqueue.UploadData{
+		Offset:    0,
+		DataBytes: tF.Size(),
+	})
 
 	// Commit file to pre-commit location
 	success, err := fs.CommitWrite(allocID, connID, fid)
@@ -605,7 +626,6 @@ func TestStorageUploadUpdate(t *testing.T) {
 	require.Equal(t, hex.EncodeToString(h.Sum(nil)), fid.ThumbnailHash)
 	fPath, err = fs.GetPathForFile(allocID, prevThumbHash)
 	require.Nil(t, err)
-	fmt.Println("prev thumb hash: ", prevThumbHash)
 	f, err = os.Open(fPath)
 	require.Nil(t, err)
 	h = sha3.New256()
@@ -866,6 +886,7 @@ func setupStorage(t *testing.T) (*FileStore, func()) {
 		err := os.RemoveAll(mountPoint)
 		require.Nil(t, err)
 	}
+	SetFileStore(&fs)
 
 	return &fs, f
 }
