@@ -310,7 +310,7 @@ func With0boxAuth(handler common.JSONResponderF) common.JSONResponderF {
 		)
 		err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 			logging.Logger.Info("Jayash With0boxAuth")
-			signature := ctx.Value("0box_signature")
+			signature := ctx.Value("Zbox-Signature")
 			logging.Logger.Info("Jayash With0boxAuth", zap.Any("signature", signature))
 			signatureString := signature.(string)
 			logging.Logger.Info("Jayash With0boxAuth", zap.Any("signatureString", signatureString))
