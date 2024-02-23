@@ -847,6 +847,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						sqlmock.NewRows([]string{"found"}).
 							AddRow(false),
 					)
+				mock.ExpectBegin()
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocation_connections" WHERE`)).
 					WithArgs(connectionID, alloc.ID, alloc.OwnerID, allocation.DeletedConnection).
 					WillReturnRows(
@@ -861,6 +862,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					WillReturnRows(
 						sqlmock.NewRows([]string{}),
 					)
+				mock.ExpectCommit()
 			},
 			wantCode: http.StatusOK,
 		},
@@ -869,6 +871,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 	tests = append(tests, uploadNegativeTests...)
 
 	for _, test := range tests {
+		allocation.DeleteConnectionObjEntry(connectionID)
 		t.Run(test.name, func(t *testing.T) {
 			mock := datastore.MockTheStore(t)
 			test.setupDbMock(mock)
@@ -880,7 +883,9 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 			if test.end != nil {
 				test.end()
 			}
-
+			if test.wantCode != test.args.w.Result().StatusCode {
+				t.Log(test.args.w.Body.String())
+			}
 			assert.Equal(t, test.wantCode, test.args.w.Result().StatusCode)
 			if test.wantCode != http.StatusOK || test.wantBody != "" {
 				assert.Equal(t, test.wantBody, test.args.w.Body.String())

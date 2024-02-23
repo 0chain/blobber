@@ -33,6 +33,7 @@ func CleanupDiskFiles(ctx context.Context) error {
 
 func cleanupAllocationFiles(ctx context.Context, allocationObj allocation.Allocation) {
 	mutex := lock.GetMutex(allocationObj.TableName(), allocationObj.ID)
+	logging.Logger.Info("cleanupAllocationLock", zap.Any("allocation_id", allocationObj.ID))
 	mutex.Lock()
 	defer mutex.Unlock()
 	db := datastore.GetStore().GetTransaction(ctx)

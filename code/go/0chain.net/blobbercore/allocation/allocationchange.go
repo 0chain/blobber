@@ -14,7 +14,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/constants"
-	"github.com/remeh/sizedwaitgroup"
+	"golang.org/x/sync/errgroup"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -236,35 +236,19 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocatio
 }
 
 func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error {
-	commitCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	// Can be configured at runtime, this number will depend on the number of active allocations
-	swg := sizedwaitgroup.New(5)
+	// Limit can be configured at runtime, this number will depend on the number of active allocations
+	eg, _ := errgroup.WithContext(ctx)
+	eg.SetLimit(5)
 	mut := &sync.Mutex{}
-	var (
-		commitError error
-		errorMutex  sync.Mutex
-	)
 	for _, change := range a.AllocationChanges {
-		select {
-		case <-commitCtx.Done():
-			return fmt.Errorf("commit to filestore failed: %s", commitError.Error())
-		default:
-		}
-		swg.Add()
-		go func(change AllocationChangeProcessor) {
-			err := change.CommitToFileStore(ctx, mut)
-			if err != nil && !errors.Is(common.ErrFileWasDeleted, err) {
-				cancel()
-				errorMutex.Lock()
-				commitError = err
-				errorMutex.Unlock()
-			}
-			swg.Done()
-		}(change)
+		allocChange := change
+		eg.Go(func() error {
+			return allocChange.CommitToFileStore(ctx, mut)
+		})
 	}
-	swg.Wait()
-	return commitError
+	logging.Logger.Info("Waiting for commit to filestore", zap.String("allocation_id", a.AllocationID))
+
+	return eg.Wait()
 }
 
 func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context) {

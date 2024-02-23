@@ -84,6 +84,10 @@ func (mfs *MockFileStore) WriteFile(allocID, connID string,
 	}, nil
 }
 
+func (mfs *MockFileStore) WriteDataToTree(allocID, connID, fileName, filePathHash string, hasher *filestore.CommitHasher) error {
+	return nil
+}
+
 func (mfs *MockFileStore) CommitWrite(allocID, connID string, fileData *filestore.FileInputData) (bool, error) {
 	return true, nil
 }
@@ -109,6 +113,10 @@ func (mfs *MockFileStore) DeleteFile(allocID, contentHash string) error {
 
 func (mfs *MockFileStore) DeletePreCommitDir(allocID string) error {
 	return nil
+}
+
+func (mfs *MockFileStore) GetTempFilePath(allocID, connID, fileName, filePathHash string) string {
+	return ""
 }
 
 func (mfs *MockFileStore) GetFileBlock(in *filestore.ReadBlockInput) (*filestore.FileDownloadResponse, error) {
