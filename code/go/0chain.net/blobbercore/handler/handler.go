@@ -309,7 +309,9 @@ func With0boxAuth(handler common.JSONResponderF) common.JSONResponderF {
 			err  error
 		)
 		err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+			logging.Logger.Info("Jayash With0boxAuth")
 			signature := ctx.Value("0box_signature").(string)
+			logging.Logger.Info("Jayash With0boxAuth", zap.Any("signature", signature))
 			if signature == "" {
 				return common.NewError("invalid_parameters", "Invalid signature")
 			}
@@ -320,11 +322,13 @@ func With0boxAuth(handler common.JSONResponderF) common.JSONResponderF {
 			}
 
 			success, err := signatureScheme.Verify(signature, hex.EncodeToString([]byte(common.PublicKey0box)))
+			logging.Logger.Info("Jayash With0boxAuth", zap.Any("success", success), zap.Any("", err))
 			if err != nil || !success {
 				return common.NewError("invalid_signature", "Invalid signature")
 			}
 
 			resp, err = handler(ctx, r)
+			logging.Logger.Info("Jayash With0boxAuth", zap.Any("resp", resp), zap.Error(err))
 
 			return err
 		})
