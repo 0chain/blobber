@@ -292,6 +292,3 @@ func CalculateChainHash(prevChainHash, newRoot string) string {
 	hasher.Write(newBytes) //nolint:errcheck
 	return hex.EncodeToString(hasher.Sum(nil))
 }
-
-// client lock alloc -> commitMarker -> unlock alloc
-// don't want the worker to kick in between these steps, once alloc is unlocked, worker can pick it up
