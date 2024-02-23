@@ -443,7 +443,7 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 		default:
 		}
 		pq := seqPQ.Popup()
-		if pq.Offset+pq.DataBytes == c.dataSize {
+		if pq.Offset+pq.DataBytes == c.dataSize || pq.IsFinal {
 			// If dataBytes and offset is equal to data size then it is the last data to be read from the file or context is cancelled
 			// Check if ctx is done
 			select {

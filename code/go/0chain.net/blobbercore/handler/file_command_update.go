@@ -112,10 +112,6 @@ func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 	result.Filename = cmd.fileChanger.Filename
 	defer cmd.contentFile.Close()
 
-	if cmd.fileChanger.Size == 0 {
-		return result, common.NewError("invalid_parameters", "Invalid parameters. Size cannot be zero")
-	}
-
 	filePathHash := cmd.fileChanger.PathHash
 	connID := cmd.fileChanger.ConnectionID
 

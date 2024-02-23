@@ -127,9 +127,6 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 	defer cmd.contentFile.Close()
 
 	connectionID := cmd.fileChanger.ConnectionID
-	if cmd.fileChanger.Size == 0 {
-		return result, common.NewError("invalid_parameters", "Invalid parameters. Size cannot be zero")
-	}
 
 	fileInputData := &filestore.FileInputData{
 		Name: cmd.fileChanger.Filename,
