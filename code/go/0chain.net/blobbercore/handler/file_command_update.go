@@ -205,7 +205,7 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(allocationObj *allocation.Allocat
 
 func (cmd *UpdateFileCommand) reloadChange() {
 	changer := allocation.GetFileChanger(cmd.fileChanger.ConnectionID, cmd.fileChanger.PathHash)
-	if changer != nil && cmd.fileChanger.ThumbnailHash != "" {
+	if changer != nil && changer.ThumbnailHash != "" {
 		cmd.fileChanger.ThumbnailFilename = changer.ThumbnailFilename
 		cmd.fileChanger.ThumbnailSize = changer.ThumbnailSize
 		cmd.fileChanger.ThumbnailHash = changer.ThumbnailHash
