@@ -302,42 +302,6 @@ func WithConnection(handler common.JSONResponderF) common.JSONResponderF {
 	}
 }
 
-func With0boxAuth(handler common.JSONResponderF) common.JSONResponderF {
-	return func(ctx context.Context, r *http.Request) (interface{}, error) {
-		var (
-			resp interface{}
-			err  error
-		)
-		err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-			zboxAuth := viper.GetString("0box.public_key")
-			logging.Logger.Info("Jayash With0boxAuth", zap.Any("0box-public-key", common.PublicKey0box), zap.Any("zbox-public-key", zboxAuth))
-
-			signature := r.Header.Get("Zbox-Signature")
-			logging.Logger.Info("Jayash With0boxAuth", zap.Any("signature", signature))
-			if signature == "" {
-				return common.NewError("invalid_parameters", "Invalid signature")
-			}
-
-			signatureScheme := zcncrypto.NewSignatureScheme(config.Configuration.SignatureScheme)
-			if err := signatureScheme.SetPublicKey(common.PublicKey0box); err != nil {
-				return err
-			}
-
-			success, err := signatureScheme.Verify(signature, hex.EncodeToString([]byte(common.PublicKey0box)))
-			logging.Logger.Info("Jayash With0boxAuth", zap.Any("success", success), zap.Any("", err))
-			if err != nil || !success {
-				return common.NewError("invalid_signature", "Invalid signature")
-			}
-
-			resp, err = handler(ctx, r)
-			logging.Logger.Info("Jayash With0boxAuth", zap.Any("resp", resp), zap.Error(err))
-
-			return err
-		})
-		return resp, err
-	}
-}
-
 func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 	var vars = mux.Vars(r)
 
