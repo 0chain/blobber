@@ -99,6 +99,7 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 
 	thumbFile, thumbHeader, _ := req.FormFile(UploadThumbnailFile)
 	if thumbHeader != nil {
+		logging.Logger.Info("ThumbnailFile: ", zap.String("Filename", thumbHeader.Filename), zap.Int64("Size", thumbHeader.Size))
 		if thumbHeader.Size > MaxThumbnailSize {
 			return common.NewError("max_thumbnail_size",
 				fmt.Sprintf("thumbnail size %d should not be greater than %d", thumbHeader.Size, MaxThumbnailSize))
@@ -192,6 +193,7 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 
 // ProcessThumbnail flush thumbnail file to FileStorage if it has.
 func (cmd *UploadFileCommand) ProcessThumbnail(allocationObj *allocation.Allocation) error {
+	logging.Logger.Info("ProcessThumbnail: ", zap.String("allocationID: ", cmd.fileChanger.AllocationID))
 	connectionID := cmd.fileChanger.ConnectionID
 	if cmd.thumbHeader != nil {
 		defer cmd.thumbFile.Close()
