@@ -14,7 +14,6 @@ import (
 
 func GenerateAuthTicket(ctx context.Context, r *http.Request) (interface{}, error) {
 	logging.Logger.Info("GenerateAuthTicket")
-	logging.Logger.Info("0GenerateAuthTicket", zap.Any("node_id", node.PublicKey()))
 	logging.Logger.Info("1GenerateAuthTicket", zap.Any("public_key", node.PublicKey()))
 	logging.Logger.Info("2GenerateAuthTicket", zap.Any("private_key", node.PrivateKey()))
 	logging.Logger.Info("3GenerateAuthTicket", zap.Any("client_id", r.URL.Query()))
