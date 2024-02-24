@@ -1,6 +1,8 @@
 package common
 
 import (
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 	"net/http"
 
 	"github.com/spf13/viper"
@@ -39,5 +41,7 @@ func AuthenticateAdmin(handler ReqRespHandlerf) ReqRespHandlerf {
 }
 
 func Set0boxDetails() {
+	logging.Logger.Info("Setting 0box details")
 	PublicKey0box = viper.GetString("0box.public_key")
+	logging.Logger.Info("0box public key", zap.Any("public_key", PublicKey0box))
 }

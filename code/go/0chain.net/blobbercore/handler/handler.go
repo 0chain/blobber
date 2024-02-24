@@ -309,7 +309,9 @@ func With0boxAuth(handler common.JSONResponderF) common.JSONResponderF {
 			err  error
 		)
 		err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-			logging.Logger.Info("Jayash With0boxAuth")
+			zboxAuth := viper.GetString("0box.public_key")
+			logging.Logger.Info("Jayash With0boxAuth", zap.Any("0box-public-key", common.PublicKey0box), zap.Any("zbox-public-key", zboxAuth))
+
 			signature := r.Header.Get("Zbox-Signature")
 			logging.Logger.Info("Jayash With0boxAuth", zap.Any("signature", signature))
 			if signature == "" {
