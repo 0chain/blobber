@@ -185,10 +185,11 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		allocation.UpdateConnectionObjSize(connectionID, cmd.fileChanger.Size)
 		result.UpdateChange = false
 	}
-
-	err = allocation.SaveFileChanger(connectionID, &cmd.fileChanger.BaseFileChanger)
-	if err != nil {
-		return result, err
+	if cmd.thumbHeader != nil {
+		err = allocation.SaveFileChanger(connectionID, &cmd.fileChanger.BaseFileChanger)
+		if err != nil {
+			return result, err
+		}
 	}
 
 	if allocationObj.BlobberSizeUsed+allocationSize > allocationObj.BlobberSize {
@@ -219,7 +220,7 @@ func (cmd *UploadFileCommand) ProcessThumbnail(allocationObj *allocation.Allocat
 
 func (cmd *UploadFileCommand) reloadChange() {
 	changer := allocation.GetFileChanger(cmd.fileChanger.ConnectionID, cmd.fileChanger.PathHash)
-	if changer != nil {
+	if changer != nil && changer.ThumbnailHash != "" {
 		cmd.fileChanger.ThumbnailFilename = changer.ThumbnailFilename
 		cmd.fileChanger.ThumbnailSize = changer.ThumbnailSize
 		cmd.fileChanger.ThumbnailHash = changer.ThumbnailHash
