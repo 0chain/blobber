@@ -168,6 +168,14 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		}
 	}
 
+	if cmd.thumbFile != nil {
+		err := cmd.ProcessThumbnail(allocationObj)
+		if err != nil {
+			logging.Logger.Error("UploadFileCommand.ProcessContent", zap.Error(err))
+			return result, err
+		}
+	}
+
 	saveChange, err := allocation.SaveFileChange(connectionID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, cmd.fileChanger.IsFinal, cmd.fileChanger.Size, cmd.fileChanger.UploadOffset, fileOutputData.Size)
 	if err != nil {
 		logging.Logger.Error("UploadFileCommand.ProcessContent", zap.Error(err))
@@ -180,14 +188,6 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 
 	if allocationObj.BlobberSizeUsed+allocationSize > allocationObj.BlobberSize {
 		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
-	}
-
-	if cmd.thumbFile != nil {
-		err := cmd.ProcessThumbnail(allocationObj)
-		if err != nil {
-			logging.Logger.Error("UploadFileCommand.ProcessContent", zap.Error(err))
-			return result, err
-		}
 	}
 
 	return result, nil
