@@ -186,6 +186,11 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		result.UpdateChange = false
 	}
 
+	err = allocation.SaveFileChanger(connectionID, &cmd.fileChanger.BaseFileChanger)
+	if err != nil {
+		return result, err
+	}
+
 	if allocationObj.BlobberSizeUsed+allocationSize > allocationObj.BlobberSize {
 		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
 	}
@@ -207,7 +212,7 @@ func (cmd *UploadFileCommand) ProcessThumbnail(allocationObj *allocation.Allocat
 
 		cmd.fileChanger.ThumbnailSize = thumbOutputData.Size
 		cmd.fileChanger.ThumbnailFilename = thumbInputData.Name
-		return allocation.SaveFileChanger(connectionID, &cmd.fileChanger.BaseFileChanger)
+		return nil
 	}
 	return common.ErrNoThumbnail
 }
