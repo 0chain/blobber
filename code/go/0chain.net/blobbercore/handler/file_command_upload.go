@@ -230,6 +230,7 @@ func (cmd *UploadFileCommand) reloadChange() {
 // UpdateChange replace AddFileChange in db
 func (cmd *UploadFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
 	cmd.fileChanger.AllocationID = connectionObj.AllocationID
+	logging.Logger.Info("UploadFileCommand.UpdateChange", zap.Any("ThumbnailSize: ", cmd.fileChanger.ThumbnailSize), zap.Any("ThumbnailHash: ", cmd.fileChanger.ThumbnailHash))
 	for _, c := range connectionObj.Changes {
 		filePath, _ := c.GetOrParseAffectedFilePath()
 		if c.Operation != constants.FileOperationInsert || cmd.fileChanger.Path != filePath {

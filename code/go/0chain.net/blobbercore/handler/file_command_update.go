@@ -9,12 +9,14 @@ import (
 	"net/http"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"go.uber.org/zap"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	sdkConst "github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/zboxcore/fileref"
 )
@@ -213,6 +215,7 @@ func (cmd *UpdateFileCommand) reloadChange() {
 // UpdateChange add UpdateFileChanger in db
 func (cmd *UpdateFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
 	cmd.fileChanger.AllocationID = connectionObj.AllocationID
+	logging.Logger.Info("UpdateFileCommand.UpdateChange", zap.Any("ThumbnailSize: ", cmd.fileChanger.ThumbnailSize), zap.Any("ThumbnailHash: ", cmd.fileChanger.ThumbnailHash))
 	for _, c := range connectionObj.Changes {
 		filePath, _ := c.GetOrParseAffectedFilePath()
 		if c.Operation != sdkConst.FileOperationUpdate || cmd.fileChanger.Path != filePath {

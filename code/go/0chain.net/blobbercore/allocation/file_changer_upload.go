@@ -8,11 +8,13 @@ import (
 	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"go.uber.org/zap"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
 // UploadFileChanger file change processor for continuous upload in INIT/APPEND/FINALIZE
@@ -120,6 +122,7 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context, rootRef *reference
 		HashToBeComputed:        true,
 		IsPrecommit:             true,
 	}
+	logging.Logger.Info("UpdateFileChanger.ApplyChange", zap.Any("ThumbnailHash: ", newFile.ThumbnailHash), zap.Any("ThumbnailSize: ", newFile.ThumbnailSize))
 
 	fileID, ok := fileIDMeta[newFile.Path]
 	if !ok || fileID == "" {
