@@ -2,14 +2,15 @@ package handler
 
 import (
 	"context"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"fmt"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/common/core/logging"
 	"go.uber.org/zap"
 	"net/http"
 )
 
 func GenerateAuthTicket(ctx context.Context, r *http.Request) (interface{}, error) {
-	result, err := common.GenerateAuthTicket(r.URL.Query().Get("client_id"))
-	logging.Logger.Info("GenerateAuthTicket", zap.Any("result", result), zap.Any("err", err))
-	return result, err
+	clientID := r.URL.Query().Get("client_id")
+	logging.Logger.Info("GenerateAuthTicket", zap.Any("client_id", clientID))
+	return node.Self.Sign(fmt.Sprintf("%s:%s", node.Self.ID, clientID))
 }

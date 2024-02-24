@@ -2,9 +2,6 @@ package common
 
 import (
 	"fmt"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"go.uber.org/zap"
 	"path/filepath"
 	"strings"
 )
@@ -64,9 +61,4 @@ func GetPathFields(p string) ([]string, error) {
 	p = filepath.Clean(p)
 	fields := strings.Split(p, "/")
 	return fields[1:], nil
-}
-
-func GenerateAuthTicket(clientID string) (interface{}, error) {
-	logging.Logger.Info("Generating auth ticket for client", zap.String("client_id", clientID))
-	return node.Self.Sign(fmt.Sprintf("%s:%s", node.Self.ID, clientID))
 }
