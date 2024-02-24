@@ -187,7 +187,6 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(allocationObj *allocation.Allocat
 	connectionID := cmd.fileChanger.ConnectionID
 	if cmd.thumbHeader != nil {
 		defer cmd.thumbFile.Close()
-
 		thumbInputData := &filestore.FileInputData{Name: cmd.thumbHeader.Filename, Path: cmd.fileChanger.Path, IsThumbnail: true, FilePathHash: cmd.fileChanger.PathHash}
 		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionID, thumbInputData, cmd.thumbFile)
 		if err != nil {
