@@ -13,7 +13,7 @@ import (
 	"go.uber.org/zap"
 )
 
-var publicKey, privateKey string
+var PublicKey, privateKey string
 
 func setupNode() error {
 	fmt.Println("> setup blobber")
@@ -29,7 +29,7 @@ func setupNode() error {
 		fmt.Println("using blobber keys from aws")
 	}
 
-	node.Self.SetKeys(publicKey, privateKey)
+	node.Self.SetKeys(PublicKey, privateKey)
 	if node.Self.ID == "" {
 		return errors.New("node definition for self node doesn't exist")
 	} else {
@@ -48,7 +48,7 @@ func setupNode() error {
 
 	fmt.Println("*== Blobber Wallet Info ==*")
 	fmt.Println("	ID: ", node.Self.ID)
-	fmt.Println("	Public Key: ", publicKey)
+	fmt.Println("	Public Key: ", PublicKey)
 	fmt.Println("*===========================*")
 
 	logging.Logger.Info(" Base URL" + node.Self.GetURLBase())
@@ -67,7 +67,7 @@ func readKeysFromAws() error {
 	if len(secretsFromAws) < 2 {
 		return fmt.Errorf("wrong file format from aws")
 	}
-	publicKey = secretsFromAws[0]
+	PublicKey = secretsFromAws[0]
 	privateKey = secretsFromAws[1]
 	return nil
 }
@@ -78,6 +78,6 @@ func readKeysFromFile(keysFile *string) error {
 		return err
 	}
 	defer reader.Close()
-	publicKey, privateKey, _, _ = encryption.ReadKeys(reader)
+	PublicKey, privateKey, _, _ = encryption.ReadKeys(reader)
 	return nil
 }
