@@ -319,7 +319,7 @@ func With0boxAuth(handler common.JSONResponderF) common.JSONResponderF {
 			}
 
 			signatureScheme := zcncrypto.NewSignatureScheme(config.Configuration.SignatureScheme)
-			if err := signatureScheme.SetPublicKey(""); err != nil {
+			if err := signatureScheme.SetPublicKey(common.PublicKey0box); err != nil {
 				return err
 			}
 
