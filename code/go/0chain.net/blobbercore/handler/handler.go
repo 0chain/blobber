@@ -18,11 +18,9 @@ package handler
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/0chain/gosdk/core/zcncrypto"
 	"net/http"
 	"os"
 	"runtime/pprof"
@@ -235,7 +233,7 @@ func setupHandlers(r *mux.Router) {
 	r.HandleFunc("/challenge-timings-by-challengeId", RateLimitByCommmitRL(common.ToJSONResponse(GetChallengeTiming)))
 
 	// Generate auth ticket
-	r.HandleFunc("/v1/auth/generate", common.ToJSONResponse(With0boxAuth(GenerateAuthTicket))).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/v1/auth/generate", common.Authenticate0Box(common.ToJSONResponse(GenerateAuthTicket)))
 
 	//marketplace related
 	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}",

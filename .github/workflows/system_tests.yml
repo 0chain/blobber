@@ -26,7 +26,7 @@ on:
 
 jobs:
   system-tests:
-    uses: 0chain/actions/.github/workflows/manual_system_tests.yml@feature/blobber-auth
+    uses: 0chain/actions/.github/workflows/manual_system_tests.yml@master
     with:
       blobber_branch:  ${{ github.ref_name }}
       validator_branch:  ${{ github.ref_name }}
