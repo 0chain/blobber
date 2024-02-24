@@ -99,7 +99,7 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, rootRef *reference
 	fileRef.EncryptedKeyPoint = nf.EncryptedKeyPoint
 	fileRef.ChunkSize = nf.ChunkSize
 	fileRef.IsPrecommit = true
-	logging.Logger.Info("UpdateFileChanger.ApplyChange", zap.Any("ThumbnailHash: ", fileRef.ThumbnailHash), zap.Any("ThumbnailSize: ", fileRef.ThumbnailSize))
+
 	return rootRef, nil
 }
 
