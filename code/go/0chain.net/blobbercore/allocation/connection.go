@@ -193,7 +193,6 @@ func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, is
 		hasher := filestore.GetNewCommitHasher(contentSize)
 		change.hasher = hasher
 		change.seqPQ = seqpriorityqueue.NewSeqPriorityQueue(contentSize)
-		hasher.WG.Add(1)
 		go hasher.Start(connectionObj.ctx, connectionID, connectionObj.AllocationID, fileName, pathHash, change.seqPQ)
 		saveChange = true
 	}
@@ -203,6 +202,7 @@ func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, is
 	if change.isFinalized {
 		return false, nil
 	}
+	logging.Logger.Info("SaveFileChange", zap.String("allocation_id", connectionObj.AllocationID), zap.String("filename", fileName), zap.Int64("offset", offset), zap.Int64("data_written", dataWritten), zap.Bool("is_final", isFinal))
 	if isFinal {
 		change.isFinalized = true
 		change.seqPQ.Done(seqpriorityqueue.UploadData{
