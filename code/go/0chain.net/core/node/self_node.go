@@ -4,6 +4,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/0chain/common/core/logging"
+	"go.uber.org/zap"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/config"
@@ -60,12 +62,16 @@ func (sn *SelfNode) Sign(hash string) (string, error) {
 	//return encryption.Sign(sn.privateKey, hash)
 	signScheme := zcncrypto.NewSignatureScheme(config.Configuration.SignatureScheme)
 	if signScheme != nil {
+		logging.Logger.Info("Setting private key", zap.Any("sn.Wallet", sn.wallet))
 		err := signScheme.SetPrivateKey(sn.wallet.Keys[0].PrivateKey)
 		if err != nil {
 			return "", err
 		}
+		logging.Logger.Info("Signing hash", zap.String("hash", hash))
 		return signScheme.Sign(hash)
 	}
+
+	logging.Logger.Info("Invalid signature scheme", zap.String("scheme", config.Configuration.SignatureScheme))
 	return "", common.NewError("invalid_signature_scheme", "Invalid signature scheme. Please check configuration")
 }
 
