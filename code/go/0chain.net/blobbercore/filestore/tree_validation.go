@@ -454,6 +454,8 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 			default:
 			}
 			toFinalize = true
+		} else if pq.DataBytes == 0 {
+			continue
 		}
 		logging.Logger.Info("hasher_pop", zap.Int64("offset", pq.Offset), zap.Int64("dataBytes", pq.DataBytes), zap.Any("toFinalize", toFinalize), zap.Int64("dataSize", c.dataSize), zap.String("filename", fileName), zap.Int64("totalWritten", totalWritten))
 		bufSize := 2 * BufferSize

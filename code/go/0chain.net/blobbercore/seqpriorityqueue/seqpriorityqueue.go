@@ -78,7 +78,7 @@ func (pq *SeqPriorityQueue) Done(v UploadData) {
 
 func (pq *SeqPriorityQueue) Popup() UploadData {
 	pq.lock.Lock()
-	for pq.queue.Len() == 0 && !pq.done || (pq.queue.Len() > 0 && pq.queue[0].Offset > pq.next) {
+	for pq.queue.Len() == 0 || (!pq.done && pq.queue[0].Offset > pq.next) {
 		pq.cv.Wait()
 	}
 	if pq.done {
