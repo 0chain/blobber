@@ -16,5 +16,6 @@ func GenerateAuthTicket(ctx context.Context, r *http.Request) (interface{}, erro
 		return nil, common.NewError("missing_client_id", "client_id is required")
 	}
 	logging.Logger.Info("GenerateAuthTicket", zap.Any("client_id", clientID))
+	logging.Logger.Info("GenerateAuthTicket", zap.Any("node", node.Self))
 	return node.Self.Sign(clientID)
 }
