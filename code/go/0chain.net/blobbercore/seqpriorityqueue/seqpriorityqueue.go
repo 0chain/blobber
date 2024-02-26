@@ -78,7 +78,7 @@ func (pq *SeqPriorityQueue) Done(v UploadData) {
 
 func (pq *SeqPriorityQueue) Popup() UploadData {
 	pq.lock.Lock()
-	for pq.queue.Len() == 0 && !pq.done || (pq.queue.Len() > 0 && pq.queue[0].Offset != pq.next) {
+	for pq.queue.Len() == 0 && !pq.done || (pq.queue.Len() > 0 && pq.queue[0].Offset > pq.next) {
 		pq.cv.Wait()
 	}
 	if pq.done {
@@ -91,8 +91,11 @@ func (pq *SeqPriorityQueue) Popup() UploadData {
 	retItem := UploadData{
 		Offset: pq.next,
 	}
-	for pq.queue.Len() > 0 && pq.queue[0].Offset == pq.next {
+	for pq.queue.Len() > 0 && pq.queue[0].Offset <= pq.next {
 		item := heap.Pop(&pq.queue).(UploadData)
+		if item.Offset < pq.next {
+			continue
+		}
 		pq.next += item.DataBytes
 	}
 	retItem.DataBytes = pq.next - retItem.Offset
