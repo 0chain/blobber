@@ -276,7 +276,9 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	nodeSie := getNodesSize(fileData.Size, util.MaxMerkleLeavesSize)
 	fileSize := rStat.Size() - nodeSie - FMTSize
 	now := time.Now()
-	err = fileData.Hasher.Wait(conID, allocID, fileData.Name, filePathHash)
+	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	defer cancel()
+	err = fileData.Hasher.Wait(ctx, conID, allocID, fileData.Name, filePathHash)
 	if err != nil {
 		return false, common.NewError("hasher_wait_error", err.Error())
 	}
