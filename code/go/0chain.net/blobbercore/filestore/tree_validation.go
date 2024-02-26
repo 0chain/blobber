@@ -409,7 +409,7 @@ type CommitHasher struct {
 	fmt           *fixedMerkleTree
 	vt            *validationTree
 	isInitialized bool
-	WG            sync.WaitGroup
+	doneChan      chan struct{}
 	hashErr       error
 	dataSize      int64
 }
@@ -419,12 +419,13 @@ func GetNewCommitHasher(dataSize int64) *CommitHasher {
 	c.fmt = getNewFixedMerkleTree()
 	c.vt = getNewValidationTree(dataSize)
 	c.isInitialized = true
+	c.doneChan = make(chan struct{})
 	c.dataSize = dataSize
 	return c
 }
 
 func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, filePathHash string, seqPQ *seqpriorityqueue.SeqPriorityQueue) {
-	defer c.WG.Done()
+	defer close(c.doneChan)
 	tempFilePath := GetFileStore().GetTempFilePath(allocID, connID, fileName, filePathHash)
 	f, err := os.Open(tempFilePath)
 	if err != nil {
@@ -453,6 +454,8 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 			default:
 			}
 			toFinalize = true
+		} else if pq.DataBytes == 0 {
+			continue
 		}
 		logging.Logger.Info("hasher_pop", zap.Int64("offset", pq.Offset), zap.Int64("dataBytes", pq.DataBytes), zap.Any("toFinalize", toFinalize), zap.Int64("dataSize", c.dataSize), zap.String("filename", fileName), zap.Int64("totalWritten", totalWritten))
 		bufSize := 2 * BufferSize
@@ -487,9 +490,13 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 	}
 }
 
-func (c *CommitHasher) Wait(connID, allocID, fileName, filePathHash string) error {
-	c.WG.Wait()
-	return c.hashErr
+func (c *CommitHasher) Wait(ctx context.Context, connID, allocID, fileName, filePathHash string) error {
+	select {
+	case <-c.doneChan:
+		return c.hashErr
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (c *CommitHasher) Write(b []byte) (int, error) {

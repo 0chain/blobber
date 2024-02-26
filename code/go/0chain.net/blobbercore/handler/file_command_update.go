@@ -154,6 +154,13 @@ func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		allocation.UpdateConnectionObjSize(connID, -cmd.existingFileRef.Size)
 	}
 
+	if cmd.thumbFile != nil {
+		err := cmd.ProcessThumbnail(allocationObj)
+		if err != nil {
+			return result, err
+		}
+	}
+
 	saveChange, err := allocation.SaveFileChange(connID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, cmd.fileChanger.IsFinal, cmd.fileChanger.Size, cmd.fileChanger.UploadOffset, fileOutputData.Size)
 	if err != nil {
 		return result, err
@@ -162,16 +169,15 @@ func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		allocation.UpdateConnectionObjSize(connID, cmd.fileChanger.Size)
 		result.UpdateChange = false
 	}
-
-	if allocationObj.BlobberSizeUsed+(allocationSize-cmd.existingFileRef.Size) > allocationObj.BlobberSize {
-		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
-	}
-
-	if cmd.thumbFile != nil {
-		err := cmd.ProcessThumbnail(allocationObj)
+	if cmd.thumbHeader != nil {
+		err = allocation.SaveFileChanger(connID, &cmd.fileChanger.BaseFileChanger)
 		if err != nil {
 			return result, err
 		}
+	}
+
+	if allocationObj.BlobberSizeUsed+(allocationSize-cmd.existingFileRef.Size) > allocationObj.BlobberSize {
+		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
 	}
 
 	return result, nil
@@ -182,7 +188,6 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(allocationObj *allocation.Allocat
 	connectionID := cmd.fileChanger.ConnectionID
 	if cmd.thumbHeader != nil {
 		defer cmd.thumbFile.Close()
-
 		thumbInputData := &filestore.FileInputData{Name: cmd.thumbHeader.Filename, Path: cmd.fileChanger.Path, IsThumbnail: true, FilePathHash: cmd.fileChanger.PathHash}
 		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionID, thumbInputData, cmd.thumbFile)
 		if err != nil {
@@ -191,15 +196,14 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(allocationObj *allocation.Allocat
 
 		cmd.fileChanger.ThumbnailSize = thumbOutputData.Size
 		cmd.fileChanger.ThumbnailFilename = thumbInputData.Name
-		err = allocation.SaveFileChanger(connectionID, &cmd.fileChanger.BaseFileChanger)
-		return err
+		return nil
 	}
 	return common.ErrNoThumbnail
 }
 
 func (cmd *UpdateFileCommand) reloadChange() {
 	changer := allocation.GetFileChanger(cmd.fileChanger.ConnectionID, cmd.fileChanger.PathHash)
-	if changer != nil {
+	if changer != nil && changer.ThumbnailHash != "" {
 		cmd.fileChanger.ThumbnailFilename = changer.ThumbnailFilename
 		cmd.fileChanger.ThumbnailSize = changer.ThumbnailSize
 		cmd.fileChanger.ThumbnailHash = changer.ThumbnailHash
