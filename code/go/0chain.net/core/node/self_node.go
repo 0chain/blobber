@@ -56,10 +56,11 @@ func (sn *SelfNode) GetURLBase() string {
 
 /*Sign - sign the given hash */
 func (sn *SelfNode) Sign(hash string) (string, error) {
+	wallet := sn.GetWallet()
 	//return encryption.Sign(sn.privateKey, hash)
 	signScheme := zcncrypto.NewSignatureScheme(config.Configuration.SignatureScheme)
 	if signScheme != nil {
-		err := signScheme.SetPrivateKey(sn.wallet.Keys[0].PrivateKey)
+		err := signScheme.SetPrivateKey(wallet.Keys[0].PrivateKey)
 		if err != nil {
 			return "", err
 		}
