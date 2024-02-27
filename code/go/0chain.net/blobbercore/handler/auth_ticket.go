@@ -17,7 +17,7 @@ func GenerateAuthTicket(ctx context.Context, r *http.Request) (interface{}, erro
 	}
 	logging.Logger.Info("GenerateAuthTicket", zap.Any("client_id", clientID))
 	logging.Logger.Info("GenerateAuthTicket", zap.Any("node", node.Self))
-	logging.Logger.Info("GenerateAuthTicket", zap.Any("node", node.Self.GetWalletString()))
 	logging.Logger.Info("GenerateAuthTicket", zap.Any("node", node.Self.GetWallet()))
+	logging.Logger.Info("GenerateAuthTicket", zap.Any("node", node.Self.GetWalletString()))
 	return node.Self.Sign(clientID)
 }
