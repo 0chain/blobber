@@ -40,6 +40,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
@@ -55,7 +56,7 @@ const (
 	PreCommitDir    = "precommit"
 	MerkleChunkSize = 64
 	ChunkSize       = 64 * KB
-	BufferSize      = 10 * MB
+	BufferSize      = 80 * ChunkSize
 )
 
 func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error) {
@@ -104,24 +105,47 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 
 	currentSize := finfo.Size()
 	if currentSize > initialSize { // Is chunk new or rewritten
-		if !fileData.IsThumbnail {
-			_, err = f.Seek(offset, io.SeekStart)
-			if err != nil {
-				return nil, common.NewError("file_seek_error", err.Error())
-			}
-			_, err = io.CopyBuffer(fileData.Hasher, f, buf)
-			if err != nil {
-				return nil, common.NewError("file_read_error", err.Error())
-			}
-		}
-		fileRef.ChunkUploaded = true
 		fs.updateAllocTempFileSize(allocID, currentSize-initialSize)
 	}
-
+	if currentSize > fileData.Size+nodeSize+FMTSize {
+		_ = os.Remove(tempFilePath)
+		return nil, common.NewError("file_size_mismatch", "File size is greater than expected")
+	}
+	logging.Logger.Info("temp_file_write: ", zap.String("filePath", fileData.Path), zap.Int64("currentSize", currentSize), zap.Int64("initialSize", initialSize), zap.Int64("writtenSize", writtenSize), zap.Int64("offset", fileData.UploadOffset), zap.Bool("ChunkUploaded", fileRef.ChunkUploaded))
 	fileRef.Size = writtenSize
 	fileRef.Name = fileData.Name
 	fileRef.Path = fileData.Path
+	fileRef.ContentSize = currentSize - nodeSize - FMTSize
 	return fileRef, nil
+}
+
+func (fs *FileStore) WriteDataToTree(allocID, connID, fileName, filePathHash string, hasher *CommitHasher) error {
+	tempFilePath := fs.getTempPathForFile(allocID, fileName, filePathHash, connID)
+
+	offset := getNodesSize(hasher.dataSize, util.MaxMerkleLeavesSize) + FMTSize
+	f, err := os.Open(tempFilePath)
+	if err != nil {
+		return common.NewError("file_open_error", err.Error())
+	}
+	defer f.Close()
+	_, err = f.Seek(offset, io.SeekStart)
+	if err != nil {
+		return common.NewError("file_seek_error", err.Error())
+	}
+	bufSize := BufferSize * 5
+	if int64(bufSize) > hasher.dataSize {
+		bufSize = int(hasher.dataSize)
+	}
+	buf := make([]byte, bufSize)
+	_, err = io.CopyBuffer(hasher, f, buf)
+	if err != nil {
+		return common.NewError("hasher_write_error", err.Error())
+	}
+	return nil
+}
+
+func (fs *FileStore) GetTempFilePath(allocID, connID, fileName, filePathHash string) string {
+	return fs.getTempPathForFile(allocID, fileName, filePathHash, connID)
 }
 
 func (fs *FileStore) MoveToFilestore(allocID, hash string) error {
@@ -176,8 +200,8 @@ func (fs *FileStore) DeletePreCommitDir(allocID string) error {
 func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData) (bool, error) {
 
 	logging.Logger.Info("Committing write", zap.String("allocation_id", allocID), zap.Any("file_data", fileData))
-
-	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, encryption.Hash(fileData.Path), conID)
+	filePathHash := encryption.Hash(fileData.Path)
+	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, filePathHash, conID)
 
 	fileHash := fileData.ValidationRoot
 	if fileData.IsThumbnail {
@@ -251,6 +275,14 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	}
 	nodeSie := getNodesSize(fileData.Size, util.MaxMerkleLeavesSize)
 	fileSize := rStat.Size() - nodeSie - FMTSize
+	now := time.Now()
+	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	defer cancel()
+	err = fileData.Hasher.Wait(ctx, conID, allocID, fileData.Name, filePathHash)
+	if err != nil {
+		return false, common.NewError("hasher_wait_error", err.Error())
+	}
+	elapsedWait := time.Since(now)
 	fmtRootBytes, err := fileData.Hasher.fmt.CalculateRootAndStoreNodes(r)
 	if err != nil {
 		return false, common.NewError("fmt_hash_calculation_error", err.Error())
@@ -262,7 +294,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	}
 	fmtRoot := hex.EncodeToString(fmtRootBytes)
 	validationRoot := hex.EncodeToString(validationRootBytes)
-
+	elapsedRoot := time.Since(now) - elapsedWait
 	if fmtRoot != fileData.FixedMerkleRoot {
 		return false, common.NewError("fixed_merkle_root_mismatch",
 			fmt.Sprintf("Expected %s got %s", fileData.FixedMerkleRoot, fmtRoot))
@@ -288,6 +320,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	// 5. Move: It is Copy + Delete. Delete will not delete file if ref exists in database. i.e. copy would create
 	// ref that refers to this file therefore it will be skipped
 	fs.incrDecrAllocFileSizeAndNumber(allocID, fileSize, 1)
+	logging.Logger.Info("Committing write done", zap.String("file_path", fileData.Path), zap.Duration("elapsed_wait", elapsedWait), zap.Duration("elapsed_root", elapsedRoot), zap.Duration("elapsed_total", time.Since(now)))
 	return true, nil
 }
 

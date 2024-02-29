@@ -4,15 +4,20 @@
 package filestore
 
 import (
+	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"math"
+	"os"
 	"sync"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/seqpriorityqueue"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/core/util"
 	"github.com/minio/sha256-simd"
+	"go.uber.org/zap"
 )
 
 const (
@@ -404,6 +409,9 @@ type CommitHasher struct {
 	fmt           *fixedMerkleTree
 	vt            *validationTree
 	isInitialized bool
+	doneChan      chan struct{}
+	hashErr       error
+	dataSize      int64
 }
 
 func GetNewCommitHasher(dataSize int64) *CommitHasher {
@@ -411,7 +419,84 @@ func GetNewCommitHasher(dataSize int64) *CommitHasher {
 	c.fmt = getNewFixedMerkleTree()
 	c.vt = getNewValidationTree(dataSize)
 	c.isInitialized = true
+	c.doneChan = make(chan struct{})
+	c.dataSize = dataSize
 	return c
+}
+
+func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, filePathHash string, seqPQ *seqpriorityqueue.SeqPriorityQueue) {
+	defer close(c.doneChan)
+	tempFilePath := GetFileStore().GetTempFilePath(allocID, connID, fileName, filePathHash)
+	f, err := os.Open(tempFilePath)
+	if err != nil {
+		c.hashErr = err
+		return
+	}
+	defer f.Close()
+	var toFinalize bool
+	var totalWritten int64
+	rootOffset := getNodesSize(c.dataSize, util.MaxMerkleLeavesSize) + FMTSize
+	for {
+		select {
+		case <-ctx.Done():
+			c.hashErr = ctx.Err()
+			return
+		default:
+		}
+		pq := seqPQ.Popup()
+		if pq.Offset+pq.DataBytes == c.dataSize {
+			// If dataBytes and offset is equal to data size then it is the last data to be read from the file or context is cancelled
+			// Check if ctx is done
+			select {
+			case <-ctx.Done():
+				c.hashErr = ctx.Err()
+				return
+			default:
+			}
+			toFinalize = true
+		} else if pq.DataBytes == 0 {
+			continue
+		}
+		logging.Logger.Info("hasher_pop", zap.Int64("offset", pq.Offset), zap.Int64("dataBytes", pq.DataBytes), zap.Any("toFinalize", toFinalize), zap.Int64("dataSize", c.dataSize), zap.String("filename", fileName), zap.Int64("totalWritten", totalWritten))
+		bufSize := 2 * BufferSize
+		if pq.DataBytes < int64(bufSize) {
+			bufSize = int(pq.DataBytes)
+		}
+		buf := make([]byte, bufSize)
+		for pq.DataBytes > 0 {
+			if pq.DataBytes < int64(bufSize) {
+				buf = buf[:pq.DataBytes]
+			}
+			n, err := f.ReadAt(buf, pq.Offset+rootOffset)
+			if err != nil && !errors.Is(err, io.EOF) {
+				c.hashErr = err
+				return
+			}
+			pq.DataBytes -= int64(n)
+			pq.Offset += int64(n)
+			totalWritten += int64(n)
+			_, err = c.Write(buf[:n])
+			if err != nil {
+				logging.Logger.Error("hasher_write", zap.Error(err), zap.Int("n", n), zap.Int64("offset", pq.Offset), zap.Int64("dataBytes", pq.DataBytes), zap.Int64("dataSize", c.dataSize), zap.String("filename", fileName), zap.Int64("totalWritten", totalWritten))
+				c.hashErr = err
+				return
+			}
+		}
+		buf = nil
+		if toFinalize {
+			c.hashErr = c.Finalize()
+			return
+		}
+	}
+}
+
+func (c *CommitHasher) Wait(ctx context.Context, connID, allocID, fileName, filePathHash string) error {
+	select {
+	case <-c.doneChan:
+		return c.hashErr
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (c *CommitHasher) Write(b []byte) (int, error) {
