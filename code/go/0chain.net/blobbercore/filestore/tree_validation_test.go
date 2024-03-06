@@ -218,8 +218,6 @@ func TestValidationTreeWrite(t *testing.T) {
 
 			r, err := os.Open(filename)
 			require.NoError(t, err)
-			_, err = r.Seek(size, io.SeekStart)
-			require.NoError(t, err)
 
 			totalLeaves := int((size + util.MaxMerkleLeavesSize - 1) / util.MaxMerkleLeavesSize)
 			leaves := make([][]byte, totalLeaves)
@@ -230,6 +228,8 @@ func TestValidationTreeWrite(t *testing.T) {
 				require.EqualValues(t, size, n)
 				leaves[0] = encryption.ShaHash(b)
 			} else {
+				_, err = r.Seek(size, io.SeekStart)
+				require.NoError(t, err)
 				nodes := make([]byte, totalLeaves*HashSize)
 				n, err = r.Read(nodes)
 				require.NoError(t, err)
