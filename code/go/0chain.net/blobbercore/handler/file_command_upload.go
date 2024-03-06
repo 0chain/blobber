@@ -166,6 +166,14 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		}
 	}
 
+	if cmd.thumbFile != nil {
+		err := cmd.ProcessThumbnail(allocationObj)
+		if err != nil {
+			logging.Logger.Error("UploadFileCommand.ProcessContent", zap.Error(err))
+			return result, err
+		}
+	}
+
 	saveChange, err := allocation.SaveFileChange(connectionID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, cmd.fileChanger.IsFinal, cmd.fileChanger.Size, cmd.fileChanger.UploadOffset, fileOutputData.Size)
 	if err != nil {
 		logging.Logger.Error("UploadFileCommand.ProcessContent", zap.Error(err))
@@ -175,17 +183,15 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		allocation.UpdateConnectionObjSize(connectionID, cmd.fileChanger.Size)
 		result.UpdateChange = false
 	}
+	if cmd.thumbHeader != nil {
+		err = allocation.SaveFileChanger(connectionID, &cmd.fileChanger.BaseFileChanger)
+		if err != nil {
+			return result, err
+		}
+	}
 
 	if allocationObj.BlobberSizeUsed+allocationSize > allocationObj.BlobberSize {
 		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
-	}
-
-	if cmd.thumbFile != nil {
-		err := cmd.ProcessThumbnail(allocationObj)
-		if err != nil {
-			logging.Logger.Error("UploadFileCommand.ProcessContent", zap.Error(err))
-			return result, err
-		}
 	}
 
 	return result, nil
@@ -206,14 +212,14 @@ func (cmd *UploadFileCommand) ProcessThumbnail(allocationObj *allocation.Allocat
 
 		cmd.fileChanger.ThumbnailSize = thumbOutputData.Size
 		cmd.fileChanger.ThumbnailFilename = thumbInputData.Name
-		return allocation.SaveFileChanger(connectionID, &cmd.fileChanger.BaseFileChanger)
+		return nil
 	}
 	return common.ErrNoThumbnail
 }
 
 func (cmd *UploadFileCommand) reloadChange() {
 	changer := allocation.GetFileChanger(cmd.fileChanger.ConnectionID, cmd.fileChanger.PathHash)
-	if changer != nil {
+	if changer != nil && changer.ThumbnailHash != "" {
 		cmd.fileChanger.ThumbnailFilename = changer.ThumbnailFilename
 		cmd.fileChanger.ThumbnailSize = changer.ThumbnailSize
 		cmd.fileChanger.ThumbnailHash = changer.ThumbnailHash
