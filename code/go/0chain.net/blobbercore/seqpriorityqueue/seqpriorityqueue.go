@@ -69,9 +69,10 @@ func (pq *SeqPriorityQueue) Push(v UploadData) {
 	pq.lock.Unlock()
 }
 
-func (pq *SeqPriorityQueue) Done(v UploadData) {
+func (pq *SeqPriorityQueue) Done(v UploadData, dataSize int64) {
 	pq.lock.Lock()
 	pq.done = true
+	pq.dataSize = dataSize
 	heap.Push(&pq.queue, v)
 	pq.cv.Signal()
 	pq.lock.Unlock()
@@ -87,6 +88,7 @@ func (pq *SeqPriorityQueue) Popup() UploadData {
 		return UploadData{
 			Offset:    pq.next,
 			DataBytes: pq.dataSize - pq.next,
+			IsFinal:   true,
 		}
 	}
 	retItem := UploadData{

@@ -210,7 +210,7 @@ func TestValidationTreeWrite(t *testing.T) {
 			f, err := os.Create(filename)
 			require.NoError(t, err)
 
-			merkleRoot1, err := vt.CalculateRootAndStoreNodes(f)
+			merkleRoot1, err := vt.CalculateRootAndStoreNodes(f, size)
 			require.NoError(t, err)
 
 			n, err = f.Write(b)
@@ -292,7 +292,7 @@ func TestValidationMerkleProof(t *testing.T) {
 			f, err := os.Create(filename)
 			require.NoError(t, err)
 
-			merkleRoot, err := vt.CalculateRootAndStoreNodes(f)
+			merkleRoot, err := vt.CalculateRootAndStoreNodes(f, size)
 			require.NoError(t, err)
 
 			n, err = f.Write(b)

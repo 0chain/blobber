@@ -1423,9 +1423,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 
 	if allocationRoot != writeMarker.AllocationRoot {
 		result.AllocationRoot = allocationObj.AllocationRoot
-		if latestWriteMarkerEntity != nil {
-			result.WriteMarker = &latestWriteMarkerEntity.WM
-		}
+		result.WriteMarker = &latestWriteMarkerEntity.WM
 		result.Success = false
 		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root." +
 			" Expected hash: " + allocationRoot
