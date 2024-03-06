@@ -132,12 +132,12 @@ func TestFixedMerkleTreeProof(t *testing.T) {
 			err = ft.Finalize()
 			require.NoError(t, err)
 
-			merkleRoot, err := ft.CalculateRootAndStoreNodes(f)
-			require.NoError(t, err)
-
 			n, err = f.Write(b)
 			require.NoError(t, err)
 			require.EqualValues(t, size, n)
+
+			merkleRoot, err := ft.CalculateRootAndStoreNodes(f)
+			require.NoError(t, err)
 
 			f.Close()
 
@@ -155,11 +155,8 @@ func TestFixedMerkleTreeProof(t *testing.T) {
 
 			proof, err := fm.GetMerkleProof(r)
 			require.NoError(t, err)
-
-			n1, err := r.Seek(FMTSize, io.SeekStart)
-			require.NoError(t, err)
-			require.EqualValues(t, FMTSize, n1)
-			proofByte, err := fm.GetLeafContent(r)
+			fileReader := io.LimitReader(r, size)
+			proofByte, err := fm.GetLeafContent(fileReader)
 			require.NoError(t, err)
 
 			leafHash := encryption.ShaHash(proofByte)
