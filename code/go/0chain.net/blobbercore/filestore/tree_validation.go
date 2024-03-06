@@ -224,7 +224,7 @@ type validationTree struct {
 
 // CalculateRootAndStoreNodes is used to calculate root and write intermediate nodes excluding root
 // node to f
-func (v *validationTree) CalculateRootAndStoreNodes(f io.WriteSeeker, dataSize int64) (merkleRoot []byte, err error) {
+func (v *validationTree) CalculateRootAndStoreNodes(f io.Writer, dataSize int64) (merkleRoot []byte, err error) {
 
 	nodes := make([][]byte, len(v.GetLeaves()))
 	copy(nodes, v.GetLeaves())

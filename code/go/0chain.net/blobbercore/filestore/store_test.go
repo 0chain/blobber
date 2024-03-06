@@ -746,10 +746,8 @@ func TestGetMerkleTree(t *testing.T) {
 
 	f, err := os.Open(orgFilePath)
 	require.Nil(t, err)
-
-	finfo, _ := f.Stat()
-	fmt.Println("Size: ", finfo.Size())
-	mr, err := getFixedMerkleRoot(f, int64(size))
+	fileReader := io.LimitReader(f, int64(size))
+	mr, err := getFixedMerkleRoot(fileReader, int64(size))
 	require.Nil(t, err)
 	t.Logf("Merkle root: %s", mr)
 	allocID := randString(64)
@@ -948,6 +946,11 @@ func generateRandomDataAndStoreNodes(fPath string, size int64) (string, string, 
 		return "", "", err
 	}
 
+	_, err = f.Write(p)
+	if err != nil {
+		return "", "", err
+	}
+
 	fixedMerkleRoot, err := cH.fmt.CalculateRootAndStoreNodes(f)
 	if err != nil {
 		return "", "", err
@@ -958,19 +961,10 @@ func generateRandomDataAndStoreNodes(fPath string, size int64) (string, string, 
 		return "", "", err
 	}
 
-	_, err = f.Write(p)
-	if err != nil {
-		return "", "", err
-	}
-
 	return hex.EncodeToString(validationMerkleRoot), hex.EncodeToString(fixedMerkleRoot), nil
 }
 
-func getFixedMerkleRoot(r io.ReadSeeker, dataSize int64) (mr string, err error) {
-	_, err = r.Seek(-dataSize, io.SeekEnd)
-	if err != nil {
-		return
-	}
+func getFixedMerkleRoot(r io.Reader, dataSize int64) (mr string, err error) {
 
 	fixedMT := util.NewFixedMerkleTree()
 	var count int
