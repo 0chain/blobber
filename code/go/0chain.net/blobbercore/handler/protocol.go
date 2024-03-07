@@ -40,9 +40,6 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	sn := &transaction.StorageNode{}
 	sn.ID = node.Self.ID
 	sn.BaseURL = node.Self.GetURLBase()
-	if err != nil {
-		return nil, err
-	}
 	if config.Configuration.AutomaticUpdate {
 		sn.Capacity = int64(filestore.GetFileStore().GetCurrentDiskCapacity())
 	} else {
