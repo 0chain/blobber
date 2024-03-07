@@ -15,10 +15,10 @@ type ConnectionResult struct {
 
 // swagger:model CommitResult
 type CommitResult struct {
-	AllocationRoot string                   `json:"allocation_root"`
-	WriteMarker    *writemarker.WriteMarker `json:"write_marker"`
-	Success        bool                     `json:"success"`
-	ErrorMessage   string                   `json:"error_msg,omitempty"`
+	AllocationRoot string                         `json:"allocation_root"`
+	WriteMarker    *writemarker.WriteMarkerEntity `json:"write_marker"`
+	Success        bool                           `json:"success"`
+	ErrorMessage   string                         `json:"error_msg,omitempty"`
 	//Result         []*UploadResult         `json:"result"`
 }
 

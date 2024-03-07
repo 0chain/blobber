@@ -143,7 +143,7 @@ func (fp fixedMerkleTreeProof) GetMerkleProof(r io.ReaderAt) (proof [][]byte, er
 	totalLevelNodes := util.FixedMerkleLeaves
 	proof = make([][]byte, util.FixedMTDepth-1)
 	b := make([]byte, FMTSize)
-	n, err := r.ReadAt(b, io.SeekStart)
+	n, err := r.ReadAt(b, fp.dataSize)
 	if n != FMTSize {
 		return nil, fmt.Errorf("invalid fixed merkle tree size: %d", n)
 	}
@@ -224,11 +224,7 @@ type validationTree struct {
 
 // CalculateRootAndStoreNodes is used to calculate root and write intermediate nodes excluding root
 // node to f
-func (v *validationTree) CalculateRootAndStoreNodes(f io.WriteSeeker) (merkleRoot []byte, err error) {
-	_, err = f.Seek(FMTSize, io.SeekStart)
-	if err != nil {
-		return
-	}
+func (v *validationTree) CalculateRootAndStoreNodes(f io.Writer, dataSize int64) (merkleRoot []byte, err error) {
 
 	nodes := make([][]byte, len(v.GetLeaves()))
 	copy(nodes, v.GetLeaves())
@@ -236,7 +232,7 @@ func (v *validationTree) CalculateRootAndStoreNodes(f io.WriteSeeker) (merkleRoo
 	h := sha256.New()
 	depth := v.CalculateDepth()
 
-	s := getNodesSize(v.GetDataSize(), util.MaxMerkleLeavesSize)
+	s := getNodesSize(dataSize, util.MaxMerkleLeavesSize)
 	buffer := make([]byte, s)
 	var bufInd int
 	for i := 0; i < depth; i++ {
@@ -316,7 +312,7 @@ func (v *validationTreeProof) getMerkleProofOfMultipleIndexes(r io.ReadSeeker, n
 	// nodesSize := getNodesSize(v.dataSize, util.MaxMerkleLeavesSize)
 	offsets, leftRightIndexes := v.getFileOffsetsAndNodeIndexes(startInd, endInd)
 	nodesData := make([]byte, nodesSize)
-	_, err := r.Seek(FMTSize, io.SeekStart)
+	_, err := r.Seek(FMTSize+v.dataSize, io.SeekStart)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -435,7 +431,7 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 	defer f.Close()
 	var toFinalize bool
 	var totalWritten int64
-	rootOffset := getNodesSize(c.dataSize, util.MaxMerkleLeavesSize) + FMTSize
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -444,7 +440,7 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 		default:
 		}
 		pq := seqPQ.Popup()
-		if pq.Offset+pq.DataBytes == c.dataSize {
+		if pq.Offset+pq.DataBytes == c.dataSize || pq.IsFinal {
 			// If dataBytes and offset is equal to data size then it is the last data to be read from the file or context is cancelled
 			// Check if ctx is done
 			select {
@@ -467,7 +463,7 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 			if pq.DataBytes < int64(bufSize) {
 				buf = buf[:pq.DataBytes]
 			}
-			n, err := f.ReadAt(buf, pq.Offset+rootOffset)
+			n, err := f.ReadAt(buf, pq.Offset)
 			if err != nil && !errors.Is(err, io.EOF) {
 				c.hashErr = err
 				return
