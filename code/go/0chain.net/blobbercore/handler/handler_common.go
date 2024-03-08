@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/build"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -152,6 +154,13 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 		if err != nil {
 			return resp, statusCode, common.NewErrorf("commit_error",
 				"error committing to meta store: %v", err)
+		}
+
+		if blobberRes, ok := resp.(*blobberhttp.CommitResult); ok {
+			// Save the write marker data
+			writemarker.SaveMarkerData(allocationID, blobberRes.WriteMarker.WM.Timestamp, blobberRes.WriteMarker.WM.ChainLength)
+		} else {
+			Logger.Error("Invalid response type for commit handler")
 		}
 		return
 	}

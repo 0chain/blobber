@@ -129,9 +129,9 @@ func CommitWriteResponseCreator(r interface{}) *blobbergrpc.CommitResponse {
 
 	return &blobbergrpc.CommitResponse{
 		AllocationRoot: httpResp.AllocationRoot,
-		WriteMarker:    WriteMarkerToWriteMarkerGRPC(httpResp.WriteMarker),
-		ErrorMessage:   httpResp.ErrorMessage,
-		Success:        httpResp.Success,
+		// WriteMarker:    WriteMarkerToWriteMarkerGRPC(httpResp.WriteMarker),
+		ErrorMessage: httpResp.ErrorMessage,
+		Success:      httpResp.Success,
 	}
 }
 

@@ -11,7 +11,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 )
 
-func (wme *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
+func (wme *WriteMarkerEntity) RedeemMarker(ctx context.Context, startSeq int64) error {
 	for {
 		state := conductrpc.Client().State()
 		if state.StopWMCommit != nil && *state.StopWMCommit {
@@ -20,7 +20,7 @@ func (wme *WriteMarkerEntity) RedeemMarker(ctx context.Context) error {
 		}
 		break
 	}
-	err := wme.redeemMarker(ctx)
+	err := wme.redeemMarker(ctx, startSeq)
 	if err == nil {
 		// send state to conductor server
 		conductrpc.Client().BlobberCommitted(node.Self.ID)

@@ -53,6 +53,7 @@ type Allocation struct {
 	BlobberSize      int64            `gorm:"column:blobber_size;not null;default:0"`
 	BlobberSizeUsed  int64            `gorm:"column:blobber_size_used;not null;default:0"`
 	LatestRedeemedWM string           `gorm:"column:latest_redeemed_write_marker;size:64"`
+	LastRedeemedSeq  int64            `gorm:"column:last_redeemed_sequence;default:0"`
 	IsRedeemRequired bool             `gorm:"column:is_redeem_required"`
 	TimeUnit         time.Duration    `gorm:"column:time_unit;not null;default:172800000000000"`
 	StartTime        common.Timestamp `gorm:"column:start_time;not null"`

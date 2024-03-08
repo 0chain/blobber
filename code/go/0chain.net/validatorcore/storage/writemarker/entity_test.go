@@ -18,7 +18,7 @@ func TestWriteMarker_GetHashData(t *testing.T) {
 	wm, wallet, err := setupEntityTest(t)
 	require.NoError(t, err)
 
-	want := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v:%v", "alloc_root", "prev_alloc_root", "file_meta_root", "alloc_id", "blobber_id", wallet.ClientID, 1, wm.Timestamp)
+	want := fmt.Sprintf("%v:%v:%v:%v:%v:%v:%v:%v:%v:%v", "alloc_root", "prev_alloc_root", "file_meta_root", "chain_hash", "alloc_id", "blobber_id", wallet.ClientID, 1, 1, wm.Timestamp)
 	got := wm.GetHashData()
 	t.Logf("Want: %s. Got: %s", want, got)
 	assert.Equal(t, want, got)
@@ -120,6 +120,8 @@ func setupEntityTest(t *testing.T) (*writemarker.WriteMarker, *zcncrypto.Wallet,
 		Size:                   int64(1),
 		BlobberID:              "blobber_id",
 		Timestamp:              common.Now(),
+		ChainHash:              "chain_hash",
+		ChainSize:              int64(1),
 	}
 
 	// TODO: why the config param is not used here?

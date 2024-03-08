@@ -19,6 +19,9 @@ func SetupDefaultConfig() {
 	viper.SetDefault("openconnection_cleaner.frequency", 30)
 	viper.SetDefault("writemarker_redeem.frequency", 10)
 	viper.SetDefault("writemarker_redeem.num_workers", 5)
+	viper.SetDefault("writemarker_redeem.max_chain_length", 32)
+	viper.SetDefault("writemarker_redeem.max_timestamp_gap", 1800)
+	viper.SetDefault("writemarker_redeem.marker_redeem_interval", time.Minute*10)
 	viper.SetDefault("readmarker_redeem.frequency", 10)
 	viper.SetDefault("readmarker_redeem.num_workers", 5)
 	viper.SetDefault("challenge_response.frequency", 10)
@@ -100,6 +103,9 @@ type Config struct {
 	OpenConnectionWorkerTolerance int64
 	WMRedeemFreq                  int64
 	WMRedeemNumWorkers            int
+	MaxChainLength                int
+	MaxTimestampGap               int64
+	MarkerRedeemInterval          time.Duration
 	RMRedeemFreq                  int64
 	RMRedeemNumWorkers            int
 	ChallengeResolveFreq          int64
@@ -218,6 +224,9 @@ func ReadConfig(deploymentMode int) {
 
 	Configuration.WMRedeemFreq = viper.GetInt64("writemarker_redeem.frequency")
 	Configuration.WMRedeemNumWorkers = viper.GetInt("writemarker_redeem.num_workers")
+	Configuration.MaxChainLength = viper.GetInt("writemarker_redeem.max_chain_length")
+	Configuration.MaxTimestampGap = viper.GetInt64("writemarker_redeem.max_timestamp_gap")
+	Configuration.MarkerRedeemInterval = viper.GetDuration("writemarker_redeem.marker_redeem_interval")
 
 	Configuration.RMRedeemFreq = viper.GetInt64("readmarker_redeem.frequency")
 	Configuration.RMRedeemNumWorkers = viper.GetInt("readmarker_redeem.num_workers")
