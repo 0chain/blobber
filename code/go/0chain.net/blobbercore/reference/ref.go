@@ -568,7 +568,6 @@ func (r *Ref) SaveFileRef(ctx context.Context, collector QueryCollector) error {
 		collector.DeleteRefRecord(deleteRef)
 		r.ID = 0
 	}
-	logging.Logger.Info("refFileVersion", zap.Int("filestore_version", r.FilestoreVersion))
 	collector.CreateRefRecord(r)
 
 	return nil
