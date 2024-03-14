@@ -151,6 +151,7 @@ func TestFixedMerkleTreeProof(t *testing.T) {
 			fm := fixedMerkleTreeProof{
 				idx:      index,
 				dataSize: int64(size),
+				offset:   int64(size),
 			}
 
 			proof, err := fm.GetMerkleProof(r)
@@ -316,6 +317,7 @@ func TestValidationMerkleProof(t *testing.T) {
 			vp := validationTreeProof{
 				totalLeaves: int((size + util.MaxMerkleLeavesSize - 1) / util.MaxMerkleLeavesSize),
 				dataSize:    int64(size),
+				offset:      int64(size) + FMTSize,
 			}
 
 			t.Logf("StartInd: %d; endInd: %d", startInd, endInd)

@@ -793,11 +793,12 @@ func TestGetMerkleTree(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
 			cri := &ChallengeReadBlockInput{
-				BlockOffset:  test.blockOffset,
-				AllocationID: allocID,
-				Hash:         validationRoot,
-				FileSize:     int64(size),
-				IsPrecommit:  true,
+				BlockOffset:      test.blockOffset,
+				AllocationID:     allocID,
+				Hash:             validationRoot,
+				FileSize:         int64(size),
+				IsPrecommit:      true,
+				FilestoreVersion: VERSION,
 			}
 
 			challengeProof, err := fs.GetBlocksMerkleTreeForChallenge(cri)
