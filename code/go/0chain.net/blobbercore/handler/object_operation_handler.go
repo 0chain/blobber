@@ -396,7 +396,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			NumBlocks:        int(dr.NumBlocks),
 			IsThumbnail:      true,
 			IsPrecommit:      fromPreCommit,
-			FilestoreVersion: filestore.VERSION,
+			FilestoreVersion: fileref.FilestoreVersion,
 		}
 
 		logging.Logger.Info("calling GetFileBlock for thumb", zap.Any("rbi", rbi))
@@ -411,13 +411,14 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		}
 
 		rbi := &filestore.ReadBlockInput{
-			AllocationID:   alloc.ID,
-			FileSize:       fileref.Size,
-			Hash:           fileref.ValidationRoot,
-			StartBlockNum:  int(dr.BlockNum),
-			NumBlocks:      int(dr.NumBlocks),
-			VerifyDownload: dr.VerifyDownload,
-			IsPrecommit:    fromPreCommit,
+			AllocationID:     alloc.ID,
+			FileSize:         fileref.Size,
+			Hash:             fileref.ValidationRoot,
+			StartBlockNum:    int(dr.BlockNum),
+			NumBlocks:        int(dr.NumBlocks),
+			VerifyDownload:   dr.VerifyDownload,
+			IsPrecommit:      fromPreCommit,
+			FilestoreVersion: fileref.FilestoreVersion,
 		}
 		logging.Logger.Info("calling GetFileBlock", zap.Any("rbi", rbi))
 		fileDownloadResponse, err = filestore.GetFileStore().GetFileBlock(rbi)
