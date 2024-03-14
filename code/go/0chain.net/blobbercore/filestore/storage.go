@@ -556,8 +556,13 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 	vmp := &FileDownloadResponse{}
 
 	if readBlockIn.VerifyDownload {
+		vpOffset := int64(FMTSize)
+		if readBlockIn.FilestoreVersion == 1 {
+			vpOffset += readBlockIn.FileSize
+		}
 		vp := validationTreeProof{
 			dataSize: readBlockIn.FileSize,
+			offset:   vpOffset,
 		}
 
 		logging.Logger.Debug("calling GetMerkleProofOfMultipleIndexes", zap.Any("readBlockIn", readBlockIn), zap.Any("vmp", vmp))
@@ -569,12 +574,18 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 		vmp.Nodes = nodes
 		vmp.Indexes = indexes
 	}
-
+	logging.Logger.Info("filestore_version", zap.Int("version", readBlockIn.FilestoreVersion))
 	fileOffset := int64(startBlock) * ChunkSize
-
-	_, err = file.Seek(fileOffset, io.SeekStart)
-	if err != nil {
-		return nil, common.NewError("seek_error", err.Error())
+	if readBlockIn.FilestoreVersion == 1 {
+		_, err = file.Seek(fileOffset, io.SeekStart)
+		if err != nil {
+			return nil, common.NewError("seek_error", err.Error())
+		}
+	} else {
+		_, err = file.Seek(fileOffset+FMTSize+nodesSize, io.SeekStart)
+		if err != nil {
+			return nil, common.NewError("seek_error", err.Error())
+		}
 	}
 
 	fileReader := io.LimitReader(file, filesize-fileOffset)
@@ -624,14 +635,27 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(in *ChallengeReadBlockInput
 
 	defer file.Close()
 
+	var offset int64
+	if in.FilestoreVersion == 1 {
+		offset = in.FileSize
+	}
+
 	fmp := &fixedMerkleTreeProof{
 		idx:      in.BlockOffset,
 		dataSize: in.FileSize,
+		offset:   offset,
 	}
 
 	merkleProof, err := fmp.GetMerkleProof(file)
 	if err != nil {
 		return nil, common.NewError("get_merkle_proof_error", err.Error())
+	}
+
+	if in.FilestoreVersion == 0 {
+		_, err = file.Seek(-in.FileSize, io.SeekEnd)
+		if err != nil {
+			return nil, common.NewError("seek_error", err.Error())
+		}
 	}
 
 	fileReader := io.LimitReader(file, in.FileSize)

@@ -109,6 +109,7 @@ func (ft *fixedMerkleTree) CalculateRootAndStoreNodes(f io.Writer) (merkleRoot [
 type fixedMerkleTreeProof struct {
 	idx      int
 	dataSize int64
+	offset   int64
 }
 
 func NewFMTPRoof(idx int, dataSize int64) *fixedMerkleTreeProof {
@@ -143,7 +144,7 @@ func (fp fixedMerkleTreeProof) GetMerkleProof(r io.ReaderAt) (proof [][]byte, er
 	totalLevelNodes := util.FixedMerkleLeaves
 	proof = make([][]byte, util.FixedMTDepth-1)
 	b := make([]byte, FMTSize)
-	n, err := r.ReadAt(b, fp.dataSize)
+	n, err := r.ReadAt(b, fp.offset)
 	if n != FMTSize {
 		return nil, fmt.Errorf("invalid fixed merkle tree size: %d", n)
 	}
@@ -283,6 +284,7 @@ type validationTreeProof struct {
 	totalLeaves int
 	depth       int
 	dataSize    int64
+	offset      int64
 }
 
 // GetMerkleProofOfMultipleIndexes will get minimum proof based on startInd and endInd values.
@@ -312,7 +314,7 @@ func (v *validationTreeProof) getMerkleProofOfMultipleIndexes(r io.ReadSeeker, n
 	// nodesSize := getNodesSize(v.dataSize, util.MaxMerkleLeavesSize)
 	offsets, leftRightIndexes := v.getFileOffsetsAndNodeIndexes(startInd, endInd)
 	nodesData := make([]byte, nodesSize)
-	_, err := r.Seek(FMTSize+v.dataSize, io.SeekStart)
+	_, err := r.Seek(v.offset, io.SeekStart)
 	if err != nil {
 		return nil, nil, err
 	}
