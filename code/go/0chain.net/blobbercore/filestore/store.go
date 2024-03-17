@@ -37,6 +37,7 @@ type FileOutputData struct {
 	Size int64
 	// ChunkUploaded the chunk is uploaded or not.
 	ChunkUploaded bool
+	ContentSize   int64
 }
 
 type FileObjectHandler func(contentHash string, contentSize int64)
@@ -45,6 +46,7 @@ type FileStorer interface {
 	// WriteFile write chunk file into disk
 	Initialize() error
 	WriteFile(allocID, connID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error)
+	WriteDataToTree(allocID, connID, fileName, filePathHash string, hahser *CommitHasher) error
 	CommitWrite(allocID, connID string, fileData *FileInputData) (bool, error)
 	DeleteTempFile(allocID, connID string, fileData *FileInputData) error
 	DeleteFile(allocID, contentHash string) error
@@ -62,6 +64,7 @@ type FileStorer interface {
 	GetFilePathSize(allocID, filehash, thumbHash string) (int64, int64, error)
 	GetTotalFilesSize() uint64
 	GetTotalFilesSizeOfAllocation(allocID string) uint64
+	GetTempFilePath(allocID, connID, fileName, filePathHash string) string
 
 	IterateObjects(allocationID string, handler FileObjectHandler) error
 	// SetupAllocation(allocationID string, skipCreate bool) (*StoreAllocation, error)

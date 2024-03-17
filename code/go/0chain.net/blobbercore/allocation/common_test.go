@@ -29,6 +29,10 @@ func (mfs *MockFileStore) WriteFile(allocID, connID string,
 	}, nil
 }
 
+func (mfs *MockFileStore) WriteDataToTree(allocID, connID, fileName, filePathHash string, hasher *filestore.CommitHasher) error {
+	return nil
+}
+
 func (mfs *MockFileStore) CommitWrite(allocID, connID string, fileData *filestore.FileInputData) (bool, error) {
 	return true, nil
 }
@@ -62,6 +66,10 @@ func (mfs *MockFileStore) GetFileBlock(rin *filestore.ReadBlockInput) (*filestor
 
 func (mfs *MockFileStore) GetFilePathSize(allocID, contentHash, thumbHash string) (int64, int64, error) {
 	return 0, 0, nil
+}
+
+func (mfs *MockFileStore) GetTempFilePath(allocID, connID, fileName, filePathHash string) string {
+	return ""
 }
 
 func (mfs *MockFileStore) GetBlocksMerkleTreeForChallenge(cir *filestore.ChallengeReadBlockInput) (*filestore.ChallengeResponse, error) {
