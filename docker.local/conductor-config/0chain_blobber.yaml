@@ -150,3 +150,7 @@ integration_tests:
 admin:
   username: "admin"
   password: "password"
+
+0box:
+  client_id: "0box_client_id"
+  public_key: "0box_public_key"
