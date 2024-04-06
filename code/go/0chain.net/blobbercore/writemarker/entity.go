@@ -17,6 +17,7 @@ import (
 )
 
 type WriteMarker struct {
+	Version                string `gorm:"-" json:"version"`
 	AllocationRoot         string `gorm:"column:allocation_root;size:64;primaryKey" json:"allocation_root"`
 	PreviousAllocationRoot string `gorm:"column:prev_allocation_root;size:64" json:"prev_allocation_root"`
 	FileMetaRoot           string `gorm:"column:file_meta_root;size:64" json:"file_meta_root"`
@@ -48,6 +49,8 @@ const (
 	Failed     WriteMarkerStatus = 2
 	Rollbacked WriteMarkerStatus = 3
 )
+
+const MARKER_VERSION = "v2"
 
 type WriteMarkerEntity struct {
 	// WM new WriteMarker from client
@@ -146,6 +149,9 @@ func GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*WriteMa
 	}
 	if wm.Status == Committed {
 		wm.WM.ChainLength = 0
+	}
+	if wm.WM.ChainHash != "" {
+		wm.WM.Version = MARKER_VERSION
 	}
 	return wm, nil
 }
