@@ -8,6 +8,7 @@ import (
 type UploadData struct {
 	Offset    int64
 	DataBytes int64
+	IsFinal   bool
 }
 
 type queue []UploadData
@@ -68,9 +69,10 @@ func (pq *SeqPriorityQueue) Push(v UploadData) {
 	pq.lock.Unlock()
 }
 
-func (pq *SeqPriorityQueue) Done(v UploadData) {
+func (pq *SeqPriorityQueue) Done(v UploadData, dataSize int64) {
 	pq.lock.Lock()
 	pq.done = true
+	pq.dataSize = dataSize
 	heap.Push(&pq.queue, v)
 	pq.cv.Signal()
 	pq.lock.Unlock()
@@ -81,11 +83,12 @@ func (pq *SeqPriorityQueue) Popup() UploadData {
 	for pq.queue.Len() == 0 || (!pq.done && pq.queue[0].Offset > pq.next) {
 		pq.cv.Wait()
 	}
-	if pq.done {
+	if pq.done && pq.dataSize > 0 {
 		pq.lock.Unlock()
 		return UploadData{
 			Offset:    pq.next,
 			DataBytes: pq.dataSize - pq.next,
+			IsFinal:   true,
 		}
 	}
 	retItem := UploadData{
@@ -99,6 +102,7 @@ func (pq *SeqPriorityQueue) Popup() UploadData {
 		pq.next += item.DataBytes
 	}
 	retItem.DataBytes = pq.next - retItem.Offset
+	retItem.IsFinal = pq.done
 	pq.lock.Unlock()
 	return retItem
 }
