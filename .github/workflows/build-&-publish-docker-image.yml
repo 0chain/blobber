@@ -294,7 +294,7 @@ jobs:
               https://api.tenderly.co/api/v1/account/zus_network/project/project/fork/${{ env.TENDERLY_FORK_ID }}/simulate
 
       - name: "Deploy 0Chain"
-        uses: 0chain/actions/deploy-0chain@feature/blobber-auth
+        uses: 0chain/actions/deploy-0chain@master
         with:
           repo_snapshots_branch: "<CURRENT BRANCH WITH FALLBACK TO CURRENT_SPRINT>"
           kube_config: ${{ secrets[format('DEV{0}KC', env.RUNNER_NUMBER)] }}
@@ -309,7 +309,7 @@ jobs:
           svc_account_secret: ${{ secrets.SVC_ACCOUNT_SECRET }}
 
       - name: "Run System tests"
-        uses: 0chain/actions/run-system-tests@feature/blobber-auth
+        uses: 0chain/actions/run-system-tests@master
         with:
           repo_snapshots_branch: "<CURRENT BRANCH WITH FALLBACK TO CURRENT_SPRINT>"
           network: ${{ env.NETWORK_URL }}
