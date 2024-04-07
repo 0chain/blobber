@@ -22,13 +22,54 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/download/{allocation}", RateLimitByFileRL(common.ToByteStream(WithConnection(DownloadHandler)))).Methods(http.MethodGet, http.MethodOptions)
 }
 
-// swagger:route GET /v1/block/magic/get getmagicblock
-// a handler to respond to block queries
+
+// swagger:route GET /v1/file/list/{allocation} list
+// ListHandler is the handler to respond to list requests from clients, 
+// it returns a list of files in the allocation,
+// along with the metadata of the files.
+//
+// parameters:
+//
+//   +name: allocation
+//     description: TxHash of the allocation in question.
+//     in: path
+//     required: true
+//     type: string
+//   +name: list
+//     description: Whether or not to list the files inside the directory, not just data about the path itself.
+//     in: query
+//     type: boolean
+//     required: false
+//   +name: limit
+//	   description: The number of files to return (for pagination).
+//     in: query
+//     type: integer
+//     required: true
+//   +name: offset
+//     description: The number of files to skip before returning (for pagination).
+//     in: query
+//     type: integer
+//     required: true
+//	 +name: X-App-Client-ID
+//     description: The ID/Wallet address of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: X-App-Client-Key
+// 	   description: The key of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: ALLOCATION-ID
+//	   description: The ID of the allocation in question.
+//     in: header
+//     type: string
+//     required: true
 //
 // responses:
-//  200: ListResult
-//  404:
-/* ListHandler is the handler to respond to list requests from clients*/
+//
+//   200: ListResult
+
 func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return listHandler(ctx, r)
 }

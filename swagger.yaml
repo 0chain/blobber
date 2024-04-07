@@ -1,0 +1,658 @@
+basePath: /
+definitions:
+    CommitResult:
+        properties:
+            allocation_root:
+                type: string
+                x-go-name: AllocationRoot
+            error_msg:
+                type: string
+                x-go-name: ErrorMessage
+            success:
+                type: boolean
+                x-go-name: Success
+            write_marker:
+                $ref: '#/definitions/WriteMarker'
+        type: object
+        x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp
+    ConnectionResult:
+        properties:
+            allocation_root:
+                type: string
+                x-go-name: AllocationRoot
+            connection_id:
+                type: string
+                x-go-name: ConnectionID
+        type: object
+        x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp
+    DeletedAt:
+        $ref: '#/definitions/NullTime'
+    ListResult:
+        properties:
+            allocation_root:
+                type: string
+                x-go-name: AllocationRoot
+            list:
+                items:
+                    additionalProperties: {}
+                    type: object
+                type: array
+                x-go-name: Entities
+            meta_data:
+                additionalProperties: {}
+                type: object
+                x-go-name: Meta
+        type: object
+        x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp
+    NullTime:
+        description: |-
+            NullTime implements the [Scanner] interface so
+            it can be used as a scan destination, similar to [NullString].
+        properties:
+            Time:
+                format: date-time
+                type: string
+            Valid:
+                type: boolean
+        title: NullTime represents a [time.Time] that may be null.
+        type: object
+        x-go-package: database/sql
+    PaginatedRef:
+        properties:
+            actual_file_hash:
+                type: string
+                x-go-name: ActualFileHash
+            actual_file_hash_signature:
+                type: string
+                x-go-name: ActualFileHashSignature
+            actual_file_size:
+                format: int64
+                type: integer
+                x-go-name: ActualFileSize
+            actual_thumbnail_hash:
+                type: string
+                x-go-name: ActualThumbnailHash
+            actual_thumbnail_size:
+                format: int64
+                type: integer
+                x-go-name: ActualThumbnailSize
+            allocation_id:
+                type: string
+                x-go-name: AllocationID
+            allocation_root:
+                type: string
+                x-go-name: AllocationRoot
+            chunk_size:
+                format: int64
+                type: integer
+                x-go-name: ChunkSize
+            created_at:
+                $ref: '#/definitions/Timestamp'
+            custom_meta:
+                type: string
+                x-go-name: CustomMeta
+            encrypted_key:
+                type: string
+                x-go-name: EncryptedKey
+            encrypted_key_point:
+                type: string
+                x-go-name: EncryptedKeyPoint
+            file_id:
+                type: string
+                x-go-name: FileID
+            fixed_merkle_root:
+                type: string
+                x-go-name: FixedMerkleRoot
+            hash:
+                type: string
+                x-go-name: Hash
+            id:
+                format: int64
+                type: integer
+                x-go-name: ID
+            level:
+                format: int64
+                type: integer
+                x-go-name: PathLevel
+            lookup_hash:
+                type: string
+                x-go-name: LookupHash
+            mimetype:
+                type: string
+                x-go-name: MimeType
+            name:
+                type: string
+                x-go-name: Name
+            num_blocks:
+                format: int64
+                type: integer
+                x-go-name: NumBlocks
+            parent_path:
+                type: string
+                x-go-name: ParentPath
+            path:
+                type: string
+                x-go-name: Path
+            path_hash:
+                type: string
+                x-go-name: PathHash
+            size:
+                format: int64
+                type: integer
+                x-go-name: Size
+            thumbnail_hash:
+                type: string
+                x-go-name: ThumbnailHash
+            thumbnail_size:
+                format: int64
+                type: integer
+                x-go-name: ThumbnailSize
+            type:
+                type: string
+                x-go-name: Type
+            updated_at:
+                $ref: '#/definitions/Timestamp'
+            validation_root:
+                type: string
+                x-go-name: ValidationRoot
+            validation_root_signature:
+                type: string
+                x-go-name: ValidationRootSignature
+        type: object
+        x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference
+    RecentRefResult:
+        properties:
+            offset:
+                format: int64
+                type: integer
+                x-go-name: Offset
+            refs:
+                items:
+                    $ref: '#/definitions/PaginatedRef'
+                type: array
+                x-go-name: Refs
+        type: object
+        x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp
+    Ref:
+        properties:
+            ActualFileHash:
+                type: string
+            ActualFileSize:
+                format: int64
+                type: integer
+            ActualThumbnailHash:
+                type: string
+            ActualThumbnailSize:
+                format: int64
+                type: integer
+            AllocationID:
+                type: string
+            AllocationRoot:
+                type: string
+            Children:
+                items:
+                    $ref: '#/definitions/Ref'
+                type: array
+            ChunkSize:
+                format: int64
+                type: integer
+            CreatedAt:
+                $ref: '#/definitions/Timestamp'
+            CustomMeta:
+                type: string
+            DeletedAt:
+                $ref: '#/definitions/DeletedAt'
+            EncryptedKey:
+                type: string
+            EncryptedKeyPoint:
+                type: string
+            FileID:
+                type: string
+            FileMetaHash:
+                type: string
+            FixedMerkleRoot:
+                type: string
+            Hash:
+                type: string
+            HashToBeComputed:
+                type: boolean
+            ID:
+                format: int64
+                type: integer
+            IsPrecommit:
+                type: boolean
+            LookupHash:
+                type: string
+            MimeType:
+                type: string
+            Name:
+                type: string
+            NumBlocks:
+                format: int64
+                type: integer
+            ParentPath:
+                type: string
+            Path:
+                type: string
+            PathHash:
+                type: string
+            PathLevel:
+                format: int64
+                type: integer
+            PrevThumbnailHash:
+                type: string
+            Size:
+                format: int64
+                type: integer
+            ThumbnailHash:
+                type: string
+            ThumbnailSize:
+                format: int64
+                type: integer
+            Type:
+                type: string
+            UpdatedAt:
+                $ref: '#/definitions/Timestamp'
+            ValidationRoot:
+                type: string
+            actual_file_hash_signature:
+                type: string
+                x-go-name: ActualFileHashSignature
+            num_of_block_downloads:
+                format: int64
+                type: integer
+                x-go-name: NumBlockDownloads
+            num_of_updates:
+                format: int64
+                type: integer
+                x-go-name: NumUpdates
+            prev_validation_root:
+                type: string
+                x-go-name: PrevValidationRoot
+            validation_root_signature:
+                type: string
+                x-go-name: ValidationRootSignature
+        type: object
+        x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference
+    RefResult:
+        properties:
+            latest_write_marker:
+                $ref: '#/definitions/WriteMarker'
+            offset_date:
+                $ref: '#/definitions/Timestamp'
+            offset_path:
+                type: string
+                x-go-name: OffsetPath
+            refs:
+                items:
+                    $ref: '#/definitions/PaginatedRef'
+                type: array
+                x-go-name: Refs
+            total_pages:
+                format: int64
+                type: integer
+                x-go-name: TotalPages
+        type: object
+        x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp
+    ReferencePath:
+        properties:
+            Ref:
+                $ref: '#/definitions/Ref'
+            list:
+                items:
+                    $ref: '#/definitions/ReferencePath'
+                type: array
+                x-go-name: List
+            meta_data:
+                additionalProperties: {}
+                type: object
+                x-go-name: Meta
+        type: object
+        x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference
+    ReferencePathResult:
+        properties:
+            Ref:
+                $ref: '#/definitions/Ref'
+            latest_write_marker:
+                $ref: '#/definitions/WriteMarker'
+            list:
+                items:
+                    $ref: '#/definitions/ReferencePath'
+                type: array
+                x-go-name: List
+            meta_data:
+                additionalProperties: {}
+                type: object
+                x-go-name: Meta
+        type: object
+        x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp
+    Timestamp:
+        format: int64
+        title: Timestamp - just a wrapper to control the json encoding */
+        type: integer
+        x-go-package: github.com/0chain/blobber/code/go/0chain.net/core/common
+    UploadResult:
+        properties:
+            filename:
+                type: string
+                x-go-name: Filename
+            fixed_merkle_root:
+                type: string
+                x-go-name: FixedMerkleRoot
+            hash:
+                type: string
+                x-go-name: Hash
+            size:
+                format: int64
+                type: integer
+                x-go-name: Size
+            upload_length:
+                description: UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
+                format: int64
+                type: integer
+                x-go-name: UploadLength
+            upload_offset:
+                description: Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
+                format: int64
+                type: integer
+                x-go-name: UploadOffset
+            validation_root:
+                type: string
+                x-go-name: ValidationRoot
+        type: object
+        x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation
+    WriteMarker:
+        properties:
+            allocation_id:
+                type: string
+                x-go-name: AllocationID
+            allocation_root:
+                type: string
+                x-go-name: AllocationRoot
+            blobber_id:
+                type: string
+                x-go-name: BlobberID
+            client_id:
+                type: string
+                x-go-name: ClientID
+            file_meta_root:
+                type: string
+                x-go-name: FileMetaRoot
+            prev_allocation_root:
+                type: string
+                x-go-name: PreviousAllocationRoot
+            signature:
+                type: string
+                x-go-name: Signature
+            size:
+                format: int64
+                type: integer
+                x-go-name: Size
+            timestamp:
+                $ref: '#/definitions/Timestamp'
+        type: object
+        x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker
+info:
+    description: Documentation of the blobber API.
+    title: Züs Blobber API.
+    version: 1.12.0
+paths:
+    /allocation:
+        get:
+            description: get allocation details
+            operationId: allocation
+            parameters:
+                - description: allocation ID
+                  in: query
+                  name: id
+                  required: true
+                  type: string
+            responses:
+                "200":
+                    description: CommitResult
+                    schema:
+                        $ref: '#/definitions/CommitResult'
+                "400":
+                    description: ""
+                "500":
+                    description: ""
+    /v1/connection/commit/{allocation}:
+        get:
+            description: CommitHandler is the handler to respond to upload requests from clients
+            operationId: commithandler
+            parameters:
+                - description: the allocation ID
+                  in: path
+                  name: allocation
+                  required: true
+                  type: string
+            responses:
+                "200":
+                    description: CommitResult
+                    schema:
+                        $ref: '#/definitions/CommitResult'
+                "400":
+                    description: ""
+                "500":
+                    description: ""
+    /v1/connection/create/{allocation}:
+        get:
+            description: connectionHandler is the handler to respond to create connection requests from clients
+            operationId: connectionHandler
+            parameters:
+                - description: the allocation ID
+                  in: path
+                  name: allocation
+                  required: true
+                  type: string
+            responses:
+                "200":
+                    description: ""
+                "400":
+                    description: ""
+                "500":
+                    description: ""
+    /v1/dir/{allocation}:
+        get:
+            description: CreateDirHandler is the handler to respond to create dir for allocation
+            operationId: createdirhandler
+            parameters:
+                - description: the allocation ID
+                  in: path
+                  name: allocation
+                  required: true
+                  type: string
+            responses:
+                "200":
+                    description: UploadResult
+                    schema:
+                        $ref: '#/definitions/UploadResult'
+                "400":
+                    description: ""
+                "500":
+                    description: ""
+    /v1/file/commitmetatxn/{allocation}:
+        post:
+            description: CommitHandler is the handler to respond to upload requests from clients
+            operationId: commitmetatxn
+            parameters:
+                - description: the allocation ID
+                  in: path
+                  name: allocation
+                  required: true
+                  type: string
+                - description: transaction id
+                  in: body
+                  name: body
+                  required: true
+                  schema:
+                    description: transaction id
+                    type: string
+            responses:
+                "200":
+                    description: ""
+                "400":
+                    description: ""
+                "500":
+                    description: ""
+    /v1/file/copy/{allocation}:
+        get:
+            description: copy an allocation
+            operationId: copyallocation
+            parameters:
+                - description: the allocation ID
+                  in: path
+                  name: allocation
+                  required: true
+                  type: string
+            responses:
+                "200":
+                    description: UploadResult
+                    schema:
+                        $ref: '#/definitions/UploadResult'
+                "400":
+                    description: ""
+                "500":
+                    description: ""
+    /v1/file/list/{allocation}:
+        get:
+            description: "ListHandler is the handler to respond to list requests from clients, \nit returns a list of files in the allocation,\nalong with the metadata of the files."
+            operationId: list
+            parameters:
+                - description: TxHash of the allocation in question.
+                  in: path
+                  name: allocation
+                  required: true
+                  type: string
+                - description: Whether or not to list the files inside the directory, not just data about the path itself.
+                  in: query
+                  name: list
+                  type: boolean
+                - description: The number of files to return (for pagination).
+                  in: query
+                  name: limit
+                  required: true
+                  type: integer
+                - description: The number of files to skip before returning (for pagination).
+                  in: query
+                  name: offset
+                  required: true
+                  type: integer
+                - description: The ID/Wallet address of the client sending the request.
+                  in: header
+                  name: X-App-Client-ID
+                  required: true
+                  type: string
+                - description: The key of the client sending the request.
+                  in: header
+                  name: X-App-Client-Key
+                  required: true
+                  type: string
+                - description: The ID of the allocation in question.
+                  in: header
+                  name: ALLOCATION-ID
+                  required: true
+                  type: string
+            responses:
+                "200":
+                    description: ListResult
+                    schema:
+                        $ref: '#/definitions/ListResult'
+    /v1/file/move/{allocation}:
+        get:
+            description: move an allocation
+            operationId: moveallocation
+            parameters:
+                - description: the allocation ID
+                  in: path
+                  name: allocation
+                  required: true
+                  type: string
+            responses:
+                "200":
+                    description: UploadResult
+                    schema:
+                        $ref: '#/definitions/UploadResult'
+                "400":
+                    description: ""
+                "500":
+                    description: ""
+    /v1/file/objecttree/{allocation}:
+        get:
+            description: get object tree reference path
+            operationId: referencepath
+            parameters:
+                - description: allocation ID
+                  in: path
+                  name: allocation
+                  required: true
+                  type: string
+            responses:
+                "200":
+                    description: ReferencePathResult
+                    schema:
+                        $ref: '#/definitions/ReferencePathResult'
+                "400":
+                    description: ""
+                "500":
+                    description: ""
+    /v1/file/refs/{allocation}:
+        get:
+            description: get object tree reference path
+            operationId: refshandler
+            parameters:
+                - description: allocation ID
+                  in: path
+                  name: allocation
+                  required: true
+                  type: string
+            responses:
+                "200":
+                    description: RefResult
+                    schema:
+                        $ref: '#/definitions/RefResult'
+                "400":
+                    description: ""
+                "500":
+                    description: ""
+    /v1/file/refs/recent/{allocation}:
+        get:
+            description: get recent allocation
+            operationId: recentalloc
+            parameters:
+                - description: allocation ID
+                  in: path
+                  name: allocation
+                  required: true
+                  type: string
+            responses:
+                "200":
+                    description: RecentRefResult
+                    schema:
+                        $ref: '#/definitions/RecentRefResult'
+                "400":
+                    description: ""
+                "500":
+                    description: ""
+    /v1/file/rename/{allocation}:
+        get:
+            description: rename an allocation
+            operationId: renameallocation
+            parameters:
+                - description: the allocation ID
+                  in: path
+                  name: allocation
+                  required: true
+                  type: string
+            responses:
+                "200":
+                    description: UploadResult
+                    schema:
+                        $ref: '#/definitions/UploadResult'
+                "400":
+                    description: ""
+                "500":
+                    description: ""
+schemes:
+    - https
+swagger: "2.0"

@@ -1,19 +1,3 @@
-//	0chain Blobber API:
-//	 version: 0.0.1
-//	 title: 0chain Blobber API
-//	Schemes: http, https
-//	BasePath: /
-//	Produces:
-//	  - application/json
-//
-// securityDefinitions:
-//
-//	apiKey:
-//	  type: apiKey
-//	  in: header
-//	  name: authorization
-//
-// swagger:meta
 package handler
 
 import (
@@ -368,17 +352,26 @@ func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 //
 // parameters:
 //
-//	+name: auth_token
-//	 description: auth token
-//	 required: true
-//	 in: body
-//	 type: string
+//  +name: allocation
+//   description: the allocation ID
+//   required: true
+//   in: path
+//   type: string
 //
-//	+name: txn_id
-//	 description: transaction id
+//	+name: body
+//	 description: body
 //	 required: true
 //	 in: body
-//	 type: string
+//	 schema:
+//		properties:
+//			auth_token:
+//				type: string
+//				description: auth token
+//				required: true
+//           txn_id:
+//				type: string
+//				description: transaction id
+//				required: true
 //
 // responses:
 //
