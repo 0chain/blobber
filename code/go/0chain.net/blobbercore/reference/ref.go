@@ -98,7 +98,9 @@ func (ref *Ref) BeforeCreate(tx *gorm.DB) (err error) {
 	if !(ref.CreatedAt > 0) {
 		return fmt.Errorf("invalid timestamp value while creating for path %s", ref.Path)
 	}
-	ref.UpdatedAt = ref.CreatedAt
+	if ref.UpdatedAt == 0 {
+		ref.UpdatedAt = ref.CreatedAt
+	}
 	return nil
 }
 
