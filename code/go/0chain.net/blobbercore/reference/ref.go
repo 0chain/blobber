@@ -88,6 +88,7 @@ type Ref struct {
 	ChunkSize         int64          `gorm:"column:chunk_size;not null;default:65536" dirlist:"chunk_size" filelist:"chunk_size"`
 	NumUpdates        int64          `gorm:"column:num_of_updates" json:"num_of_updates"`
 	NumBlockDownloads int64          `gorm:"column:num_of_block_downloads" json:"num_of_block_downloads"`
+	FilestoreVersion  int            `gorm:"column:filestore_version" json:"-"`
 	HashToBeComputed  bool           `gorm:"-"`
 	prevID            int64          `gorm:"-"`
 }
