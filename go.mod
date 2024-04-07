@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.13.0-RC2.0.20240306090109-d8a7fc85cb35
+	github.com/0chain/gosdk v1.13.4-0.20240407191237-9a015a0f33cc
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.2
 	github.com/go-openapi/runtime v0.26.0
@@ -74,7 +74,7 @@ require (
 )
 
 require (
-	github.com/0chain/common v0.0.6-0.20230127095721-8df4d1d72565 // indirect
+	github.com/0chain/common v0.0.6-0.20230127095721-8df4d1d72565
 	github.com/Luzifer/go-openssl/v3 v3.1.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/btcsuite/btcd v0.23.4 // indirect
