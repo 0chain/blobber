@@ -24,6 +24,7 @@ var (
 
 type markerData struct {
 	firstMarkerTimestamp common.Timestamp
+	lastMarkerTimestamp  common.Timestamp
 	allocationID         string
 	retries              int
 	chainLength          int
@@ -39,9 +40,11 @@ func SaveMarkerData(allocationID string, timestamp common.Timestamp, chainLength
 			firstMarkerTimestamp: timestamp,
 			allocationID:         allocationID,
 			chainLength:          1,
+			lastMarkerTimestamp:  timestamp,
 		}
 	} else {
 		data.chainLength = chainLength
+		data.lastMarkerTimestamp = timestamp
 		if data.chainLength == 1 {
 			data.firstMarkerTimestamp = timestamp
 		}
@@ -106,7 +109,7 @@ func redeemWriteMarker(md *markerData) error {
 			}
 
 		} else {
-			deleteMarkerData(allocationID)
+			go deleteMarkerData(allocationID)
 		}
 	}()
 
@@ -126,7 +129,7 @@ func redeemWriteMarker(md *markerData) error {
 
 	if alloc.Finalized {
 		logging.Logger.Info("Allocation is finalized. Skipping redeeming the write marker.", zap.Any("allocation", allocationID))
-		deleteMarkerData(allocationID)
+		go deleteMarkerData(allocationID)
 		shouldRollback = true
 		return nil
 	}
@@ -150,7 +153,7 @@ func redeemWriteMarker(md *markerData) error {
 		if retryRedeem(err.Error()) {
 			go tryAgain(md)
 		} else {
-			deleteMarkerData(allocationID)
+			go deleteMarkerData(allocationID)
 		}
 		shouldRollback = true
 		return err
@@ -185,7 +188,7 @@ func redeemWriteMarker(md *markerData) error {
 
 func startRedeem(ctx context.Context, res []allocation.Res) {
 	logging.Logger.Info("Start redeeming writemarkers")
-	chanSize := 200
+	chanSize := 400
 	if len(res) > chanSize {
 		chanSize = len(res)
 	}
@@ -257,7 +260,7 @@ func startCollector(ctx context.Context) {
 }
 
 func (md *markerData) processMarker() bool {
-	return !md.processing && (md.chainLength >= config.Configuration.MaxChainLength || common.Now()-md.firstMarkerTimestamp > common.Timestamp(config.Configuration.MaxTimestampGap))
+	return !md.processing && (md.chainLength >= config.Configuration.MaxChainLength || common.Now()-md.firstMarkerTimestamp > common.Timestamp(config.Configuration.MaxTimestampGap) || common.Now()-md.lastMarkerTimestamp > common.Timestamp(config.Configuration.MarkerRedeemInterval))
 }
 
 // TODO: don't delete prev WM
