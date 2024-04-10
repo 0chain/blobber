@@ -96,6 +96,9 @@ openconnection_cleaner:
 writemarker_redeem:
   frequency: 10
   num_workers: 5
+  max_chain_length: 32
+  max_timestamp_gap: 1800 # max timestamp gap to redeem write marker in seconds
+  marker_redeem_interval: 10m # interval to check for write markers which are ready to redeem
 readmarker_redeem:
   frequency: 10
   num_workers: 5
