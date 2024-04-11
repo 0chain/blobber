@@ -462,6 +462,7 @@ func (fsh *StorageHandler) GetLatestWriteMarker(ctx context.Context, r *http.Req
 	}
 
 	var result blobberhttp.LatestWriteMarkerResult
+	result.Version = writemarker.MARKER_VERSION
 	if latestWM != nil {
 		if latestWM.Status == writemarker.Committed {
 			latestWM.WM.ChainLength = 0 // start a new chain
@@ -561,6 +562,7 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 	}
 
 	var refPathResult blobberhttp.ReferencePathResult
+	refPathResult.Version = writemarker.MARKER_VERSION
 	refPathResult.ReferencePath = refPath
 	if latestWM != nil {
 		if latestWM.Status == writemarker.Committed {
