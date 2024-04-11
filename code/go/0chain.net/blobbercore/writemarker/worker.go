@@ -266,7 +266,7 @@ func startCollector(ctx context.Context) {
 }
 
 func (md *markerData) processMarker() bool {
-	return !md.processing && (md.chainLength >= config.Configuration.MaxChainLength || common.Now()-md.firstMarkerTimestamp > common.Timestamp(config.Configuration.MaxTimestampGap) || common.Now()-md.lastMarkerTimestamp > common.Timestamp(config.Configuration.MarkerRedeemInterval))
+	return !md.processing && (md.chainLength >= config.Configuration.MaxChainLength || common.Now()-md.firstMarkerTimestamp > common.Timestamp(config.Configuration.MaxTimestampGap) || common.Now()-md.lastMarkerTimestamp > common.Timestamp(config.Configuration.MarkerRedeemInterval.Seconds()))
 }
 
 // TODO: don't delete prev WM
