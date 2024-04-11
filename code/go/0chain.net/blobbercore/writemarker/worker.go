@@ -35,24 +35,30 @@ func SaveMarkerData(allocationID string, timestamp common.Timestamp, chainLength
 	logging.Logger.Info("SaveMarkerData", zap.Any("allocationID", allocationID), zap.Any("timestamp", timestamp), zap.Any("chainLength", chainLength))
 	markerDataMut.Lock()
 	defer markerDataMut.Unlock()
-	if data, ok := markerDataMap[allocationID]; !ok {
-		markerDataMap[allocationID] = &markerData{
+	var (
+		data *markerData
+		ok   bool
+	)
+	data, ok = markerDataMap[allocationID]
+	if !ok {
+		data = &markerData{
 			firstMarkerTimestamp: timestamp,
 			allocationID:         allocationID,
 			chainLength:          1,
 			lastMarkerTimestamp:  timestamp,
 		}
+		markerDataMap[allocationID] = data
 	} else {
 		data.chainLength = chainLength
 		data.lastMarkerTimestamp = timestamp
 		if data.chainLength == 1 {
 			data.firstMarkerTimestamp = timestamp
 		}
-		if data.processMarker() {
-			logging.Logger.Info("ProcessMarkerData", zap.Any("allocationID", allocationID), zap.Any("timestamp", timestamp), zap.Any("chainLength", chainLength))
-			data.processing = true
-			writeMarkerChan <- data
-		}
+	}
+	if data.processMarker() {
+		logging.Logger.Info("ProcessMarkerData", zap.Any("allocationID", allocationID), zap.Any("timestamp", timestamp), zap.Any("chainLength", chainLength))
+		data.processing = true
+		writeMarkerChan <- data
 	}
 }
 
