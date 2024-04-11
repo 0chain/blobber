@@ -613,6 +613,10 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	writemarkerEntity := &writemarker.WriteMarkerEntity{}
 	writemarkerEntity.WM = writeMarker
+	writemarkerEntity.WM.ChainLength += 1
+	if writemarkerEntity.WM.ChainLength > config.Configuration.MaxChainLength {
+		return nil, common.NewError("chain_length_exceeded", "Chain length exceeded")
+	}
 
 	err = writemarkerEntity.VerifyMarker(ctx, allocationObj, connectionObj)
 	if err != nil {
@@ -700,10 +704,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	writemarkerEntity.ConnectionID = connectionObj.ID
 	writemarkerEntity.ClientPublicKey = clientKey
-	writemarkerEntity.WM.ChainLength += 1
-	if writemarkerEntity.WM.ChainLength > config.Configuration.MaxChainLength {
-		return nil, common.NewError("chain_length_exceeded", "Chain length exceeded")
-	}
 
 	db := datastore.GetStore().GetTransaction(ctx)
 	writemarkerEntity.Latest = true
