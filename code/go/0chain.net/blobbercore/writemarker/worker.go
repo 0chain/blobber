@@ -2,6 +2,7 @@ package writemarker
 
 import (
 	"context"
+	"math/rand"
 	"strings"
 	"sync"
 	"time"
@@ -29,6 +30,15 @@ type markerData struct {
 	retries              int
 	chainLength          int
 	processing           bool
+	inCommit             bool // if new write marker is being committed
+}
+
+func SetCommittingMarker(allocationID string, committing bool) {
+	markerDataMut.Lock()
+	defer markerDataMut.Unlock()
+	if data, ok := markerDataMap[allocationID]; ok {
+		data.inCommit = committing
+	}
 }
 
 func SaveMarkerData(allocationID string, timestamp common.Timestamp, chainLength int) {
@@ -51,6 +61,7 @@ func SaveMarkerData(allocationID string, timestamp common.Timestamp, chainLength
 	} else {
 		data.chainLength = chainLength
 		data.lastMarkerTimestamp = timestamp
+		data.inCommit = false
 		if data.chainLength == 1 {
 			data.firstMarkerTimestamp = timestamp
 		}
@@ -266,7 +277,11 @@ func startCollector(ctx context.Context) {
 }
 
 func (md *markerData) processMarker() bool {
-	return !md.processing && (md.chainLength >= config.Configuration.MaxChainLength || common.Now()-md.firstMarkerTimestamp > common.Timestamp(config.Configuration.MaxTimestampGap) || common.Now()-md.lastMarkerTimestamp > common.Timestamp(config.Configuration.MarkerRedeemInterval.Seconds()))
+	secondsInterval := int64(config.Configuration.MarkerRedeemInterval.Seconds())
+	randTime := rand.Int63n(secondsInterval)
+	randTime += secondsInterval / 2 // interval of secondsInterval/2 to 3*secondsInterval/2
+
+	return !md.processing && !md.inCommit && (md.chainLength >= config.Configuration.MaxChainLength || common.Now()-md.firstMarkerTimestamp > common.Timestamp(config.Configuration.MaxTimestampGap) || common.Now()-md.lastMarkerTimestamp > common.Timestamp(randTime))
 }
 
 // TODO: don't delete prev WM

@@ -16,7 +16,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/gosdk/zcncore"
-	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -120,8 +119,7 @@ func GetBlobberInfoJson() BlobberInfo {
 func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.StatusCodeResponderF {
 	return func(ctx context.Context, r *http.Request) (resp interface{}, statusCode int, err error) {
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
-		var vars = mux.Vars(r)
-		allocationID := vars["allocation"]
+		allocationID := r.Header.Get(common.AllocationIdHeader)
 		if allocationID == "" {
 			return nil, http.StatusBadRequest, common.NewError("invalid_allocation_id", "Allocation ID is required")
 		}
@@ -132,7 +130,7 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 		Logger.Info("Locking allocation", zap.String("allocation_id", allocationID))
 		mutex.Lock()
 		defer mutex.Unlock()
-
+		writemarker.SetCommittingMarker(allocationID, true)
 		tx := GetMetaDataStore().GetTransaction(ctx)
 		resp, statusCode, err = handler(ctx, r)
 
@@ -143,6 +141,7 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 				if rollErr != nil {
 					Logger.Error("couldn't rollback", zap.Error(err))
 				}
+				writemarker.SetCommittingMarker(allocationID, false)
 			}
 		}()
 
@@ -152,15 +151,19 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 		}
 		err = tx.Commit().Error
 		if err != nil {
-			return resp, statusCode, common.NewErrorf("commit_error",
+			Logger.Error("Error committing to meta store", zap.Error(err))
+			return resp, http.StatusInternalServerError, common.NewErrorf("commit_error",
 				"error committing to meta store: %v", err)
 		}
+
+		Logger.Info("commit_success", zap.String("allocation_id", allocationID), zap.Any("response", resp))
 
 		if blobberRes, ok := resp.(*blobberhttp.CommitResult); ok {
 			// Save the write marker data
 			writemarker.SaveMarkerData(allocationID, blobberRes.WriteMarker.WM.Timestamp, blobberRes.WriteMarker.WM.ChainLength)
 		} else {
 			Logger.Error("Invalid response type for commit handler")
+			return resp, http.StatusInternalServerError, common.NewError("invalid_response_type", "Invalid response type for commit handler")
 		}
 		return
 	}
