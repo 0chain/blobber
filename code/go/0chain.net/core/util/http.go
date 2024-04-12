@@ -27,7 +27,7 @@ func NewHTTPRequest(method, url string, data []byte) (*http.Request, context.Con
 	req.Header.Set("X-App-Client-ID", node.Self.ID)
 	req.Header.Set("X-App-Client-Key", node.Self.PublicKey)
 	req.Header.Set("X-App-Request-Hash", requestHash)
-	ctx, cncl := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cncl := context.WithTimeout(context.Background(), time.Second*60)
 	return req, ctx, cncl, err
 }
 
