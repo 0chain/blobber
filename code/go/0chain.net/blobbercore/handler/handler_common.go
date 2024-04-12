@@ -16,7 +16,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/gosdk/zcncore"
-	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -120,8 +119,7 @@ func GetBlobberInfoJson() BlobberInfo {
 func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.StatusCodeResponderF {
 	return func(ctx context.Context, r *http.Request) (resp interface{}, statusCode int, err error) {
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
-		var vars = mux.Vars(r)
-		allocationID := vars["allocation"]
+		allocationID := r.Header.Get(common.AllocationIdHeader)
 		if allocationID == "" {
 			return nil, http.StatusBadRequest, common.NewError("invalid_allocation_id", "Allocation ID is required")
 		}
