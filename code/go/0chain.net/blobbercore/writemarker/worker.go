@@ -2,6 +2,7 @@ package writemarker
 
 import (
 	"context"
+	"math/rand"
 	"strings"
 	"sync"
 	"time"
@@ -266,7 +267,11 @@ func startCollector(ctx context.Context) {
 }
 
 func (md *markerData) processMarker() bool {
-	return !md.processing && (md.chainLength >= config.Configuration.MaxChainLength || common.Now()-md.firstMarkerTimestamp > common.Timestamp(config.Configuration.MaxTimestampGap) || common.Now()-md.lastMarkerTimestamp > common.Timestamp(config.Configuration.MarkerRedeemInterval.Seconds()))
+	secondsInterval := int64(config.Configuration.MarkerRedeemInterval.Seconds())
+	randTime := rand.Int63n(secondsInterval)
+	randTime += secondsInterval / 2 // interval of secondsInterval/2 to 3*secondsInterval/2
+
+	return !md.processing && (md.chainLength >= config.Configuration.MaxChainLength || common.Now()-md.firstMarkerTimestamp > common.Timestamp(config.Configuration.MaxTimestampGap) || common.Now()-md.lastMarkerTimestamp > common.Timestamp(randTime))
 }
 
 // TODO: don't delete prev WM
