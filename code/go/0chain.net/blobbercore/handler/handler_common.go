@@ -132,7 +132,7 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 		Logger.Info("Locking allocation", zap.String("allocation_id", allocationID))
 		mutex.Lock()
 		defer mutex.Unlock()
-
+		writemarker.SetCommittingMarker(allocationID, true)
 		tx := GetMetaDataStore().GetTransaction(ctx)
 		resp, statusCode, err = handler(ctx, r)
 
@@ -143,6 +143,7 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 				if rollErr != nil {
 					Logger.Error("couldn't rollback", zap.Error(err))
 				}
+				writemarker.SetCommittingMarker(allocationID, false)
 			}
 		}()
 
@@ -152,15 +153,19 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 		}
 		err = tx.Commit().Error
 		if err != nil {
-			return resp, statusCode, common.NewErrorf("commit_error",
+			Logger.Error("Error committing to meta store", zap.Error(err))
+			return resp, http.StatusInternalServerError, common.NewErrorf("commit_error",
 				"error committing to meta store: %v", err)
 		}
+
+		Logger.Info("commit_success", zap.String("allocation_id", allocationID), zap.Any("response", resp))
 
 		if blobberRes, ok := resp.(*blobberhttp.CommitResult); ok {
 			// Save the write marker data
 			writemarker.SaveMarkerData(allocationID, blobberRes.WriteMarker.WM.Timestamp, blobberRes.WriteMarker.WM.ChainLength)
 		} else {
 			Logger.Error("Invalid response type for commit handler")
+			return resp, http.StatusInternalServerError, common.NewError("invalid_response_type", "Invalid response type for commit handler")
 		}
 		return
 	}
