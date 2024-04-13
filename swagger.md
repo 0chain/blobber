@@ -34,6 +34,7 @@ Documentation of the blobber API.
 | GET | /v1/connection/create/{allocation} | [connection handler](#connection-handler) |  |
 | GET | /v1/file/copy/{allocation} | [copyallocation](#copyallocation) |  |
 | GET | /v1/dir/{allocation} | [createdirhandler](#createdirhandler) |  |
+| POST | /v1/file/download/{allocation} | [download file](#download-file) | DownloadHandler is the handler to respond to download requests from clients. |
 | GET | /v1/file/list/{allocation} | [list](#list) |  |
 | GET | /v1/file/move/{allocation} | [moveallocation](#moveallocation) |  |
 | GET | /v1/file/refs/recent/{allocation} | [recentalloc](#recentalloc) |  |
@@ -296,6 +297,56 @@ Status: Internal Server Error
 
 ###### <span id="createdirhandler-500-schema"></span> Schema
 
+### <span id="download-file"></span> DownloadHandler is the handler to respond to download requests from clients. (*downloadFile*)
+
+```
+POST /v1/file/download/{allocation}
+```
+
+#### Parameters
+
+| Name | Source | Type | Go type | Separator | Required | Default | Description |
+|------|--------|------|---------|-----------| :------: |---------|-------------|
+| allocation | `path` | string | `string` |  | ✓ |  | TxHash of the allocation in question. |
+| ALLOCATION-ID | `header` | string | `string` |  | ✓ |  | The ID of the allocation in question. |
+| X-App-Client-ID | `header` | string | `string` |  | ✓ |  | The ID/Wallet address of the client sending the request. |
+| X-App-Client-Key | `header` | string | `string` |  | ✓ |  | The key of the client sending the request. |
+| X-App-Client-Signature | `header` | string | `string` |  |  |  | Digital signature of the client used to verify the request if the X-Version is not "v2" |
+| X-App-Client-Signature-V2 | `header` | string | `string` |  |  |  | Digital signature of the client used to verify the request if the X-Version is "v2" |
+| X-Auth-Token | `header` | string | `string` |  |  |  | The auth token to use for the download. If the file is shared, the auth token is required. |
+| X-Block-Num | `header` | integer | `int64` |  |  |  | The block number of the file to download. Must be 0 or greater (valid index). |
+| X-Connection-ID | `header` | string | `string` |  |  |  | The ID of the connection used for the download. Usually, the download process occurs in multiple requests, on per block, where all of them are done in a single connection between the client and the blobber. |
+| X-Mode | `header` | string | `string` |  |  |  | Download mode. Either "full" for full file download, or "thumbnail" to download the thumbnail of the file |
+| X-Num-Blocks | `header` | integer | `int64` |  |  |  | The number of blocks to download. Must be 0 or greater. |
+| X-Path | `header` | string | `string` |  | ✓ |  | The path of the file to download. |
+| X-Path-Hash | `header` | string | `string` |  |  |  | The hash of the path of the file to download. If not provided, will be calculated from "X-Path" parameter. |
+| X-Read-Marker | `header` | string | `string` |  |  |  | The read marker to use for the download (check [ReadMarker](#/responses/ReadMarker)). |
+| X-Verify-Download | `header` | string | `string` |  |  |  | If set to "true", the download should be verified. If the mode is "thumbnail", |
+| X-Version | `header` | string | `string` |  |  |  | If its value is "v2" then both allocation_id and blobber url base are hashed and verified using X-App-Client-Signature-V2. |
+
+#### All responses
+| Code | Status | Description | Has headers | Schema |
+|------|--------|-------------|:-----------:|--------|
+| [200](#download-file-200) | OK | | []byte |  | [schema](#download-file-200-schema) |
+| [400](#download-file-400) | Bad Request |  |  | [schema](#download-file-400-schema) |
+
+#### Responses
+
+
+##### <span id="download-file-200"></span> 200 - | []byte
+Status: OK
+
+###### <span id="download-file-200-schema"></span> Schema
+   
+  
+
+[FileDownloadResponse](#file-download-response)
+
+##### <span id="download-file-400"></span> 400
+Status: Bad Request
+
+###### <span id="download-file-400-schema"></span> Schema
+
 ### <span id="list"></span> list (*list*)
 
 ```
@@ -314,14 +365,18 @@ along with the metadata of the files.
 | ALLOCATION-ID | `header` | string | `string` |  | ✓ |  | The ID of the allocation in question. |
 | X-App-Client-ID | `header` | string | `string` |  | ✓ |  | The ID/Wallet address of the client sending the request. |
 | X-App-Client-Key | `header` | string | `string` |  | ✓ |  | The key of the client sending the request. |
+| auth_token | `query` | string | `string` |  |  |  | The auth ticket for the file to download if the client does not own it. Check File Sharing docs for more info. |
 | limit | `query` | integer | `int64` |  | ✓ |  | The number of files to return (for pagination). |
 | list | `query` | boolean | `bool` |  |  |  | Whether or not to list the files inside the directory, not just data about the path itself. |
 | offset | `query` | integer | `int64` |  | ✓ |  | The number of files to skip before returning (for pagination). |
+| path | `query` | string | `string` |  | ✓ |  | The path needed to list info about |
+| path_hash | `query` | string | `string` |  |  |  | Lookuphash of the path needed to list info about, which is a hex hash of the path concatenated with the allocation ID. |
 
 #### All responses
 | Code | Status | Description | Has headers | Schema |
 |------|--------|-------------|:-----------:|--------|
 | [200](#list-200) | OK | ListResult |  | [schema](#list-200-schema) |
+| [400](#list-400) | Bad Request |  |  | [schema](#list-400-schema) |
 
 #### Responses
 
@@ -334,6 +389,11 @@ Status: OK
   
 
 [ListResult](#list-result)
+
+##### <span id="list-400"></span> 400
+Status: Bad Request
+
+###### <span id="list-400-schema"></span> Schema
 
 ### <span id="moveallocation"></span> moveallocation (*moveallocation*)
 
@@ -552,6 +612,32 @@ Status: Internal Server Error
 
 ## Models
 
+### <span id="auth-ticket"></span> AuthTicket
+
+
+  
+
+
+
+**Properties**
+
+| Name | Type | Go type | Required | Default | Description | Example |
+|------|------|---------|:--------:| ------- |-------------|---------|
+| ActualFileHash | string| `string` |  | |  |  |
+| AllocationID | string| `string` |  | |  |  |
+| ClientID | string| `string` |  | |  |  |
+| Encrypted | boolean| `bool` |  | |  |  |
+| FileName | string| `string` |  | |  |  |
+| FilePathHash | string| `string` |  | |  |  |
+| OwnerID | string| `string` |  | |  |  |
+| ReEncryptionKey | string| `string` |  | |  |  |
+| RefType | string| `string` |  | |  |  |
+| Signature | string| `string` |  | |  |  |
+| expiration | [Timestamp](#timestamp)| `Timestamp` |  | |  |  |
+| timestamp | [Timestamp](#timestamp)| `Timestamp` |  | |  |  |
+
+
+
 ### <span id="commit-result"></span> CommitResult
 
 
@@ -593,6 +679,23 @@ Status: Internal Server Error
 
 
 * composed type [NullTime](#null-time)
+
+### <span id="file-download-response"></span> FileDownloadResponse
+
+
+  
+
+
+
+**Properties**
+
+| Name | Type | Go type | Required | Default | Description | Example |
+|------|------|---------|:--------:| ------- |-------------|---------|
+| Data | []uint8 (formatted integer)| `[]uint8` |  | |  |  |
+| Indexes | [][[]int64](#int64)| `[][]int64` |  | |  |  |
+| Nodes | [][[][]uint8](#uint8)| `[][][]uint8` |  | |  |  |
+
+
 
 ### <span id="list-result"></span> ListResult
 
@@ -673,6 +776,29 @@ it can be used as a scan destination, similar to [NullString].
 | ValidationRootSignature | string| `string` |  | |  |  |
 | created_at | [Timestamp](#timestamp)| `Timestamp` |  | |  |  |
 | updated_at | [Timestamp](#timestamp)| `Timestamp` |  | |  |  |
+
+
+
+### <span id="read-marker"></span> ReadMarker
+
+
+  
+
+
+
+**Properties**
+
+| Name | Type | Go type | Required | Default | Description | Example |
+|------|------|---------|:--------:| ------- |-------------|---------|
+| AllocationID | string| `string` |  | |  |  |
+| BlobberID | string| `string` |  | |  |  |
+| ClientID | string| `string` |  | |  |  |
+| ClientPublicKey | string| `string` |  | |  |  |
+| OwnerID | string| `string` |  | |  |  |
+| ReadCounter | int64 (formatted integer)| `int64` |  | |  |  |
+| SessionRC | int64 (formatted integer)| `int64` |  | |  |  |
+| Signature | string| `string` |  | |  |  |
+| timestamp | [Timestamp](#timestamp)| `Timestamp` |  | |  |  |
 
 
 

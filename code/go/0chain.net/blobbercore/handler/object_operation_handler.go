@@ -263,6 +263,95 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 	}, nil
 }
 
+// swagger:route POST /v1/file/download/{allocation} downloadFile
+//
+// DownloadHandler is the handler to respond to download requests from clients.
+//
+// parameters:
+//   +name: allocation
+//     description: TxHash of the allocation in question.
+//     in: path
+//     required: true
+//     type: string
+//	 +name: X-App-Client-ID
+//     description: The ID/Wallet address of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: X-App-Client-Key
+// 	   description: The key of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: ALLOCATION-ID
+//	   description: The ID of the allocation in question.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-Connection-ID
+//     description: The ID of the connection used for the download. Usually, the download process occurs in multiple requests, on per block, where all of them are done in a single connection between the client and the blobber.
+//	   in: header
+//     type: string
+//     required: false
+//  +name: X-Path-Hash
+//     description: The hash of the path of the file to download. If not provided, will be calculated from "X-Path" parameter.
+//     in: header
+//     type: string
+//	   required: false
+//  +name: X-Path
+//     description: The path of the file to download.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-Block-Num
+//     description: The block number of the file to download. Must be 0 or greater (valid index).
+//     in: header
+//     type: integer
+//     required: false
+//     default: 0
+//  +name: X-Num-Blocks
+//     description: The number of blocks to download. Must be 0 or greater.
+//     in: header
+//     type: integer
+//     required: false
+//     default: 0
+//  +name: X-Read-Marker
+//     description: The read marker to use for the download (check [ReadMarker](#/responses/ReadMarker)).
+//     in: header
+//     type: string
+//     required: false
+//  +name: X-Auth-Token
+//     description: The auth token to use for the download. If the file is shared, the auth token is required.
+//     in: header
+//     type: string
+//  +name: X-Mode
+//     description: Download mode. Either "full" for full file download, or "thumbnail" to download the thumbnail of the file
+//     in: header
+//     type: string
+//  +name: X-Verify-Download
+//     description: If set to "true", the download should be verified. If the mode is "thumbnail", 
+//					the thumbnail hash stored in the db is compared with the hash of the actual file.
+//     				If the mode is "full", merkle proof is calculated and returned in the response.
+//     in: header
+//     type: string
+//  +name: X-Version
+//     description: If its value is "v2" then both allocation_id and blobber url base are hashed and verified using X-App-Client-Signature-V2.
+//     in: header
+//     type: string
+//  +name: X-App-Client-Signature
+//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//     in: header
+//     type: string
+//  +name: X-App-Client-Signature-V2
+//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//     in: header
+//     type: string
+//
+// responses:
+//
+//   200: FileDownloadResponse | []byte
+//   400:
+
 func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (interface{}, error) {
 	// get client and allocation ids
 

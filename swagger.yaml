@@ -1,5 +1,44 @@
 basePath: /
 definitions:
+    AuthTicke:
+        properties:
+            actual_file_hash:
+                type: string
+                x-go-name: ActualFileHash
+            allocation_id:
+                type: string
+                x-go-name: AllocationID
+            client_id:
+                type: string
+                x-go-name: ClientID
+            encrypted:
+                type: boolean
+                x-go-name: Encrypted
+            expiration:
+                $ref: '#/definitions/Timestamp'
+            file_name:
+                type: string
+                x-go-name: FileName
+            file_path_hash:
+                type: string
+                x-go-name: FilePathHash
+            owner_id:
+                type: string
+                x-go-name: OwnerID
+            re_encryption_key:
+                type: string
+                x-go-name: ReEncryptionKey
+            reference_type:
+                type: string
+                x-go-name: RefType
+            signature:
+                type: string
+                x-go-name: Signature
+            timestamp:
+                $ref: '#/definitions/Timestamp'
+        type: object
+        x-go-name: AuthTicket
+        x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker
     CommitResult:
         properties:
             allocation_root:
@@ -27,6 +66,31 @@ definitions:
         x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp
     DeletedAt:
         $ref: '#/definitions/NullTime'
+    FileDownloadResponse:
+        properties:
+            Data:
+                items:
+                    format: uint8
+                    type: integer
+                type: array
+            Indexes:
+                items:
+                    items:
+                        format: int64
+                        type: integer
+                    type: array
+                type: array
+            Nodes:
+                items:
+                    items:
+                        items:
+                            format: uint8
+                            type: integer
+                        type: array
+                    type: array
+                type: array
+        type: object
+        x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore
     ListResult:
         properties:
             allocation_root:
@@ -160,6 +224,38 @@ definitions:
                 x-go-name: ValidationRootSignature
         type: object
         x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference
+    ReadMarker:
+        properties:
+            allocation_id:
+                type: string
+                x-go-name: AllocationID
+            blobber_id:
+                type: string
+                x-go-name: BlobberID
+            client_id:
+                type: string
+                x-go-name: ClientID
+            client_public_key:
+                type: string
+                x-go-name: ClientPublicKey
+            counter:
+                format: int64
+                type: integer
+                x-go-name: ReadCounter
+            owner_id:
+                type: string
+                x-go-name: OwnerID
+            session_rc:
+                format: int64
+                type: integer
+                x-go-name: SessionRC
+            signature:
+                type: string
+                x-go-name: Signature
+            timestamp:
+                $ref: '#/definitions/Timestamp'
+        type: object
+        x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker
     RecentRefResult:
         properties:
             offset:
@@ -514,6 +610,69 @@ paths:
                     description: ""
                 "500":
                     description: ""
+    /v1/file/download/{allocation}:
+        post:
+            operationId: downloadFile
+            parameters:
+                - description: TxHash of the allocation in question.
+                  in: path
+                  name: allocation
+                  required: true
+                  type: string
+                - description: The ID/Wallet address of the client sending the request.
+                  in: header
+                  name: X-App-Client-ID
+                  required: true
+                  type: string
+                - description: The key of the client sending the request.
+                  in: header
+                  name: X-App-Client-Key
+                  required: true
+                  type: string
+                - description: The ID of the allocation in question.
+                  in: header
+                  name: ALLOCATION-ID
+                  required: true
+                  type: string
+                - description: The ID of the connection used for the download. Usually, the download process occurs in multiple requests, on per block, where all of them are done in a single connection between the client and the blobber.
+                  in: header
+                  name: X-Connection-ID
+                  type: string
+                - description: The hash of the path of the file to download. If not provided, will be calculated from "X-Path" parameter.
+                  in: header
+                  name: X-Path-Hash
+                  type: string
+                - description: The path of the file to download.
+                  in: header
+                  name: X-Path
+                  required: true
+                  type: string
+                - default: 0
+                  description: The block number of the file to download. Must be 0 or greater (valid index).
+                  in: header
+                  name: X-Block-Num
+                  type: integer
+                - default: 0
+                  description: The number of blocks to download. Must be 0 or greater.
+                  in: header
+                  name: X-Num-Blocks
+                  type: integer
+                - description: The read marker to use for the download (check [ReadMarker](#/responses/ReadMarker)).
+                  in: header
+                  name: X-Read-Marker
+                  type: string
+                - description: The auth token to use for the download. If the file is shared, the auth token is required.
+                  in: header
+                  name: X-Auth-Token
+                  type: string
+            responses:
+                "200":
+                    description: FileDownloadResponse
+                    schema:
+                        $ref: '#/definitions/FileDownloadResponse'
+                "400":
+                    description: ""
+            summary: DownloadHandler is the handler to respond to download requests from clients.
     /v1/file/list/{allocation}:
         get:
             description: "ListHandler is the handler to respond to list requests from clients, \nit returns a list of files in the allocation,\nalong with the metadata of the files."
@@ -523,6 +682,19 @@ paths:
                   in: path
                   name: allocation
                   required: true
+                  type: string
+                - description: The path needed to list info about
+                  in: query
+                  name: path
+                  required: true
+                  type: string
+                - description: Lookuphash of the path needed to list info about, which is a hex hash of the path concatenated with the allocation ID.
+                  in: query
+                  name: path_hash
+                  type: string
+                - description: The auth ticket for the file to download if the client does not own it. Check File Sharing docs for more info.
+                  in: query
+                  name: auth_token
                   type: string
                 - description: Whether or not to list the files inside the directory, not just data about the path itself.
                   in: query
@@ -558,6 +730,8 @@ paths:
                     description: ListResult
                     schema:
                         $ref: '#/definitions/ListResult'
+                "400":
+                    description: ""
     /v1/file/move/{allocation}:
         get:
             description: move an allocation

@@ -274,6 +274,69 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	return result, nil
 }
 
+// swagger:route GET /v1/file/list/{allocation} list
+// ListHandler is the handler to respond to list requests from clients, 
+// it returns a list of files in the allocation,
+// along with the metadata of the files.
+//
+// parameters:
+//
+//   +name: allocation
+//     description: TxHash of the allocation in question.
+//     in: path
+//     required: true
+//     type: string
+//   +name:path
+//     description: The path needed to list info about
+//     in: query
+//     type: string
+//     required: true
+//   +name: path_hash
+//     description: Lookuphash of the path needed to list info about, which is a hex hash of the path concatenated with the allocation ID.
+//     in: query
+//     type: string
+//     required: false
+//   +name: auth_token
+//     description: The auth ticket for the file to download if the client does not own it. Check File Sharing docs for more info.
+//     in: query
+//     type: string
+//     required: false
+//   +name: list
+//     description: Whether or not to list the files inside the directory, not just data about the path itself.
+//     in: query
+//     type: boolean
+//     required: false
+//   +name: limit
+//	   description: The number of files to return (for pagination).
+//     in: query
+//     type: integer
+//     required: true
+//   +name: offset
+//     description: The number of files to skip before returning (for pagination).
+//     in: query
+//     type: integer
+//     required: true
+//	 +name: X-App-Client-ID
+//     description: The ID/Wallet address of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: X-App-Client-Key
+// 	   description: The key of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: ALLOCATION-ID
+//	   description: The ID of the allocation in question.
+//     in: header
+//     type: string
+//     required: true
+//
+// responses:
+//
+//   200: ListResult
+//   400: 
+
 func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*blobberhttp.ListResult, error) {
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
