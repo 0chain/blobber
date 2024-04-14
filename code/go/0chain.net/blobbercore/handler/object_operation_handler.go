@@ -327,9 +327,7 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 //     in: header
 //     type: string
 //  +name: X-Verify-Download
-//     description: If set to "true", the download should be verified. If the mode is "thumbnail",\
-//					the thumbnail hash stored in the db is compared with the hash of the actual file.\
-//     				If the mode is "full", merkle proof is calculated and returned in the response.
+//     description: If set to "true", the download should be verified. If the mode is "thumbnail", the thumbnail hash stored in the db is compared with the hash of the actual file. If the mode is "full", merkle proof is calculated and returned in the response.
 //     in: header
 //     type: string
 //  +name: X-Version
