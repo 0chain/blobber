@@ -90,7 +90,7 @@ jobs:
 
       - name: Build blobber
         run: |
-          export DOCKER_IMAGE_BASE="$BLOBBER_BUILD_BASE_REGISTRY:$TAG"
+          export DOCKER_IMAGE_BASE="$BLOBBER_BUILD_BASE_REGISTRY:staging"
           # export DOCKER_IMAGE_SWAGGER="${BLOBBER_REGISTRY}:swagger_test"
           # # export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
           # export DOCKER_BUILD="build --push"
