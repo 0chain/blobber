@@ -27,9 +27,9 @@ FROM alpine:3.18
 
 RUN apk add --update --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/main libstdc++ gmp openssl vips
 
-COPY --from=validator_build  /usr/local/lib/libmcl*.so \
-                        /usr/local/lib/libbls*.so \
-                        /usr/local/lib/
+# COPY --from=validator_build  /usr/local/lib/libmcl*.so \
+#                         /usr/local/lib/libbls*.so \
+#                         /usr/local/lib/
 ENV APP_DIR=/validator
 WORKDIR $APP_DIR
 COPY --from=validator_build /0chain/code/go/0chain.net/validator/validator $APP_DIR/bin/validator
