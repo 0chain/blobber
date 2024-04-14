@@ -11,6 +11,12 @@ on:
       - '*'
   pull_request:
   workflow_dispatch:
+    inputs:
+      latest_tag:
+        description: 'type yes for building latest / staging tag'
+        default: 'no'
+        required: true
+
 
 env:
   BLOBBER_REGISTRY: ${{ secrets.BLOBBER_REGISTRY }}
@@ -22,7 +28,7 @@ env:
 jobs:
   blobber:
     timeout-minutes: 30
-    runs-on: [blobber-runner]
+    runs-on: [arc-runner]
     steps:
       - name: Cleanup before restarting conductor tests.
         run: |
@@ -71,11 +77,12 @@ jobs:
           docker tag $BLOBBER_BUILD_BASE_REGISTRY:staging $BLOBBER_BUILDBASE
 
       - name: Build Base image
-        # if: contains(steps.changed-files.outputs.modified_files, 'docker.local/base.Dockerfile')
+        if: contains(steps.changed-files.outputs.modified_files, 'docker.local/base.Dockerfile')
         run: |
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
 
-          ./docker.local/bin/build.base.sh &&
+          # ./docker.local/bin/build.base.sh &&
+          docker build -f docker.local/base.Dockerfile . -t $BLOBBER_BUILDBASE
           docker tag $BLOBBER_BUILDBASE $BLOBBER_BUILD_BASE_REGISTRY:$TAG
           docker tag $BLOBBER_BUILDBASE $BLOBBER_BUILD_BASE_REGISTRY:$TAG-$SHORT_SHA
           docker push $BLOBBER_BUILD_BASE_REGISTRY:$TAG
@@ -83,18 +90,30 @@ jobs:
 
       - name: Build blobber
         run: |
+          # export DOCKER_IMAGE_BASE="$BLOBBER_BUILD_BASE_REGISTRY:$TAG"
+          # export DOCKER_IMAGE_SWAGGER="${BLOBBER_REGISTRY}:swagger_test"
+          # # export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
+          # export DOCKER_BUILD="build --push"
+          # export DOCKER_IMAGE_BLOBBER="-t ${BLOBBER_REGISTRY}:${TAG}"
+          # export CONTEXT_NAME="$RUNNER_NAME" && (docker context inspect "$CONTEXT_NAME" >/dev/null 2>&1 || docker context create "$CONTEXT_NAME")
+          # docker buildx inspect "blobber-$RUNNER_NAME" || docker buildx create --name "blobber-$RUNNER_NAME" --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement security.insecure' "$CONTEXT_NAME"
+          # docker buildx use "blobber-$RUNNER_NAME"
+          # ./docker.local/bin/build.blobber.sh
+          # docker tag ${BLOBBER_REGISTRY}:${TAG} ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}
+          # docker push ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}
+
+          docker build --build-arg GIT_COMMIT=$GITHUB_SHA --build-arg DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE -t ${BLOBBER_REGISTRY}:latest -f docker.local/blobber.Dockerfile .
+          docker tag ${BLOBBER_REGISTRY}:latest ${BLOBBER_REGISTRY}:${TAG}
+          docker push ${BLOBBER_REGISTRY}:${TAG}
+
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
-          export DOCKER_IMAGE_BASE="$BLOBBER_BUILD_BASE_REGISTRY:$TAG"
-          export DOCKER_IMAGE_SWAGGER="${BLOBBER_REGISTRY}:swagger_test"
-          # export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
-          export DOCKER_BUILD="build --push"
-          export DOCKER_IMAGE_BLOBBER="-t ${BLOBBER_REGISTRY}:${TAG}"
-          export CONTEXT_NAME="$RUNNER_NAME" && (docker context inspect "$CONTEXT_NAME" >/dev/null 2>&1 || docker context create "$CONTEXT_NAME")
-          docker buildx inspect "blobber-$RUNNER_NAME" || docker buildx create --name "blobber-$RUNNER_NAME" --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement security.insecure' "$CONTEXT_NAME"
-          docker buildx use "blobber-$RUNNER_NAME"
-          ./docker.local/bin/build.blobber.sh
-          docker tag ${BLOBBER_REGISTRY}:${TAG} ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}
+          docker tag ${BLOBBER_REGISTRY}:latest ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}
           docker push ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}
+
+      - name: Push latest
+        if: ${{ github.event.inputs.latest_tag == 'yes' || github.ref == 'refs/heads/master' }}
+        run: |
+            docker push ${BLOBBER_REGISTRY}:latest
 
   validator:
     timeout-minutes: 30
