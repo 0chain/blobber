@@ -192,4 +192,5 @@ endif
 .PHONY: markdown-docs
 markdown-docs:
 	swagger generate spec -o ./swagger.yaml -w ./code/go/0chain.net -m
+	sed -i '' "s/in\:\ form/in\:\ formData/g" ./swagger.yaml
 	swagger generate markdown -f ./swagger.yaml --output=swagger.md

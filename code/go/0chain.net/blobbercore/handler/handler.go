@@ -847,6 +847,61 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	return resp, nil
 }
 
+// swagger:route POST /v1/marketplace/shareinfo/{allocation} shareinfo
+// shareinfo is the handler to respond to share file requests from clients
+//
+// parameters:
+//   +name: allocation
+//     description: TxHash of the allocation in question.
+//     in: path
+//     required: true
+//     type: string
+//	 +name: X-App-Client-ID
+//     description: The ID/Wallet address of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: X-App-Client-Key
+// 	   description: The key of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: ALLOCATION-ID
+//	   description: The ID of the allocation in question.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature
+//     description: Digital signature of the client used to verify the request.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature-V2
+//     description: Digital signature of the client used to verify the request. Overrides X-App-Client-Signature if provided.
+//     in: header
+//     type: string
+//  +name: encryption_public_key
+//     description: Public key of the referee client in case of private sharing. Used for proxy re-encryption.
+//     in: form
+//     type: string
+//  +name: available_after
+//     description: Time after which the file will be accessible for sharing.
+//     in: form
+//     type: string
+//  +name: auth_ticket
+//     description: Body of the auth ticket used to verify the file access. Follows the structure of [`AuthTicket`](#auth-ticket)
+//     in: form
+//     type: string
+//     required: true
+//
+// responses:
+//
+//	200:
+//		description: "Generic map response `map[string]interface{}`"
+// 		examples:
+//			{"message": "Share info added successfully"}
+//	400:
+
 func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)

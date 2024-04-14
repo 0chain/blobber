@@ -41,6 +41,7 @@ Documentation of the blobber API.
 | GET | /v1/file/objecttree/{allocation} | [referencepath](#referencepath) |  |
 | GET | /v1/file/refs/{allocation} | [refshandler](#refshandler) |  |
 | GET | /v1/file/rename/{allocation} | [renameallocation](#renameallocation) |  |
+| POST | /v1/marketplace/shareinfo/{allocation} | [shareinfo](#shareinfo) |  |
   
 
 
@@ -611,6 +612,47 @@ Status: Bad Request
 Status: Internal Server Error
 
 ###### <span id="renameallocation-500-schema"></span> Schema
+
+### <span id="shareinfo"></span> shareinfo (*shareinfo*)
+
+```
+POST /v1/marketplace/shareinfo/{allocation}
+```
+
+shareinfo is the handler to respond to share file requests from clients
+
+#### Parameters
+
+| Name | Source | Type | Go type | Separator | Required | Default | Description |
+|------|--------|------|---------|-----------| :------: |---------|-------------|
+| allocation | `path` | string | `string` |  | ✓ |  | TxHash of the allocation in question. |
+| ALLOCATION-ID | `header` | string | `string` |  | ✓ |  | The ID of the allocation in question. |
+| X-App-Client-ID | `header` | string | `string` |  | ✓ |  | The ID/Wallet address of the client sending the request. |
+| X-App-Client-Key | `header` | string | `string` |  | ✓ |  | The key of the client sending the request. |
+| X-App-Client-Signature | `header` | string | `string` |  | ✓ |  | Digital signature of the client used to verify the request. |
+| X-App-Client-Signature-V2 | `header` | string | `string` |  |  |  | Digital signature of the client used to verify the request. Overrides X-App-Client-Signature if provided. |
+| auth_ticket | `formData` | string | `string` |  | ✓ |  | Body of the auth ticket used to verify the file access. Follows the structure of [`AuthTicket`](#auth-ticket) |
+| available_after | `formData` | string | `string` |  |  |  | Time after which the file will be accessible for sharing. |
+| encryption_public_key | `formData` | string | `string` |  |  |  | Public key of the referee client in case of private sharing. Used for proxy re-encryption. |
+
+#### All responses
+| Code | Status | Description | Has headers | Schema |
+|------|--------|-------------|:-----------:|--------|
+| [200](#shareinfo-200) | OK |  |  | [schema](#shareinfo-200-schema) |
+| [400](#shareinfo-400) | Bad Request |  |  | [schema](#shareinfo-400-schema) |
+
+#### Responses
+
+
+##### <span id="shareinfo-200"></span> 200
+Status: OK
+
+###### <span id="shareinfo-200-schema"></span> Schema
+
+##### <span id="shareinfo-400"></span> 400
+Status: Bad Request
+
+###### <span id="shareinfo-400-schema"></span> Schema
 
 ## Models
 

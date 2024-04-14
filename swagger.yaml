@@ -1,6 +1,6 @@
 basePath: /
 definitions:
-    AuthTicke:
+    AuthTicket:
         properties:
             actual_file_hash:
                 type: string
@@ -37,7 +37,6 @@ definitions:
             timestamp:
                 $ref: '#/definitions/Timestamp'
         type: object
-        x-go-name: AuthTicket
         x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker
     CommitResult:
         properties:
@@ -846,6 +845,58 @@ paths:
                 "400":
                     description: ""
                 "500":
+                    description: ""
+    /v1/marketplace/shareinfo/{allocation}:
+        post:
+            description: shareinfo is the handler to respond to share file requests from clients
+            operationId: shareinfo
+            parameters:
+                - description: TxHash of the allocation in question.
+                  in: path
+                  name: allocation
+                  required: true
+                  type: string
+                - description: The ID/Wallet address of the client sending the request.
+                  in: header
+                  name: X-App-Client-ID
+                  required: true
+                  type: string
+                - description: The key of the client sending the request.
+                  in: header
+                  name: X-App-Client-Key
+                  required: true
+                  type: string
+                - description: The ID of the allocation in question.
+                  in: header
+                  name: ALLOCATION-ID
+                  required: true
+                  type: string
+                - description: Digital signature of the client used to verify the request.
+                  in: header
+                  name: X-App-Client-Signature
+                  required: true
+                  type: string
+                - description: Digital signature of the client used to verify the request. Overrides X-App-Client-Signature if provided.
+                  in: header
+                  name: X-App-Client-Signature-V2
+                  type: string
+                - description: Public key of the referee client in case of private sharing. Used for proxy re-encryption.
+                  in: formData
+                  name: encryption_public_key
+                  type: string
+                - description: Time after which the file will be accessible for sharing.
+                  in: formData
+                  name: available_after
+                  type: string
+                - description: Body of the auth ticket used to verify the file access. Follows the structure of [`AuthTicket`](#auth-ticket)
+                  in: formData
+                  name: auth_ticket
+                  required: true
+                  type: string
+            responses:
+                "200":
+                    description: ""
+                "400":
                     description: ""
 schemes:
     - https
