@@ -4,7 +4,10 @@ import (
 	"mime/multipart"
 )
 
-const CHUNK_SIZE = 64 * 1024
+const (
+	CHUNK_SIZE = 64 * 1024
+	VERSION    = 1
+)
 
 type FileInputData struct {
 	Name            string
@@ -94,14 +97,15 @@ type FileDownloadResponse struct {
 }
 
 type ReadBlockInput struct {
-	AllocationID   string
-	FileSize       int64
-	Hash           string
-	StartBlockNum  int
-	NumBlocks      int
-	IsThumbnail    bool
-	VerifyDownload bool
-	IsPrecommit    bool
+	AllocationID     string
+	FileSize         int64
+	Hash             string
+	StartBlockNum    int
+	NumBlocks        int
+	IsThumbnail      bool
+	VerifyDownload   bool
+	IsPrecommit      bool
+	FilestoreVersion int
 }
 
 type ChallengeResponse struct {
@@ -111,9 +115,10 @@ type ChallengeResponse struct {
 }
 
 type ChallengeReadBlockInput struct {
-	BlockOffset  int
-	FileSize     int64
-	Hash         string
-	AllocationID string
-	IsPrecommit  bool
+	BlockOffset      int
+	FileSize         int64
+	Hash             string
+	AllocationID     string
+	IsPrecommit      bool
+	FilestoreVersion int
 }
