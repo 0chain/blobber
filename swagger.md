@@ -34,7 +34,7 @@ Documentation of the blobber API.
 | GET | /v1/connection/create/{allocation} | [connection handler](#connection-handler) |  |
 | GET | /v1/file/copy/{allocation} | [copyallocation](#copyallocation) |  |
 | GET | /v1/dir/{allocation} | [createdirhandler](#createdirhandler) |  |
-| POST | /v1/file/download/{allocation} | [download file](#download-file) | DownloadHandler is the handler to respond to download requests from clients. |
+| POST | /v1/file/download/{allocation} | [download file](#download-file) |  |
 | GET | /v1/file/list/{allocation} | [list](#list) |  |
 | GET | /v1/file/move/{allocation} | [moveallocation](#moveallocation) |  |
 | GET | /v1/file/refs/recent/{allocation} | [recentalloc](#recentalloc) |  |
@@ -297,11 +297,13 @@ Status: Internal Server Error
 
 ###### <span id="createdirhandler-500-schema"></span> Schema
 
-### <span id="download-file"></span> DownloadHandler is the handler to respond to download requests from clients. (*downloadFile*)
+### <span id="download-file"></span> download file (*downloadFile*)
 
 ```
 POST /v1/file/download/{allocation}
 ```
+
+Download Handler (downloadFile)
 
 #### Parameters
 
@@ -321,7 +323,7 @@ POST /v1/file/download/{allocation}
 | X-Path | `header` | string | `string` |  | ✓ |  | The path of the file to download. |
 | X-Path-Hash | `header` | string | `string` |  |  |  | The hash of the path of the file to download. If not provided, will be calculated from "X-Path" parameter. |
 | X-Read-Marker | `header` | string | `string` |  |  |  | The read marker to use for the download (check [ReadMarker](#/responses/ReadMarker)). |
-| X-Verify-Download | `header` | string | `string` |  |  |  | If set to "true", the download should be verified. If the mode is "thumbnail", |
+| X-Verify-Download | `header` | string | `string` |  |  |  | If set to "true", the download should be verified. If the mode is "thumbnail",\ |
 | X-Version | `header` | string | `string` |  |  |  | If its value is "v2" then both allocation_id and blobber url base are hashed and verified using X-App-Client-Signature-V2. |
 
 #### All responses

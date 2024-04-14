@@ -612,6 +612,7 @@ paths:
                     description: ""
     /v1/file/download/{allocation}:
         post:
+            description: Download Handler (downloadFile)
             operationId: downloadFile
             parameters:
                 - description: TxHash of the allocation in question.
@@ -665,14 +666,33 @@ paths:
                   in: header
                   name: X-Auth-Token
                   type: string
+                - description: Download mode. Either "full" for full file download, or "thumbnail" to download the thumbnail of the file
+                  in: header
+                  name: X-Mode
+                  type: string
+                - description: If set to "true", the download should be verified. If the mode is "thumbnail",\
+                  in: header
+                  name: X-Verify-Download
+                  type: string
+                - description: If its value is "v2" then both allocation_id and blobber url base are hashed and verified using X-App-Client-Signature-V2.
+                  in: header
+                  name: X-Version
+                  type: string
+                - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+                  in: header
+                  name: X-App-Client-Signature
+                  type: string
+                - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+                  in: header
+                  name: X-App-Client-Signature-V2
+                  type: string
             responses:
                 "200":
-                    description: FileDownloadResponse
+                    description: '| []byte'
                     schema:
                         $ref: '#/definitions/FileDownloadResponse'
                 "400":
                     description: ""
-            summary: DownloadHandler is the handler to respond to download requests from clients.
     /v1/file/list/{allocation}:
         get:
             description: "ListHandler is the handler to respond to list requests from clients, \nit returns a list of files in the allocation,\nalong with the metadata of the files."
