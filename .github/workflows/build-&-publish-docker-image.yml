@@ -54,9 +54,9 @@ jobs:
       #     go-version: ^1.21 # The Go version to download (if necessary) and use.
 
       - name: Clone blobber
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+        uses: actions/checkout@v4
+        # with:
+        #   fetch-depth: 0
 
       # - name: Set up Docker Buildx
       #   uses: docker/setup-buildx-action@v3
@@ -71,13 +71,13 @@ jobs:
         id: changed-files
         uses: tj-actions/changed-files@v18.4
 
-      # - name: Pull Build Base
-      #   run: |
-      #     docker pull $BLOBBER_BUILD_BASE_REGISTRY:staging
-      #     docker tag $BLOBBER_BUILD_BASE_REGISTRY:staging $BLOBBER_BUILDBASE
+      - name: Pull Build Base
+        run: |
+          docker pull $BLOBBER_BUILD_BASE_REGISTRY:staging
+          docker tag $BLOBBER_BUILD_BASE_REGISTRY:staging $BLOBBER_BUILDBASE
 
       - name: Build Base image
-        # if: contains(steps.changed-files.outputs.modified_files, 'docker.local/base.Dockerfile')
+        if: contains(steps.changed-files.outputs.modified_files, 'docker.local/base.Dockerfile')
         run: |
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
 
@@ -90,7 +90,7 @@ jobs:
 
       - name: Build blobber
         run: |
-          export DOCKER_IMAGE_BASE="$BLOBBER_BUILD_BASE_REGISTRY:$TAG"
+          export DOCKER_IMAGE_BASE="$BLOBBER_BUILD_BASE_REGISTRY:staging"
           # export DOCKER_IMAGE_SWAGGER="${BLOBBER_REGISTRY}:swagger_test"
           # # export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
           # export DOCKER_BUILD="build --push"
@@ -101,6 +101,10 @@ jobs:
           # ./docker.local/bin/build.blobber.sh
           # docker tag ${BLOBBER_REGISTRY}:${TAG} ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}
           # docker push ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}
+
+          echo "building swagger file"
+          docker build --build-arg DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE -f docker.local/Dockerfile.swagger . -t swagger
+          docker run -v $(pwd):/codecov swagger bash -c "cd /codecov/code/go/0chain.net/; swagger generate spec -w . -m -o swagger.yaml; swagger generate markdown -f swagger.yaml --output=swagger.md"
 
           docker build --build-arg GIT_COMMIT=$GITHUB_SHA --build-arg DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE -t ${BLOBBER_REGISTRY}:latest -f docker.local/blobber.Dockerfile .
           docker tag ${BLOBBER_REGISTRY}:latest ${BLOBBER_REGISTRY}:${TAG}
