@@ -25,9 +25,9 @@ FROM alpine:3.18
 
 RUN apk add --update --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/main libstdc++ gmp openssl vips
 
-COPY --from=blobber_build  /usr/local/lib/libmcl*.so \
-                        /usr/local/lib/libbls*.so \
-                        /usr/local/lib/
+# COPY --from=blobber_build  /usr/local/lib/libmcl*.so \
+#                         /usr/local/lib/libbls*.so \
+#                         /usr/local/lib/
 
 ENV APP_DIR=/blobber
 WORKDIR $APP_DIR
