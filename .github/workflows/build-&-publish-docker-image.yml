@@ -139,19 +139,6 @@ jobs:
 
       - name: Build validator
         run: |
-          SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
-          export DOCKER_IMAGE_BASE="$BLOBBER_BUILD_BASE_REGISTRY:$TAG"
-          # export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
-          export DOCKER_BUILD="build --push"
-          export DOCKER_IMAGE_VALIDATOR="-t ${VALIDATOR_REGISTRY}:${TAG}"
-          export CONTEXT_NAME="$RUNNER_NAME" && (docker context inspect "$CONTEXT_NAME" >/dev/null 2>&1 || docker context create "$CONTEXT_NAME")
-          docker buildx inspect "validator-$RUNNER_NAME" || docker buildx create --name "validator-$RUNNER_NAME" --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement security.insecure' "$CONTEXT_NAME"
-          docker buildx use "validator-$RUNNER_NAME"
-          ./docker.local/bin/build.validator.sh
-          docker tag ${VALIDATOR_REGISTRY}:${TAG} ${VALIDATOR_REGISTRY}:${TAG}-${SHORT_SHA}
-          docker push ${VALIDATOR_REGISTRY}:${TAG}-${SHORT_SHA}
-          
-
           export DOCKER_IMAGE_BASE="$BLOBBER_BUILD_BASE_REGISTRY:staging"
 
           docker build --build-arg GIT_COMMIT=$GITHUB_SHA --build-arg DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE -t ${VALIDATOR_REGISTRY}:latest -f docker.local/validator.Dockerfile .
