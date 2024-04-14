@@ -263,7 +263,7 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 	}, nil
 }
 
-// swagger:route POST /v1/file/download/{allocation} downloadFile
+// swagger:route GET /v1/file/download/{allocation} downloadFile
 // Download Handler (downloadFile)
 // parameters:
 //   +name: allocation

@@ -611,7 +611,7 @@ paths:
                 "500":
                     description: ""
     /v1/file/download/{allocation}:
-        post:
+        get:
             description: Download Handler (downloadFile)
             operationId: downloadFile
             parameters:

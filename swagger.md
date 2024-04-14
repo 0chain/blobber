@@ -34,7 +34,7 @@ Documentation of the blobber API.
 | GET | /v1/connection/create/{allocation} | [connection handler](#connection-handler) |  |
 | GET | /v1/file/copy/{allocation} | [copyallocation](#copyallocation) |  |
 | GET | /v1/dir/{allocation} | [createdirhandler](#createdirhandler) |  |
-| POST | /v1/file/download/{allocation} | [download file](#download-file) |  |
+| GET | /v1/file/download/{allocation} | [download file](#download-file) |  |
 | GET | /v1/file/list/{allocation} | [list](#list) |  |
 | GET | /v1/file/move/{allocation} | [moveallocation](#moveallocation) |  |
 | GET | /v1/file/refs/recent/{allocation} | [recentalloc](#recentalloc) |  |
@@ -300,7 +300,7 @@ Status: Internal Server Error
 ### <span id="download-file"></span> download file (*downloadFile*)
 
 ```
-POST /v1/file/download/{allocation}
+GET /v1/file/download/{allocation}
 ```
 
 Download Handler (downloadFile)
