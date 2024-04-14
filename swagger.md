@@ -323,7 +323,7 @@ Download Handler (downloadFile)
 | X-Path | `header` | string | `string` |  | ✓ |  | The path of the file to download. |
 | X-Path-Hash | `header` | string | `string` |  |  |  | The hash of the path of the file to download. If not provided, will be calculated from "X-Path" parameter. |
 | X-Read-Marker | `header` | string | `string` |  |  |  | The read marker to use for the download (check [ReadMarker](#/responses/ReadMarker)). |
-| X-Verify-Download | `header` | string | `string` |  |  |  | If set to "true", the download should be verified. If the mode is "thumbnail",\ |
+| X-Verify-Download | `header` | string | `string` |  |  |  | If set to "true", the download should be verified. If the mode is "thumbnail", the thumbnail hash stored in the db is compared with the hash of the actual file. If the mode is "full", merkle proof is calculated and returned in the response. |
 | X-Version | `header` | string | `string` |  |  |  | If its value is "v2" then both allocation_id and blobber url base are hashed and verified using X-App-Client-Signature-V2. |
 
 #### All responses
