@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
@@ -21,6 +22,7 @@ type CommitConnection struct {
 	AllocationRoot     string       `json:"allocation_root"`
 	PrevAllocationRoot string       `json:"prev_allocation_root"`
 	WriteMarker        *WriteMarker `json:"write_marker"`
+	ChainData          []byte       `json:"chain_data"`
 }
 
 // VerifyMarker verify WriteMarker's hash and check allocation_root if it is unique
@@ -109,22 +111,22 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 	return nil
 }
 
-func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context) error {
+func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context, startSeq int64) error {
 	if len(wme.CloseTxnID) > 0 {
 		t, err := transaction.VerifyTransaction(wme.CloseTxnID, chain.GetServerChain())
 		if err == nil {
 			wme.Status = Committed
 			wme.StatusMessage = t.TransactionOutput
 			wme.CloseTxnID = t.Hash
-			_ = wme.UpdateStatus(ctx, Committed, t.TransactionOutput, t.Hash)
-			return nil
+			err = wme.UpdateStatus(ctx, Committed, t.TransactionOutput, t.Hash, startSeq, wme.Sequence)
+			return err
 		}
 	}
 
 	txn, err := transaction.NewTransactionEntity()
 	if err != nil {
 		wme.StatusMessage = "Error creating transaction entity. " + err.Error()
-		if err := wme.UpdateStatus(ctx, Failed, "Error creating transaction entity. "+err.Error(), ""); err != nil {
+		if err := wme.UpdateStatus(ctx, Failed, "Error creating transaction entity. "+err.Error(), "", startSeq, wme.Sequence); err != nil {
 			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
 		}
 		return err
@@ -134,6 +136,17 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context) error {
 	sn.AllocationRoot = wme.WM.AllocationRoot
 	sn.PrevAllocationRoot = wme.WM.PreviousAllocationRoot
 	sn.WriteMarker = &wme.WM
+	err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		sn.ChainData, err = GetMarkersForChain(ctx, wme.WM.AllocationID, startSeq, wme.Sequence-1)
+		return err
+	})
+	if err != nil {
+		wme.StatusMessage = "Error getting chain data. " + err.Error()
+		if err := wme.UpdateStatus(ctx, Failed, "Error getting chain data. "+err.Error(), "", startSeq, wme.Sequence); err != nil {
+			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
+		}
+		return err
+	}
 
 	if sn.AllocationRoot == sn.PrevAllocationRoot {
 		// get nonce of prev WM
@@ -141,7 +154,7 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context) error {
 		prevWM, err = GetPreviousWM(ctx, sn.AllocationRoot, wme.WM.Timestamp)
 		if err != nil {
 			wme.StatusMessage = "Error getting previous write marker. " + err.Error()
-			if err := wme.UpdateStatus(ctx, Failed, "Error getting previous write marker. "+err.Error(), ""); err != nil {
+			if err := wme.UpdateStatus(ctx, Failed, "Error getting previous write marker. "+err.Error(), "", startSeq, wme.Sequence); err != nil {
 				Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
 			}
 			return err
@@ -154,7 +167,7 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context) error {
 		Logger.Error("Failed during sending close connection to the miner. ", zap.String("err:", err.Error()))
 		wme.Status = Failed
 		wme.StatusMessage = "Failed during sending close connection to the miner. " + err.Error()
-		if err := wme.UpdateStatus(ctx, Failed, "Failed during sending close connection to the miner. "+err.Error(), ""); err != nil {
+		if err := wme.UpdateStatus(ctx, Failed, "Failed during sending close connection to the miner. "+err.Error(), "", startSeq, wme.Sequence); err != nil {
 			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
 		}
 		return err
@@ -169,15 +182,15 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context) error {
 		wme.Status = Failed
 		wme.StatusMessage = "Error verifying the close connection transaction." + err.Error()
 		// TODO Is this single try?
-		if err := wme.UpdateStatus(ctx, Failed, "Error verifying the close connection transaction."+err.Error(), txn.Hash); err != nil {
+		if err := wme.UpdateStatus(ctx, Failed, "Error verifying the close connection transaction."+err.Error(), txn.Hash, startSeq, wme.Sequence); err != nil {
 			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
 		}
 		return err
 	}
 	wme.Status = Committed
 	wme.StatusMessage = t.TransactionOutput
-	_ = wme.UpdateStatus(ctx, Committed, t.TransactionOutput, t.Hash)
-	return nil
+	err = wme.UpdateStatus(ctx, Committed, t.TransactionOutput, t.Hash, startSeq, wme.Sequence)
+	return err
 }
 
 func (wme *WriteMarkerEntity) VerifyRollbackMarker(ctx context.Context, dbAllocation *allocation.Allocation, latestWM *WriteMarkerEntity) error {
@@ -196,8 +209,16 @@ func (wme *WriteMarkerEntity) VerifyRollbackMarker(ctx context.Context, dbAlloca
 		return common.NewError("write_marker_validation_failed", "Write Marker is not for the same allocation transaction")
 	}
 
-	if wme.WM.Size != 0 {
+	if wme.WM.Size != -latestWM.WM.Size {
 		return common.NewError("empty write_marker_validation_failed", fmt.Sprintf("Write Marker size is %v but should be 0", wme.WM.Size))
+	}
+
+	if wme.WM.ChainSize != latestWM.WM.ChainSize+wme.WM.Size {
+		return common.NewError("empty write_marker_validation_failed", fmt.Sprintf("Write Marker chain size is %v but should be %v", wme.WM.ChainSize, latestWM.WM.ChainSize+wme.WM.Size))
+	}
+
+	if latestWM.Status != Committed {
+		wme.WM.ChainLength = latestWM.WM.ChainLength
 	}
 
 	if wme.WM.AllocationRoot == dbAllocation.AllocationRoot {
@@ -231,6 +252,6 @@ func (wme *WriteMarkerEntity) VerifyRollbackMarker(ctx context.Context, dbAlloca
 	if !sigOK {
 		return common.NewError("write_marker_validation_failed", "Write marker signature is not valid")
 	}
-
+	wme.WM.ChainLength += 1
 	return nil
 }

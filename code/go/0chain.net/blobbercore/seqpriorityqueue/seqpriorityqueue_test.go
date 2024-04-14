@@ -23,7 +23,7 @@ func TestSeqPriorityQueue(t *testing.T) {
 		pq.Done(UploadData{
 			Offset:    20,
 			DataBytes: 1,
-		})
+		}, 21)
 	}()
 	expectedOffset := int64(0)
 	for {

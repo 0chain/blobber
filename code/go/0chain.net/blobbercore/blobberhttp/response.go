@@ -15,10 +15,10 @@ type ConnectionResult struct {
 
 // swagger:model CommitResult
 type CommitResult struct {
-	AllocationRoot string                   `json:"allocation_root"`
-	WriteMarker    *writemarker.WriteMarker `json:"write_marker"`
-	Success        bool                     `json:"success"`
-	ErrorMessage   string                   `json:"error_msg,omitempty"`
+	AllocationRoot string                         `json:"allocation_root"`
+	WriteMarker    *writemarker.WriteMarkerEntity `json:"write_marker"`
+	Success        bool                           `json:"success"`
+	ErrorMessage   string                         `json:"error_msg,omitempty"`
 	//Result         []*UploadResult         `json:"result"`
 }
 
@@ -26,6 +26,7 @@ type CommitResult struct {
 type ReferencePathResult struct {
 	*reference.ReferencePath
 	LatestWM *writemarker.WriteMarker `json:"latest_write_marker"`
+	Version  string                   `json:"version"`
 }
 
 // swagger:model RefResult
@@ -65,4 +66,5 @@ type DownloadResponse struct {
 type LatestWriteMarkerResult struct {
 	LatestWM *writemarker.WriteMarker `json:"latest_write_marker"`
 	PrevWM   *writemarker.WriteMarker `json:"prev_write_marker"`
+	Version  string                   `json:"version"`
 }

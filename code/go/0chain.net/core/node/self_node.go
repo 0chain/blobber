@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/config"
 	"github.com/0chain/gosdk/core/zcncrypto"
@@ -57,10 +56,11 @@ func (sn *SelfNode) GetURLBase() string {
 
 /*Sign - sign the given hash */
 func (sn *SelfNode) Sign(hash string) (string, error) {
+	wallet := sn.GetWallet()
 	//return encryption.Sign(sn.privateKey, hash)
 	signScheme := zcncrypto.NewSignatureScheme(config.Configuration.SignatureScheme)
 	if signScheme != nil {
-		err := signScheme.SetPrivateKey(sn.wallet.Keys[0].PrivateKey)
+		err := signScheme.SetPrivateKey(wallet.Keys[0].PrivateKey)
 		if err != nil {
 			return "", err
 		}

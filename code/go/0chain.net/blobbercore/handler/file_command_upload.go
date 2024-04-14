@@ -99,6 +99,7 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 
 	thumbFile, thumbHeader, _ := req.FormFile(UploadThumbnailFile)
 	if thumbHeader != nil {
+		logging.Logger.Info("ThumbnailFile: ", zap.String("Filename", thumbHeader.Filename), zap.Int64("Size", thumbHeader.Size))
 		if thumbHeader.Size > MaxThumbnailSize {
 			return common.NewError("max_thumbnail_size",
 				fmt.Sprintf("thumbnail size %d should not be greater than %d", thumbHeader.Size, MaxThumbnailSize))
@@ -127,9 +128,6 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 	defer cmd.contentFile.Close()
 
 	connectionID := cmd.fileChanger.ConnectionID
-	if cmd.fileChanger.Size == 0 {
-		return result, common.NewError("invalid_parameters", "Invalid parameters. Size cannot be zero")
-	}
 
 	fileInputData := &filestore.FileInputData{
 		Name: cmd.fileChanger.Filename,
@@ -166,6 +164,7 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		if fileOutputData.ContentSize != cmd.fileChanger.Size {
 			return result, common.NewError("upload_error", fmt.Sprintf("File size mismatch. Expected: %d, Actual: %d", cmd.fileChanger.Size, fileOutputData.ContentSize))
 		}
+		allocation.UpdateConnectionObjSize(connectionID, cmd.fileChanger.Size)
 	}
 
 	if cmd.thumbFile != nil {
@@ -182,7 +181,6 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		return result, err
 	}
 	if saveChange {
-		allocation.UpdateConnectionObjSize(connectionID, cmd.fileChanger.Size)
 		result.UpdateChange = false
 	}
 	if cmd.thumbHeader != nil {
@@ -201,6 +199,7 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 
 // ProcessThumbnail flush thumbnail file to FileStorage if it has.
 func (cmd *UploadFileCommand) ProcessThumbnail(allocationObj *allocation.Allocation) error {
+	logging.Logger.Info("ProcessThumbnail: ", zap.String("allocationID: ", cmd.fileChanger.AllocationID))
 	connectionID := cmd.fileChanger.ConnectionID
 	if cmd.thumbHeader != nil {
 		defer cmd.thumbFile.Close()
