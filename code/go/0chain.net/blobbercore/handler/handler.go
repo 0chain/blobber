@@ -789,6 +789,54 @@ func CleanupDiskHandler(ctx context.Context, r *http.Request) (interface{}, erro
 	return "cleanup", err
 }
 
+// swagger:route DELETE /v1/marketplace/shareinfo/{allocation} revokeshare
+// revokeshare is the handler to respond to share file requests from clients
+//
+// parameters:
+//   +name: allocation
+//     description: TxHash of the allocation in question.
+//     in: path
+//     required: true
+//     type: string
+//	 +name: X-App-Client-ID
+//     description: The ID/Wallet address of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: X-App-Client-Key
+// 	   description: The key of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: ALLOCATION-ID
+//	   description: The ID of the allocation in question.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature
+//     description: Digital signature of the client used to verify the request.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature-V2
+//     description: Digital signature of the client used to verify the request. Overrides X-App-Client-Signature if provided.
+//     in: header
+//     type: string 
+// +name: path
+//     description: Path of the file to be shared.
+//     in: query
+//     type: string
+//     required: true
+// +name: refereeClientID
+//     description: The ID of the client to revoke access to the file (in case of private sharing).
+//     in: query
+//     type: string
+//
+// responses:
+//
+//	200:
+//  400:
+
 func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)

@@ -41,6 +41,7 @@ Documentation of the blobber API.
 | GET | /v1/file/objecttree/{allocation} | [referencepath](#referencepath) |  |
 | GET | /v1/file/refs/{allocation} | [refshandler](#refshandler) |  |
 | GET | /v1/file/rename/{allocation} | [renameallocation](#renameallocation) |  |
+| DELETE | /v1/marketplace/shareinfo/{allocation} | [revokeshare](#revokeshare) |  |
 | POST | /v1/marketplace/shareinfo/{allocation} | [shareinfo](#shareinfo) |  |
   
 
@@ -612,6 +613,46 @@ Status: Bad Request
 Status: Internal Server Error
 
 ###### <span id="renameallocation-500-schema"></span> Schema
+
+### <span id="revokeshare"></span> revokeshare (*revokeshare*)
+
+```
+DELETE /v1/marketplace/shareinfo/{allocation}
+```
+
+revokeshare is the handler to respond to share file requests from clients
+
+#### Parameters
+
+| Name | Source | Type | Go type | Separator | Required | Default | Description |
+|------|--------|------|---------|-----------| :------: |---------|-------------|
+| allocation | `path` | string | `string` |  | ✓ |  | TxHash of the allocation in question. |
+| ALLOCATION-ID | `header` | string | `string` |  | ✓ |  | The ID of the allocation in question. |
+| X-App-Client-ID | `header` | string | `string` |  | ✓ |  | The ID/Wallet address of the client sending the request. |
+| X-App-Client-Key | `header` | string | `string` |  | ✓ |  | The key of the client sending the request. |
+| X-App-Client-Signature | `header` | string | `string` |  | ✓ |  | Digital signature of the client used to verify the request. |
+| X-App-Client-Signature-V2 | `header` | string | `string` |  |  |  | Digital signature of the client used to verify the request. Overrides X-App-Client-Signature if provided. |
+| path | `query` | string | `string` |  | ✓ |  | Path of the file to be shared. |
+| refereeClientID | `query` | string | `string` |  |  |  | The ID of the client to revoke access to the file (in case of private sharing). |
+
+#### All responses
+| Code | Status | Description | Has headers | Schema |
+|------|--------|-------------|:-----------:|--------|
+| [200](#revokeshare-200) | OK |  |  | [schema](#revokeshare-200-schema) |
+| [400](#revokeshare-400) | Bad Request |  |  | [schema](#revokeshare-400-schema) |
+
+#### Responses
+
+
+##### <span id="revokeshare-200"></span> 200
+Status: OK
+
+###### <span id="revokeshare-200-schema"></span> Schema
+
+##### <span id="revokeshare-400"></span> 400
+Status: Bad Request
+
+###### <span id="revokeshare-400-schema"></span> Schema
 
 ### <span id="shareinfo"></span> shareinfo (*shareinfo*)
 
