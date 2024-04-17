@@ -256,7 +256,8 @@ func retryRedeem(errString string) bool {
 }
 
 func startCollector(ctx context.Context) {
-	ticker := time.NewTicker(config.Configuration.MarkerRedeemInterval)
+	randTime := getRandTime()
+	ticker := time.NewTicker(time.Duration(randTime) * time.Second)
 	defer ticker.Stop()
 	for {
 		select {
@@ -272,6 +273,8 @@ func startCollector(ctx context.Context) {
 				}
 			}
 			markerDataMut.Unlock()
+			randTime = getRandTime()
+			ticker.Reset(time.Duration(randTime) * time.Second)
 		}
 	}
 }
@@ -282,6 +285,13 @@ func (md *markerData) processMarker() bool {
 	randTime += secondsInterval / 2 // interval of secondsInterval/2 to 3*secondsInterval/2
 
 	return !md.processing && !md.inCommit && (md.chainLength >= config.Configuration.MaxChainLength || common.Now()-md.firstMarkerTimestamp > common.Timestamp(config.Configuration.MaxTimestampGap) || common.Now()-md.lastMarkerTimestamp > common.Timestamp(randTime))
+}
+
+func getRandTime() int64 {
+	secondsInterval := int64(config.Configuration.MarkerRedeemInterval.Seconds())
+	randTime := rand.Int63n(secondsInterval / 2)
+	randTime += secondsInterval / 2 // interval of secondsInterval/2 to secondsInterval
+	return randTime
 }
 
 // TODO: don't delete prev WM
