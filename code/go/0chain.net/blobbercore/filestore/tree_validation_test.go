@@ -132,12 +132,12 @@ func TestFixedMerkleTreeProof(t *testing.T) {
 			err = ft.Finalize()
 			require.NoError(t, err)
 
-			merkleRoot, err := ft.CalculateRootAndStoreNodes(f)
-			require.NoError(t, err)
-
 			n, err = f.Write(b)
 			require.NoError(t, err)
 			require.EqualValues(t, size, n)
+
+			merkleRoot, err := ft.CalculateRootAndStoreNodes(f)
+			require.NoError(t, err)
 
 			f.Close()
 
@@ -151,15 +151,13 @@ func TestFixedMerkleTreeProof(t *testing.T) {
 			fm := fixedMerkleTreeProof{
 				idx:      index,
 				dataSize: int64(size),
+				offset:   int64(size),
 			}
 
 			proof, err := fm.GetMerkleProof(r)
 			require.NoError(t, err)
-
-			n1, err := r.Seek(FMTSize, io.SeekStart)
-			require.NoError(t, err)
-			require.EqualValues(t, FMTSize, n1)
-			proofByte, err := fm.GetLeafContent(r)
+			fileReader := io.LimitReader(r, size)
+			proofByte, err := fm.GetLeafContent(fileReader)
 			require.NoError(t, err)
 
 			leafHash := encryption.ShaHash(proofByte)
@@ -210,19 +208,17 @@ func TestValidationTreeWrite(t *testing.T) {
 			f, err := os.Create(filename)
 			require.NoError(t, err)
 
-			merkleRoot1, err := vt.CalculateRootAndStoreNodes(f)
-			require.NoError(t, err)
-
 			n, err = f.Write(b)
 			require.NoError(t, err)
 			require.EqualValues(t, size, n)
+
+			merkleRoot1, err := vt.CalculateRootAndStoreNodes(f, size)
+			require.NoError(t, err)
+
 			f.Close()
 
 			r, err := os.Open(filename)
 			require.NoError(t, err)
-			n1, err := r.Seek(FMTSize, io.SeekStart)
-			require.NoError(t, err)
-			require.EqualValues(t, FMTSize, n1)
 
 			totalLeaves := int((size + util.MaxMerkleLeavesSize - 1) / util.MaxMerkleLeavesSize)
 			leaves := make([][]byte, totalLeaves)
@@ -233,6 +229,8 @@ func TestValidationTreeWrite(t *testing.T) {
 				require.EqualValues(t, size, n)
 				leaves[0] = encryption.ShaHash(b)
 			} else {
+				_, err = r.Seek(size, io.SeekStart)
+				require.NoError(t, err)
 				nodes := make([]byte, totalLeaves*HashSize)
 				n, err = r.Read(nodes)
 				require.NoError(t, err)
@@ -292,12 +290,16 @@ func TestValidationMerkleProof(t *testing.T) {
 			f, err := os.Create(filename)
 			require.NoError(t, err)
 
-			merkleRoot, err := vt.CalculateRootAndStoreNodes(f)
-			require.NoError(t, err)
-
 			n, err = f.Write(b)
 			require.NoError(t, err)
 			require.EqualValues(t, size, n)
+
+			fixedMerkleBytes := make([]byte, FMTSize)
+			_, err = f.Write(fixedMerkleBytes)
+			require.NoError(t, err)
+
+			merkleRoot, err := vt.CalculateRootAndStoreNodes(f, size)
+			require.NoError(t, err)
 
 			f.Close()
 
@@ -315,6 +317,7 @@ func TestValidationMerkleProof(t *testing.T) {
 			vp := validationTreeProof{
 				totalLeaves: int((size + util.MaxMerkleLeavesSize - 1) / util.MaxMerkleLeavesSize),
 				dataSize:    int64(size),
+				offset:      int64(size) + FMTSize,
 			}
 
 			t.Logf("StartInd: %d; endInd: %d", startInd, endInd)
@@ -322,12 +325,13 @@ func TestValidationMerkleProof(t *testing.T) {
 			require.NoError(t, err)
 
 			data := make([]byte, (endInd-startInd+1)*util.MaxMerkleLeavesSize)
-			fileOffset := FMTSize + nodesSize + int64(startInd*util.MaxMerkleLeavesSize)
+			fileOffset := int64(startInd * util.MaxMerkleLeavesSize)
 
 			_, err = r.Seek(int64(fileOffset), io.SeekStart)
 			require.NoError(t, err)
+			fileReader := io.LimitReader(r, size-fileOffset)
 
-			n, err = r.Read(data)
+			n, err = fileReader.Read(data)
 			require.NoError(t, err)
 
 			data = data[:n]

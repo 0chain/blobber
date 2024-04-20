@@ -87,9 +87,9 @@ func GetObjectTreeResponseHandler(getObjectTreeResponse *blobbergrpc.GetObjectTr
 func CommitWriteResponseHandler(resp *blobbergrpc.CommitResponse) *blobberhttp.CommitResult {
 	return &blobberhttp.CommitResult{
 		AllocationRoot: resp.AllocationRoot,
-		WriteMarker:    WriteMarkerGRPCToWriteMarker(resp.WriteMarker),
-		Success:        resp.Success,
-		ErrorMessage:   resp.ErrorMessage,
+		// WriteMarker:    WriteMarkerGRPCToWriteMarker(resp.WriteMarker),
+		Success:      resp.Success,
+		ErrorMessage: resp.ErrorMessage,
 	}
 }
 
