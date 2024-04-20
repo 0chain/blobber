@@ -174,6 +174,7 @@ func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, is
 		return false, common.NewError("connection_not_found", "connection not found for save file change")
 	}
 	connectionObj.lock.Lock()
+	connectionObj.UpdatedAt = time.Now()
 	change := connectionObj.changes[pathHash]
 	saveChange := false
 	if change == nil {
