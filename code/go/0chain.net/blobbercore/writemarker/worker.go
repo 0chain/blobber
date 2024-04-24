@@ -33,12 +33,16 @@ type markerData struct {
 	inCommit             bool // if new write marker is being committed
 }
 
-func SetCommittingMarker(allocationID string, committing bool) {
+func SetCommittingMarker(allocationID string, committing bool) bool {
 	markerDataMut.Lock()
 	defer markerDataMut.Unlock()
 	if data, ok := markerDataMap[allocationID]; ok {
+		if data.processing {
+			return false
+		}
 		data.inCommit = committing
 	}
+	return true
 }
 
 func SaveMarkerData(allocationID string, timestamp common.Timestamp, chainLength int) {
