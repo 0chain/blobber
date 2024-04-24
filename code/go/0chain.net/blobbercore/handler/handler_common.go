@@ -128,9 +128,12 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 
 		mutex := lock.GetMutex(allocation.Allocation{}.TableName(), allocationID)
 		Logger.Info("Locking allocation", zap.String("allocation_id", allocationID))
+		wmSet := writemarker.SetCommittingMarker(allocationID, true)
+		if !wmSet {
+			return nil, http.StatusBadRequest, common.NewError("pending_markers", "Committing marker set failed")
+		}
 		mutex.Lock()
 		defer mutex.Unlock()
-		writemarker.SetCommittingMarker(allocationID, true)
 		tx := GetMetaDataStore().GetTransaction(ctx)
 		resp, statusCode, err = handler(ctx, r)
 
