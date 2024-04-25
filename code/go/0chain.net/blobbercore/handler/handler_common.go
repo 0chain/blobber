@@ -118,7 +118,6 @@ func GetBlobberInfoJson() BlobberInfo {
 // Should only be used for handlers where the writemarker is submitted
 func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.StatusCodeResponderF {
 	return func(ctx context.Context, r *http.Request) (resp interface{}, statusCode int, err error) {
-		ctx = GetMetaDataStore().CreateTransaction(ctx)
 		allocationID := r.Header.Get(common.AllocationIdHeader)
 		if allocationID == "" {
 			return nil, http.StatusBadRequest, common.NewError("invalid_allocation_id", "Allocation ID is required")
@@ -134,6 +133,7 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 		}
 		mutex.Lock()
 		defer mutex.Unlock()
+		ctx = GetMetaDataStore().CreateTransaction(ctx)
 		tx := GetMetaDataStore().GetTransaction(ctx)
 		resp, statusCode, err = handler(ctx, r)
 
