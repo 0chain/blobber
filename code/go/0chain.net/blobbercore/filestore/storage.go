@@ -144,7 +144,6 @@ func (fs *FileStore) GetTempFilePath(allocID, connID, fileName, filePathHash str
 }
 
 func (fs *FileStore) MoveToFilestore(allocID, hash string, version int) error {
-
 	fPath, err := fs.GetPathForFile(allocID, hash, version)
 	if err != nil {
 		return common.NewError("get_file_path_error", err.Error())
@@ -156,6 +155,8 @@ func (fs *FileStore) MoveToFilestore(allocID, hash string, version int) error {
 	if err != nil {
 		return common.NewError("blob_object_dir_creation_error", err.Error())
 	}
+
+	logging.Logger.Info("move_to_filestore", zap.String("allocation_id", allocID), zap.String("path", fPath))
 
 	_ = os.Rename(preCommitPath, fPath)
 	return nil
@@ -526,6 +527,7 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 			return nil, common.NewError("get_file_path_error", err.Error())
 		}
 	}
+	logging.Logger.Info("filestore_path", zap.String("path", fileObjectPath))
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
 		if readBlockIn.IsPrecommit {
