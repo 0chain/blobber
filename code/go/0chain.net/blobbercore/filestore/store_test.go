@@ -290,7 +290,7 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 				fid.ValidationRoot = randString(64)
 			}
 			success, err := fs.CommitWrite(test.allocID, test.connID, fid)
-			errr := fs.MoveToFilestore(test.allocID, validationRoot)
+			errr := fs.MoveToFilestore(test.allocID, validationRoot, VERSION)
 			require.Nil(t, errr)
 			if test.expectedErrorOnCommit {
 				if err == nil {
@@ -301,10 +301,10 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 			} else {
 				require.Nil(t, err)
 				require.True(t, success)
-				preCommitPath := fs.getPreCommitPathForFile(test.allocID, fid.ValidationRoot)
+				preCommitPath := fs.getPreCommitPathForFile(test.allocID, fid.ValidationRoot, VERSION)
 				_, err := os.Open(preCommitPath)
 				require.NotNil(t, err)
-				finalPath, err := fs.GetPathForFile(test.allocID, fid.ValidationRoot)
+				finalPath, err := fs.GetPathForFile(test.allocID, fid.ValidationRoot, VERSION)
 				require.Nil(t, err)
 				_, err = os.Open(finalPath)
 				require.Nil(t, err)
@@ -374,7 +374,7 @@ func TestDeletePreCommitDir(t *testing.T) {
 	require.True(t, success)
 
 	// Move data to final location
-	err = fs.MoveToFilestore(allocID, validationRoot)
+	err = fs.MoveToFilestore(allocID, validationRoot, VERSION)
 	require.Nil(t, err)
 	prevValidationRoot := validationRoot
 
@@ -407,18 +407,18 @@ func TestDeletePreCommitDir(t *testing.T) {
 	require.Nil(t, err)
 	require.True(t, success)
 
-	preCommitPath := fs.getPreCommitPathForFile(allocID, validationRoot)
+	preCommitPath := fs.getPreCommitPathForFile(allocID, validationRoot, VERSION)
 	_, err = os.Open(preCommitPath)
 	require.Nil(t, err)
 
 	err = fs.DeletePreCommitDir(allocID)
 	require.Nil(t, err)
 
-	preCommitPath = fs.getPreCommitPathForFile(allocID, validationRoot)
+	preCommitPath = fs.getPreCommitPathForFile(allocID, validationRoot, VERSION)
 	_, err = os.Open(preCommitPath)
 	require.NotNil(t, err)
 
-	finalPath, err := fs.GetPathForFile(allocID, prevValidationRoot)
+	finalPath, err := fs.GetPathForFile(allocID, prevValidationRoot, VERSION)
 	require.Nil(t, err)
 	_, err = os.Open(finalPath)
 	require.Nil(t, err)
@@ -520,7 +520,7 @@ func TestStorageUploadUpdate(t *testing.T) {
 	fid.Name = thumbFileName
 
 	// Move data to final location
-	err = fs.MoveToFilestore(allocID, validationRoot)
+	err = fs.MoveToFilestore(allocID, validationRoot, VERSION)
 	require.Nil(t, err)
 
 	// Commit thumbnail file to pre-commit location
@@ -528,7 +528,7 @@ func TestStorageUploadUpdate(t *testing.T) {
 	require.Nil(t, err)
 	require.True(t, success)
 	// Get the path of the pre-commit location of the thumbnail file and check if the file exists
-	preCommitPath := fs.getPreCommitPathForFile(allocID, fid.ThumbnailHash)
+	preCommitPath := fs.getPreCommitPathForFile(allocID, fid.ThumbnailHash, VERSION)
 	preFile, err := os.Open(preCommitPath)
 	require.Nil(t, err)
 	defer preFile.Close()
@@ -566,7 +566,7 @@ func TestStorageUploadUpdate(t *testing.T) {
 	fid.Name = fileName
 
 	// Move data to final location
-	err = fs.MoveToFilestore(allocID, prevThumbHash)
+	err = fs.MoveToFilestore(allocID, prevThumbHash, VERSION)
 	require.Nil(t, err)
 
 	// Set fields to commit thumbnail file
@@ -578,7 +578,7 @@ func TestStorageUploadUpdate(t *testing.T) {
 	require.True(t, success)
 
 	// Get the path of the pre-commit location of the thumbnail file and check if the file exists
-	preCommitPath = fs.getPreCommitPathForFile(allocID, fid.ThumbnailHash)
+	preCommitPath = fs.getPreCommitPathForFile(allocID, fid.ThumbnailHash, VERSION)
 
 	preFile, err = os.Open(preCommitPath)
 
@@ -598,12 +598,13 @@ func TestStorageUploadUpdate(t *testing.T) {
 	require.Equal(t, hex.EncodeToString(h.Sum(nil)), fid.ThumbnailHash)
 
 	input := &ReadBlockInput{
-		AllocationID: allocID,
-		FileSize:     int64(size),
-		Hash:         fid.ThumbnailHash,
-		IsThumbnail:  true,
-		NumBlocks:    1,
-		IsPrecommit:  true,
+		AllocationID:     allocID,
+		FileSize:         int64(size),
+		Hash:             fid.ThumbnailHash,
+		IsThumbnail:      true,
+		NumBlocks:        1,
+		IsPrecommit:      true,
+		FilestoreVersion: VERSION,
 	}
 
 	data, err := fs.GetFileBlock(input)
@@ -617,7 +618,7 @@ func TestStorageUploadUpdate(t *testing.T) {
 	_, err = io.Copy(h, pathWriter)
 	require.Nil(t, err)
 	require.Equal(t, hex.EncodeToString(h.Sum(nil)), fid.ThumbnailHash)
-	fPath, err = fs.GetPathForFile(allocID, prevThumbHash)
+	fPath, err = fs.GetPathForFile(allocID, prevThumbHash, VERSION)
 	require.Nil(t, err)
 	f, err = os.Open(fPath)
 	require.Nil(t, err)
@@ -646,7 +647,7 @@ func TestGetFileBlock(t *testing.T) {
 	validationRoot, _, err := generateRandomDataAndStoreNodes(fPath, int64(size))
 	require.Nil(t, err)
 
-	permanentFPath := fs.getPreCommitPathForFile(allocID, validationRoot)
+	permanentFPath := fs.getPreCommitPathForFile(allocID, validationRoot, VERSION)
 	// require.Nil(t, err)
 
 	err = os.MkdirAll(filepath.Dir(permanentFPath), 0777)
@@ -712,12 +713,13 @@ func TestGetFileBlock(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
 			in := &ReadBlockInput{
-				AllocationID:  allocID,
-				StartBlockNum: int(test.blockNum),
-				NumBlocks:     int(test.numBlocks),
-				Hash:          test.validationRoot,
-				FileSize:      int64(test.expectedDataSize),
-				IsPrecommit:   true,
+				AllocationID:     allocID,
+				StartBlockNum:    int(test.blockNum),
+				NumBlocks:        int(test.numBlocks),
+				Hash:             test.validationRoot,
+				FileSize:         int64(test.expectedDataSize),
+				IsPrecommit:      true,
+				FilestoreVersion: VERSION,
 			}
 
 			fileResponse, err := fs.GetFileBlock(in)
@@ -751,7 +753,7 @@ func TestGetMerkleTree(t *testing.T) {
 	require.Nil(t, err)
 	t.Logf("Merkle root: %s", mr)
 	allocID := randString(64)
-	fPath := fs.getPreCommitPathForFile(allocID, validationRoot)
+	fPath := fs.getPreCommitPathForFile(allocID, validationRoot, VERSION)
 
 	err = os.MkdirAll(filepath.Dir(fPath), 0777)
 	require.Nil(t, err)

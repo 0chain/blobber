@@ -37,14 +37,14 @@ func (mfs *MockFileStore) CommitWrite(allocID, connID string, fileData *filestor
 	return true, nil
 }
 
-func (mfs *MockFileStore) MoveToFilestore(allocID, hash string) error {
+func (mfs *MockFileStore) MoveToFilestore(allocID, hash string, version int) error {
 	return nil
 }
 
 func (mfs *MockFileStore) DeleteAllocation(allocID string) {
 }
 
-func (mfs *MockFileStore) DeleteFromFilestore(allocID, hash string) error {
+func (mfs *MockFileStore) DeleteFromFilestore(allocID, hash string, version int) error {
 	return nil
 }
 
@@ -52,7 +52,7 @@ func (mfs *MockFileStore) DeleteTempFile(allocID, connID string, fileData *files
 	return nil
 }
 
-func (mfs *MockFileStore) DeleteFile(allocID, contentHash string) error {
+func (mfs *MockFileStore) DeleteFile(allocID, contentHash string, version int) error {
 	return nil
 }
 
@@ -64,7 +64,7 @@ func (mfs *MockFileStore) GetFileBlock(rin *filestore.ReadBlockInput) (*filestor
 	return nil, nil
 }
 
-func (mfs *MockFileStore) GetFilePathSize(allocID, contentHash, thumbHash string) (int64, int64, error) {
+func (mfs *MockFileStore) GetFilePathSize(allocID, contentHash, thumbHash string, version int) (int64, int64, error) {
 	return 0, 0, nil
 }
 
@@ -112,7 +112,7 @@ func (mfs *MockFileStore) CalculateCurrentDiskCapacity() error {
 	return nil
 }
 
-func (mfs *MockFileStore) GetPathForFile(allocID, contentHash string) (string, error) {
+func (mfs *MockFileStore) GetPathForFile(allocID, contentHash string, version int) (string, error) {
 	return "", nil
 }
 
