@@ -40,6 +40,11 @@ func cleanupAllocationFiles(ctx context.Context, allocationObj allocation.Alloca
 
 	_ = filestore.GetFileStore().IterateObjects(allocationObj.ID, func(hash string, contentSize int64) {
 		var refs []reference.Ref
+		version := 0
+		if len(hash) > 64 {
+			version = 1
+			hash = hash[:64]
+		}
 		err := db.Table((reference.Ref{}).TableName()).
 			Where(reference.Ref{ValidationRoot: hash, Type: reference.FILE}).
 			Or(reference.Ref{ThumbnailHash: hash, Type: reference.FILE}).
@@ -54,7 +59,7 @@ func cleanupAllocationFiles(ctx context.Context, allocationObj allocation.Alloca
 			logging.Logger.Info("hash has no references. Deleting from disk",
 				zap.Any("count", len(refs)), zap.String("hash", hash))
 
-			if err = filestore.GetFileStore().DeleteFromFilestore(allocationObj.ID, hash); err != nil {
+			if err = filestore.GetFileStore().DeleteFromFilestore(allocationObj.ID, hash, version); err != nil {
 				logging.Logger.Error("FileStore_DeleteFile", zap.String("validation_root", hash), zap.Error(err))
 			}
 		}

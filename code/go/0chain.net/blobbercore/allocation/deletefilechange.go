@@ -61,9 +61,10 @@ func (nf *DeleteFileChange) DeleteTempFile() error {
 func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context, mut *sync.Mutex) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	type Result struct {
-		Id             string
-		ValidationRoot string
-		ThumbnailHash  string
+		Id               string
+		ValidationRoot   string
+		ThumbnailHash    string
+		FileStoreVersion int
 	}
 
 	limitCh := make(chan struct{}, 10)
@@ -71,7 +72,7 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context, mut *sync.Mut
 	var results []Result
 	mut.Lock()
 	err := db.Model(&reference.Ref{}).Unscoped().
-		Select("id", "validation_root", "thumbnail_hash").
+		Select("id", "validation_root", "thumbnail_hash", "filestore_version").
 		Where("allocation_id=? AND path LIKE ? AND type=? AND deleted_at is not NULL",
 			nf.AllocationID, nf.Path+"%", reference.FILE).
 		FindInBatches(&results, 100, func(tx *gorm.DB, batch int) error {
@@ -96,7 +97,7 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context, mut *sync.Mut
 					}()
 
 					if count == 0 {
-						err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ValidationRoot)
+						err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ValidationRoot, res.FileStoreVersion)
 						if err != nil {
 							logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
 								zap.String("validation_root", res.ValidationRoot))
