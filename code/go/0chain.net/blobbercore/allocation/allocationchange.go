@@ -265,7 +265,7 @@ type Result struct {
 	PrevValidationRoot string
 	ThumbnailHash      string
 	PrevThumbnailHash  string
-	FileStoreVersion   int
+	FilestoreVersion   int
 }
 
 // TODO: Need to speed up this function
@@ -304,13 +304,13 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 						}()
 
 						if count == 0 && ref.PrevValidationRoot != "" {
-							err := filestore.GetFileStore().DeleteFromFilestore(a.AllocationID, ref.PrevValidationRoot, ref.FileStoreVersion)
+							err := filestore.GetFileStore().DeleteFromFilestore(a.AllocationID, ref.PrevValidationRoot, ref.FilestoreVersion)
 							if err != nil {
 								logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
 									zap.String("validation_root", ref.ValidationRoot))
 							}
 						}
-						err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.ValidationRoot, ref.FileStoreVersion)
+						err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.ValidationRoot, ref.FilestoreVersion)
 						if err != nil {
 							logging.Logger.Error(fmt.Sprintf("Error while moving file: %s", err.Error()),
 								zap.String("validation_root", ref.ValidationRoot))
@@ -318,13 +318,13 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 
 						if ref.ThumbnailHash != "" && ref.ThumbnailHash != ref.PrevThumbnailHash {
 							if ref.PrevThumbnailHash != "" {
-								err := filestore.GetFileStore().DeleteFromFilestore(a.AllocationID, ref.PrevThumbnailHash, ref.FileStoreVersion)
+								err := filestore.GetFileStore().DeleteFromFilestore(a.AllocationID, ref.PrevThumbnailHash, ref.FilestoreVersion)
 								if err != nil {
 									logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail file: %s", err.Error()),
 										zap.String("thumbnail_hash", ref.ThumbnailHash))
 								}
 							}
-							err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.ThumbnailHash, ref.FileStoreVersion)
+							err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.ThumbnailHash, ref.FilestoreVersion)
 							if err != nil {
 								logging.Logger.Error(fmt.Sprintf("Error while moving thumbnail file: %s", err.Error()),
 									zap.String("thumbnail_hash", ref.ThumbnailHash))
@@ -382,7 +382,7 @@ func deleteFromFileStore(ctx context.Context, allocationID string) error {
 
 						if count == 0 {
 							err := filestore.GetFileStore().DeleteFromFilestore(allocationID, res.ValidationRoot,
-								res.FileStoreVersion)
+								res.FilestoreVersion)
 							if err != nil {
 								logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
 									zap.String("validation_root", res.ValidationRoot))
@@ -390,7 +390,7 @@ func deleteFromFileStore(ctx context.Context, allocationID string) error {
 						}
 
 						if res.ThumbnailHash != "" {
-							err := filestore.GetFileStore().DeleteFromFilestore(allocationID, res.ThumbnailHash, res.FileStoreVersion)
+							err := filestore.GetFileStore().DeleteFromFilestore(allocationID, res.ThumbnailHash, res.FilestoreVersion)
 							if err != nil {
 								logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail: %s", err.Error()),
 									zap.String("thumbnail", res.ThumbnailHash))

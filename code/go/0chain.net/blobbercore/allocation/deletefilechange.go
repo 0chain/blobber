@@ -64,7 +64,7 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context, mut *sync.Mut
 		Id               string
 		ValidationRoot   string
 		ThumbnailHash    string
-		FileStoreVersion int
+		FilestoreVersion int
 	}
 
 	limitCh := make(chan struct{}, 10)
@@ -97,7 +97,7 @@ func (nf *DeleteFileChange) CommitToFileStore(ctx context.Context, mut *sync.Mut
 					}()
 
 					if count == 0 {
-						err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ValidationRoot, res.FileStoreVersion)
+						err := filestore.GetFileStore().DeleteFile(nf.AllocationID, res.ValidationRoot, res.FilestoreVersion)
 						if err != nil {
 							logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
 								zap.String("validation_root", res.ValidationRoot))
