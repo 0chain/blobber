@@ -480,6 +480,7 @@ func (fsh *StorageHandler) CreateConnection(ctx context.Context, r *http.Request
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
 	}
 
+	fmt.Println("create connection verify signature")
 	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), r.Header.Get(common.ClientSignatureHeaderV2), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
 		return nil, common.NewError("invalid_signature", "Invalid signature")

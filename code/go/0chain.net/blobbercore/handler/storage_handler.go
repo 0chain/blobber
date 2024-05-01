@@ -910,11 +910,13 @@ func verifySignatureFromRequest(alloc, signV1, signV2, pbK string) (bool, error)
 	if signV2 != "" {
 		sign = encryption.MiraclToHerumiSig(signV2)
 		hashData = alloc + node.Self.GetURLBase()
+		fmt.Println("verifySig signv2 - hash", hashData, "sig:", signV2, "pubkey:", pbK)
 		hash = encryption.Hash(hashData)
 	} else {
 		sign = encryption.MiraclToHerumiSig(signV1)
 		hashData = alloc
 		hash = encryption.Hash(hashData)
+		fmt.Println("verifySig sigv1 - hash", hashData, "sig:", signV1, "pubkey:", pbK)
 	}
 	if len(sign) < 64 {
 		return false, nil
