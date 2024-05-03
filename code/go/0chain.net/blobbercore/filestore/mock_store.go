@@ -49,8 +49,8 @@ func (fs *MockStore) DeleteTempFile(allocID, connID string, fileData *FileInputD
 	return fs.FileStore.DeleteTempFile(allocID, connID, fileData)
 }
 
-func (fs *MockStore) DeleteFile(allocationID, contentHash string) error {
-	return fs.FileStore.DeleteFile(allocationID, contentHash)
+func (fs *MockStore) DeleteFile(allocationID, contentHash string, version int) error {
+	return fs.FileStore.DeleteFile(allocationID, contentHash, version)
 }
 
 func (fs *MockStore) GetFileBlock(rbi *ReadBlockInput) (*FileDownloadResponse, error) {
@@ -98,8 +98,8 @@ func (fs *MockStore) CalculateCurrentDiskCapacity() error {
 	return fs.FileStore.CalculateCurrentDiskCapacity()
 }
 
-func (fs *MockStore) GetPathForFile(allocID, contentHash string) (string, error) {
-	return fs.FileStore.GetPathForFile(allocID, contentHash)
+func (fs *MockStore) GetPathForFile(allocID, contentHash string, version int) (string, error) {
+	return fs.FileStore.GetPathForFile(allocID, contentHash, version)
 }
 
 func (fs *MockStore) UpdateAllocationMetaData(m map[string]interface{}) error {

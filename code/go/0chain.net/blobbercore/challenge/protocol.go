@@ -173,11 +173,12 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		}
 
 		challengeReadInput := &filestore.ChallengeReadBlockInput{
-			Hash:         objectPath.Meta["validation_root"].(string),
-			FileSize:     objectPath.Meta["size"].(int64),
-			BlockOffset:  blockoffset,
-			AllocationID: cr.AllocationID,
-			IsPrecommit:  fromPreCommit,
+			Hash:             objectPath.Meta["validation_root"].(string),
+			FileSize:         objectPath.Meta["size"].(int64),
+			BlockOffset:      blockoffset,
+			AllocationID:     cr.AllocationID,
+			IsPrecommit:      fromPreCommit,
+			FilestoreVersion: objectPath.FilestoreVersion,
 		}
 
 		t1 := time.Now()
@@ -222,6 +223,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	allocMu.RUnlock()
 
 	postDataBytes, err := json.Marshal(postData)
+	logging.Logger.Info("[challenge]post: ", zap.Any("challenge_id", cr.ChallengeID), zap.Any("post_data_len", len(postData)/(1024*1024)))
 	if err != nil {
 		logging.Logger.Error("[db]form: " + err.Error())
 		cr.CancelChallenge(ctx, err)

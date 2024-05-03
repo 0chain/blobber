@@ -78,7 +78,7 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, rootRef *reference
 	nf.deleteHash = make(map[string]int)
 
 	if fileRef.ValidationRoot != "" && fileRef.ValidationRoot != nf.ValidationRoot {
-		nf.deleteHash[fileRef.ValidationRoot] = int(CONTENT)
+		nf.deleteHash[fileRef.ValidationRoot] = fileRef.FilestoreVersion
 	}
 
 	fileRef.ActualFileHash = nf.ActualHash
@@ -99,13 +99,14 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, rootRef *reference
 	fileRef.EncryptedKeyPoint = nf.EncryptedKeyPoint
 	fileRef.ChunkSize = nf.ChunkSize
 	fileRef.IsPrecommit = true
+	fileRef.FilestoreVersion = filestore.VERSION
 
 	return rootRef, nil
 }
 
 func (nf *UpdateFileChanger) CommitToFileStore(ctx context.Context, mut *sync.Mutex) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	for hash := range nf.deleteHash {
+	for hash, version := range nf.deleteHash {
 		var count int64
 		mut.Lock()
 		err := db.Table((&reference.Ref{}).TableName()).
@@ -115,7 +116,7 @@ func (nf *UpdateFileChanger) CommitToFileStore(ctx context.Context, mut *sync.Mu
 		mut.Unlock()
 		if err == nil && count == 0 {
 			logging.Logger.Info("Deleting content file", zap.String("validation_root", hash))
-			if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, hash); err != nil {
+			if err := filestore.GetFileStore().DeleteFile(nf.AllocationID, hash, version); err != nil {
 				logging.Logger.Error("FileStore_DeleteFile", zap.String("allocation_id", nf.AllocationID), zap.Error(err))
 			}
 		}

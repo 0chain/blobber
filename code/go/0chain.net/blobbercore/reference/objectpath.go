@@ -8,13 +8,14 @@ import (
 )
 
 type ObjectPath struct {
-	RootHash     string                 `json:"root_hash"`
-	Meta         map[string]interface{} `json:"meta_data"`
-	Path         map[string]interface{} `json:"path"`
-	FileBlockNum int64                  `json:"file_block_num"`
-	ChunkSize    int64                  `json:"chunk_size"`
-	Size         int64                  `json:"size"`
-	RefID        int64                  `json:"-"`
+	RootHash         string                 `json:"root_hash"`
+	Meta             map[string]interface{} `json:"meta_data"`
+	Path             map[string]interface{} `json:"path"`
+	FileBlockNum     int64                  `json:"file_block_num"`
+	ChunkSize        int64                  `json:"chunk_size"`
+	Size             int64                  `json:"size"`
+	FilestoreVersion int                    `json:"-"`
+	RefID            int64                  `json:"-"`
 }
 
 // TODO needs to be refactored, current implementation can probably be heavily simplified
@@ -86,6 +87,7 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 	retObj.ChunkSize = curRef.ChunkSize
 	retObj.Size = curRef.Size
 	retObj.RefID = curRef.ID
+	retObj.FilestoreVersion = curRef.FilestoreVersion
 
 	return &retObj, nil
 }

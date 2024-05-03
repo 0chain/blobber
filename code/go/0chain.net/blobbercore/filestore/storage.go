@@ -63,8 +63,6 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, fileData.FilePathHash, conID)
 	var (
 		initialSize int64
-		nodeSize    int64
-		offset      int64
 	)
 	finfo, err := os.Stat(tempFilePath)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -73,10 +71,7 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 	if finfo != nil {
 		initialSize = finfo.Size()
 	}
-	if !fileData.IsThumbnail {
-		nodeSize = getNodesSize(fileData.Size, util.MaxMerkleLeavesSize)
-		offset = fileData.UploadOffset + nodeSize + FMTSize
-	}
+
 	if err = createDirs(filepath.Dir(tempFilePath)); err != nil {
 		return nil, common.NewError("dir_creation_error", err.Error())
 	}
@@ -86,7 +81,7 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 	}
 	defer f.Close()
 
-	_, err = f.Seek(offset, io.SeekStart)
+	_, err = f.Seek(fileData.UploadOffset, io.SeekStart)
 	if err != nil {
 		return nil, common.NewError("file_seek_error", err.Error())
 	}
@@ -107,7 +102,7 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 	if currentSize > initialSize { // Is chunk new or rewritten
 		fs.updateAllocTempFileSize(allocID, currentSize-initialSize)
 	}
-	if currentSize > fileData.Size+nodeSize+FMTSize {
+	if fileData.Size > 0 && currentSize > fileData.Size {
 		_ = os.Remove(tempFilePath)
 		return nil, common.NewError("file_size_mismatch", "File size is greater than expected")
 	}
@@ -115,7 +110,7 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 	fileRef.Size = writtenSize
 	fileRef.Name = fileData.Name
 	fileRef.Path = fileData.Path
-	fileRef.ContentSize = currentSize - nodeSize - FMTSize
+	fileRef.ContentSize = currentSize
 	return fileRef, nil
 }
 
@@ -148,14 +143,13 @@ func (fs *FileStore) GetTempFilePath(allocID, connID, fileName, filePathHash str
 	return fs.getTempPathForFile(allocID, fileName, filePathHash, connID)
 }
 
-func (fs *FileStore) MoveToFilestore(allocID, hash string) error {
-
-	fPath, err := fs.GetPathForFile(allocID, hash)
+func (fs *FileStore) MoveToFilestore(allocID, hash string, version int) error {
+	fPath, err := fs.GetPathForFile(allocID, hash, version)
 	if err != nil {
 		return common.NewError("get_file_path_error", err.Error())
 	}
 
-	preCommitPath := fs.getPreCommitPathForFile(allocID, hash)
+	preCommitPath := fs.getPreCommitPathForFile(allocID, hash, version)
 
 	err = createDirs(filepath.Dir(fPath))
 	if err != nil {
@@ -166,9 +160,9 @@ func (fs *FileStore) MoveToFilestore(allocID, hash string) error {
 	return nil
 }
 
-func (fs *FileStore) DeleteFromFilestore(allocID, hash string) error {
+func (fs *FileStore) DeleteFromFilestore(allocID, hash string, version int) error {
 
-	fPath, err := fs.GetPathForFile(allocID, hash)
+	fPath, err := fs.GetPathForFile(allocID, hash, version)
 	if err != nil {
 		return common.NewError("get_file_path_error", err.Error())
 	}
@@ -208,7 +202,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 		fileHash = fileData.ThumbnailHash
 	}
 
-	preCommitPath := fs.getPreCommitPathForFile(allocID, fileHash)
+	preCommitPath := fs.getPreCommitPathForFile(allocID, fileHash, VERSION)
 
 	err := createDirs(filepath.Dir(preCommitPath))
 	if err != nil {
@@ -273,8 +267,8 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	if err != nil {
 		return false, common.NewError("stat_error", err.Error())
 	}
-	nodeSie := getNodesSize(fileData.Size, util.MaxMerkleLeavesSize)
-	fileSize := rStat.Size() - nodeSie - FMTSize
+
+	fileSize := rStat.Size()
 	now := time.Now()
 	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
 	defer cancel()
@@ -283,12 +277,16 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 		return false, common.NewError("hasher_wait_error", err.Error())
 	}
 	elapsedWait := time.Since(now)
+	_, err = r.Seek(fileSize, io.SeekStart)
+	if err != nil {
+		return false, common.NewError("seek_error", err.Error())
+	}
 	fmtRootBytes, err := fileData.Hasher.fmt.CalculateRootAndStoreNodes(r)
 	if err != nil {
 		return false, common.NewError("fmt_hash_calculation_error", err.Error())
 	}
 
-	validationRootBytes, err := fileData.Hasher.vt.CalculateRootAndStoreNodes(r)
+	validationRootBytes, err := fileData.Hasher.vt.CalculateRootAndStoreNodes(r, fileSize)
 	if err != nil {
 		return false, common.NewError("validation_hash_calculation_error", err.Error())
 	}
@@ -324,9 +322,9 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	return true, nil
 }
 
-func (fs *FileStore) GetFilePathSize(allocID, filehash, thumbHash string) (int64, int64, error) {
+func (fs *FileStore) GetFilePathSize(allocID, filehash, thumbHash string, version int) (int64, int64, error) {
 
-	filePath, err := fs.GetPathForFile(allocID, filehash)
+	filePath, err := fs.GetPathForFile(allocID, filehash, version)
 
 	if err != nil {
 		return 0, 0, err
@@ -341,7 +339,7 @@ func (fs *FileStore) GetFilePathSize(allocID, filehash, thumbHash string) (int64
 	}
 	var thumbSize int64
 	if thumbHash != "" {
-		thumbPath, err := fs.GetPathForFile(allocID, thumbHash)
+		thumbPath, err := fs.GetPathForFile(allocID, thumbHash, version)
 		if err != nil {
 			return 0, 0, err
 		}
@@ -357,9 +355,9 @@ func (fs *FileStore) GetFilePathSize(allocID, filehash, thumbHash string) (int64
 }
 
 // Only decreasing the file size and number. Not deleting the file
-func (fs *FileStore) DeleteFile(allocID, validationRoot string) error {
+func (fs *FileStore) DeleteFile(allocID, validationRoot string, version int) error {
 
-	fileObjectPath, err := fs.GetPathForFile(allocID, validationRoot)
+	fileObjectPath, err := fs.GetPathForFile(allocID, validationRoot, version)
 	if err != nil {
 		return err
 	}
@@ -440,9 +438,9 @@ func (fs *FileStore) GetFileThumbnail(readBlockIn *ReadBlockInput) (*FileDownloa
 	}
 	if readBlockIn.IsPrecommit {
 		fileObjectPath = fs.getPreCommitPathForFile(readBlockIn.AllocationID,
-			readBlockIn.Hash)
+			readBlockIn.Hash, readBlockIn.FilestoreVersion)
 	} else {
-		fileObjectPath, err = fs.GetPathForFile(readBlockIn.AllocationID, readBlockIn.Hash)
+		fileObjectPath, err = fs.GetPathForFile(readBlockIn.AllocationID, readBlockIn.Hash, readBlockIn.FilestoreVersion)
 		if err != nil {
 			return nil, common.NewError("get_file_path_error", err.Error())
 		}
@@ -451,7 +449,7 @@ func (fs *FileStore) GetFileThumbnail(readBlockIn *ReadBlockInput) (*FileDownloa
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
 		if readBlockIn.IsPrecommit {
-			fileObjectPath, err = fs.GetPathForFile(readBlockIn.AllocationID, readBlockIn.Hash)
+			fileObjectPath, err = fs.GetPathForFile(readBlockIn.AllocationID, readBlockIn.Hash, readBlockIn.FilestoreVersion)
 			if err != nil {
 				return nil, common.NewError("get_file_path_error", err.Error())
 			}
@@ -520,17 +518,18 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 		return nil, common.NewError("invalid_block_number", "Invalid block number. Start block number cannot be negative")
 	}
 	if readBlockIn.IsPrecommit {
-		fileObjectPath = fs.getPreCommitPathForFile(readBlockIn.AllocationID, readBlockIn.Hash)
+		fileObjectPath = fs.getPreCommitPathForFile(readBlockIn.AllocationID, readBlockIn.Hash, readBlockIn.FilestoreVersion)
 	} else {
-		fileObjectPath, err = fs.GetPathForFile(readBlockIn.AllocationID, readBlockIn.Hash)
+		fileObjectPath, err = fs.GetPathForFile(readBlockIn.AllocationID, readBlockIn.Hash, readBlockIn.FilestoreVersion)
 		if err != nil {
 			return nil, common.NewError("get_file_path_error", err.Error())
 		}
 	}
+
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
 		if readBlockIn.IsPrecommit {
-			fileObjectPath, err = fs.GetPathForFile(readBlockIn.AllocationID, readBlockIn.Hash)
+			fileObjectPath, err = fs.GetPathForFile(readBlockIn.AllocationID, readBlockIn.Hash, readBlockIn.FilestoreVersion)
 			if err != nil {
 				return nil, common.NewError("get_file_path_error", err.Error())
 			}
@@ -557,8 +556,13 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 	vmp := &FileDownloadResponse{}
 
 	if readBlockIn.VerifyDownload {
+		vpOffset := int64(FMTSize)
+		if readBlockIn.FilestoreVersion == 1 {
+			vpOffset += readBlockIn.FileSize
+		}
 		vp := validationTreeProof{
 			dataSize: readBlockIn.FileSize,
+			offset:   vpOffset,
 		}
 
 		logging.Logger.Debug("calling GetMerkleProofOfMultipleIndexes", zap.Any("readBlockIn", readBlockIn), zap.Any("vmp", vmp))
@@ -570,16 +574,24 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 		vmp.Nodes = nodes
 		vmp.Indexes = indexes
 	}
-
-	fileOffset := FMTSize + nodesSize + int64(startBlock)*ChunkSize
-
-	_, err = file.Seek(fileOffset, io.SeekStart)
-	if err != nil {
-		return nil, common.NewError("seek_error", err.Error())
+	logging.Logger.Info("filestore_version", zap.Int("version", readBlockIn.FilestoreVersion))
+	fileOffset := int64(startBlock) * ChunkSize
+	if readBlockIn.FilestoreVersion == 1 {
+		_, err = file.Seek(fileOffset, io.SeekStart)
+		if err != nil {
+			return nil, common.NewError("seek_error", err.Error())
+		}
+	} else {
+		_, err = file.Seek(fileOffset+FMTSize+nodesSize, io.SeekStart)
+		if err != nil {
+			return nil, common.NewError("seek_error", err.Error())
+		}
 	}
 
+	fileReader := io.LimitReader(file, filesize-fileOffset)
+
 	buffer := make([]byte, readBlockIn.NumBlocks*ChunkSize)
-	n, err := file.Read(buffer)
+	n, err := fileReader.Read(buffer)
 	if err != nil && err != io.EOF {
 		return nil, err
 	}
@@ -597,9 +609,9 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(in *ChallengeReadBlockInput
 	}
 
 	if in.IsPrecommit {
-		fileObjectPath = fs.getPreCommitPathForFile(in.AllocationID, in.Hash)
+		fileObjectPath = fs.getPreCommitPathForFile(in.AllocationID, in.Hash, in.FilestoreVersion)
 	} else {
-		fileObjectPath, err = fs.GetPathForFile(in.AllocationID, in.Hash)
+		fileObjectPath, err = fs.GetPathForFile(in.AllocationID, in.Hash, in.FilestoreVersion)
 		if err != nil {
 			return nil, err
 		}
@@ -608,7 +620,7 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(in *ChallengeReadBlockInput
 	file, err := os.Open(fileObjectPath)
 	if err != nil {
 		if in.IsPrecommit {
-			fileObjectPath, err = fs.GetPathForFile(in.AllocationID, in.Hash)
+			fileObjectPath, err = fs.GetPathForFile(in.AllocationID, in.Hash, in.FilestoreVersion)
 			if err != nil {
 				return nil, common.NewError("get_file_path_error", err.Error())
 			}
@@ -623,21 +635,32 @@ func (fs *FileStore) GetBlocksMerkleTreeForChallenge(in *ChallengeReadBlockInput
 
 	defer file.Close()
 
+	var offset int64
+	if in.FilestoreVersion == 1 {
+		offset = in.FileSize
+	}
+
 	fmp := &fixedMerkleTreeProof{
 		idx:      in.BlockOffset,
 		dataSize: in.FileSize,
+		offset:   offset,
 	}
 
-	_, err = file.Seek(-in.FileSize, io.SeekEnd)
-	if err != nil {
-		return nil, common.NewError("seek_error", err.Error())
-	}
 	merkleProof, err := fmp.GetMerkleProof(file)
 	if err != nil {
 		return nil, common.NewError("get_merkle_proof_error", err.Error())
 	}
 
-	proofByte, err := fmp.GetLeafContent(file)
+	if in.FilestoreVersion == 0 {
+		_, err = file.Seek(-in.FileSize, io.SeekEnd)
+		if err != nil {
+			return nil, common.NewError("seek_error", err.Error())
+		}
+	}
+
+	fileReader := io.LimitReader(file, in.FileSize)
+
+	proofByte, err := fmp.GetLeafContent(fileReader)
 	if err != nil {
 		return nil, common.NewError("get_leaf_content_error", err.Error())
 	}
@@ -769,12 +792,15 @@ func (fs *FileStore) getAllocDir(allocID string) string {
 	return filepath.Join(fs.mp, getPartialPath(allocID, getDirLevelsForAllocations()))
 }
 
-func (fs *FileStore) GetPathForFile(allocID, hash string) (string, error) {
+func (fs *FileStore) GetPathForFile(allocID, hash string, version int) (string, error) {
 	if len(allocID) != 64 || len(hash) != 64 {
 		return "", errors.New("length of allocationID/hash must be 64")
 	}
-
-	return filepath.Join(fs.getAllocDir(allocID), getPartialPath(hash, getDirLevelsForFiles())), nil
+	var versionStr string
+	if version > 0 {
+		versionStr = fmt.Sprintf("%d", version)
+	}
+	return filepath.Join(fs.getAllocDir(allocID), getPartialPath(hash, getDirLevelsForFiles())+versionStr), nil
 }
 
 // getPath returns "/" separated strings with the given levels.
@@ -804,9 +830,14 @@ func (fs *FileStore) getTempPathForFile(allocId, fileName, pathHash, connectionI
 	return filepath.Join(fs.getAllocTempDir(allocId), fileName+"."+pathHash+"."+connectionID)
 }
 
-func (fs *FileStore) getPreCommitPathForFile(allocID, hash string) string {
+func (fs *FileStore) getPreCommitPathForFile(allocID, hash string, version int) string {
 
-	return filepath.Join(fs.getPreCommitDir(allocID), getPartialPath(hash, getDirLevelsForFiles()))
+	var versionStr string
+	if version > 0 {
+		versionStr = fmt.Sprintf("%d", version)
+	}
+
+	return filepath.Join(fs.getPreCommitDir(allocID), getPartialPath(hash, getDirLevelsForFiles())+versionStr)
 }
 
 func (fs *FileStore) updateAllocTempFileSize(allocID string, size int64) {

@@ -92,11 +92,11 @@ func (mfs *MockFileStore) CommitWrite(allocID, connID string, fileData *filestor
 	return true, nil
 }
 
-func (mfs *MockFileStore) MoveToFilestore(allocID, hash string) error {
+func (mfs *MockFileStore) MoveToFilestore(allocID, hash string, version int) error {
 	return nil
 }
 
-func (mfs *MockFileStore) DeleteFromFilestore(allocID, hash string) error {
+func (mfs *MockFileStore) DeleteFromFilestore(allocID, hash string, version int) error {
 	return nil
 }
 
@@ -107,7 +107,7 @@ func (mfs *MockFileStore) DeleteTempFile(allocID, connID string, fileData *files
 	return nil
 }
 
-func (mfs *MockFileStore) DeleteFile(allocID, contentHash string) error {
+func (mfs *MockFileStore) DeleteFile(allocID, contentHash string, version int) error {
 	return nil
 }
 
@@ -133,7 +133,7 @@ func (mfs *MockFileStore) GetBlocksMerkleTreeForChallenge(cri *filestore.Challen
 func (mfs *MockFileStore) GetTotalTempFileSizes() (s uint64) {
 	return 0
 }
-func (mfs *MockFileStore) GetFilePathSize(allocID, contentHash, thumbHash string) (int64, int64, error) {
+func (mfs *MockFileStore) GetFilePathSize(allocID, contentHash, thumbHash string, version int) (int64, int64, error) {
 	return 0, 0, nil
 }
 
@@ -171,12 +171,16 @@ func (mfs *MockFileStore) CalculateCurrentDiskCapacity() error {
 
 // GetPathForFile is based on default directory levels. If directory levels are changed
 // getDirLevelsXXX function needs to be changed accordingly
-func (mfs *MockFileStore) GetPathForFile(allocID, contentHash string) (string, error) {
+func (mfs *MockFileStore) GetPathForFile(allocID, contentHash string, version int) (string, error) {
 	if len(allocID) != 64 || len(contentHash) != 64 {
 		return "", errors.New("length of allocationID/contentHash must be 64")
 	}
 
-	return filepath.Join(mfs.getAllocDir(allocID), getPath(contentHash, getDirLevelsForFiles())), nil
+	var versionStr string
+	if version > 0 {
+		versionStr = "1"
+	}
+	return filepath.Join(mfs.getAllocDir(allocID), getPath(contentHash, getDirLevelsForFiles())+versionStr), nil
 }
 
 func (mfs *MockFileStore) UpdateAllocationMetaData(m map[string]interface{}) error {
