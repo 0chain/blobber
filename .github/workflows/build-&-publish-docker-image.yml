@@ -11,24 +11,24 @@ on:
       - '*'
   pull_request:
   workflow_dispatch:
+    inputs:
+      latest_tag:
+        description: 'type yes for building latest / staging tag'
+        default: 'no'
+        required: true
+
 
 env:
   BLOBBER_REGISTRY: ${{ secrets.BLOBBER_REGISTRY }}
   VALIDATOR_REGISTRY: ${{ secrets.VALIDATOR_REGISTRY }}
-  DOCKER_CLI_EXPERIMENTAL: enabled
   BLOBBER_BUILDBASE: blobber_base
   BLOBBER_BUILD_BASE_REGISTRY: ${{ secrets.BLOBBER_BUILD_BASE_REGISTRY }}
 
 jobs:
   blobber:
     timeout-minutes: 30
-    runs-on: [blobber-runner]
+    runs-on: [arc-runner]
     steps:
-      - name: Cleanup before restarting conductor tests.
-        run: |
-          echo 'y' | docker system prune -a || true
-          cd /tmp
-          sudo rm -rf ./*
 
       - name: Set docker image tag
         run: |
@@ -42,18 +42,8 @@ jobs:
           echo "BRANCH=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF)" >> $GITHUB_ENV
           echo "SHA=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}')" >> $GITHUB_ENV
 
-      - name: Setup go
-        uses: actions/setup-go@v4
-        with:
-          go-version: ^1.21 # The Go version to download (if necessary) and use.
-
       - name: Clone blobber
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: actions/checkout@v4
 
       - name: Login to Docker Hub
         uses: docker/login-action@v1
@@ -71,41 +61,41 @@ jobs:
           docker tag $BLOBBER_BUILD_BASE_REGISTRY:staging $BLOBBER_BUILDBASE
 
       - name: Build Base image
-        # if: contains(steps.changed-files.outputs.modified_files, 'docker.local/base.Dockerfile')
+        if: contains(steps.changed-files.outputs.modified_files, 'docker.local/base.Dockerfile')
         run: |
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
 
-          ./docker.local/bin/build.base.sh &&
-          docker tag $BLOBBER_BUILDBASE $BLOBBER_BUILD_BASE_REGISTRY:$TAG
+          docker build -f docker.local/base.Dockerfile . -t $BLOBBER_BUILDBASE
+          docker tag $BLOBBER_BUILDBASE $BLOBBER_BUILD_BASE_REGISTRY:staging
           docker tag $BLOBBER_BUILDBASE $BLOBBER_BUILD_BASE_REGISTRY:$TAG-$SHORT_SHA
-          docker push $BLOBBER_BUILD_BASE_REGISTRY:$TAG
+          docker push $BLOBBER_BUILD_BASE_REGISTRY:staging
           docker push $BLOBBER_BUILD_BASE_REGISTRY:$TAG-$SHORT_SHA
 
       - name: Build blobber
         run: |
+          export DOCKER_IMAGE_BASE="$BLOBBER_BUILD_BASE_REGISTRY:staging"
+
+          echo "building swagger file"
+          docker build --build-arg DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE -f docker.local/Dockerfile.swagger . -t swagger
+          docker run -v $(pwd):/codecov swagger bash -c "cd /codecov/code/go/0chain.net/; swagger generate spec -w . -m -o swagger.yaml; swagger generate markdown -f swagger.yaml --output=swagger.md"
+
+          docker build --build-arg GIT_COMMIT=$GITHUB_SHA --build-arg DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE -t ${BLOBBER_REGISTRY}:latest -f docker.local/blobber.Dockerfile .
+          docker tag ${BLOBBER_REGISTRY}:latest ${BLOBBER_REGISTRY}:${TAG}
+          docker push ${BLOBBER_REGISTRY}:${TAG}
+
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
-          export DOCKER_IMAGE_BASE="$BLOBBER_BUILD_BASE_REGISTRY:$TAG"
-          export DOCKER_IMAGE_SWAGGER="${BLOBBER_REGISTRY}:swagger_test"
-          # export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
-          export DOCKER_BUILD="build --push"
-          export DOCKER_IMAGE_BLOBBER="-t ${BLOBBER_REGISTRY}:${TAG}"
-          export CONTEXT_NAME="$RUNNER_NAME" && (docker context inspect "$CONTEXT_NAME" >/dev/null 2>&1 || docker context create "$CONTEXT_NAME")
-          docker buildx inspect "blobber-$RUNNER_NAME" || docker buildx create --name "blobber-$RUNNER_NAME" --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement security.insecure' "$CONTEXT_NAME"
-          docker buildx use "blobber-$RUNNER_NAME"
-          ./docker.local/bin/build.blobber.sh
-          docker tag ${BLOBBER_REGISTRY}:${TAG} ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}
+          docker tag ${BLOBBER_REGISTRY}:latest ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}
           docker push ${BLOBBER_REGISTRY}:${TAG}-${SHORT_SHA}
+
+      - name: Push latest
+        if: ${{ github.event.inputs.latest_tag == 'yes' || github.ref == 'refs/heads/master' }}
+        run: |
+            docker push ${BLOBBER_REGISTRY}:latest
 
   validator:
     timeout-minutes: 30
-    runs-on: [blobber-runner]
+    runs-on: [arc-runner]
     steps:
-      - name: Cleanup before restarting conductor tests.
-        run: |
-          echo 'y' | docker system prune -a  || true
-          cd /tmp
-          sudo rm -rf ./*
-
       - name: Set docker image tag
         run: |
           if [[ "${{github.ref}}" == refs/pull/* ]]; then
@@ -118,18 +108,9 @@ jobs:
           echo "BRANCH=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo ${GITHUB_REF#refs/*/} || echo $GITHUB_HEAD_REF)" >> $GITHUB_ENV
           echo "SHA=$([ -z '${{ github.event.pull_request.head.sha }}' ] && echo $GITHUB_SHA || echo '${{ github.event.pull_request.head.sha }}')" >> $GITHUB_ENV
 
-      - name: Setup go
-        uses: actions/setup-go@v4
-        with:
-          go-version: ^1.21 # The Go version to download (if necessary) and use.
-
       - name: Clone blobber
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+        uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
         uses: docker/login-action@v1
         with:
@@ -139,8 +120,6 @@ jobs:
       - name: Get changed files using defaults
         id: changed-files
         uses: tj-actions/changed-files@v18.4
-        with:
-          fetch-depth: 0
 
       - name: Pull Build Base
         run: |
@@ -148,29 +127,32 @@ jobs:
           docker tag $BLOBBER_BUILD_BASE_REGISTRY:staging $BLOBBER_BUILDBASE
 
       - name: Build Base image
-        # if: contains(steps.changed-files.outputs.modified_files, 'docker.local/base.Dockerfile')
+        if: contains(steps.changed-files.outputs.modified_files, 'docker.local/base.Dockerfile')
         run: |
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
 
-          ./docker.local/bin/build.base.sh
-          docker tag $BLOBBER_BUILDBASE $BLOBBER_BUILD_BASE_REGISTRY:$TAG
+          docker build -f docker.local/base.Dockerfile . -t $BLOBBER_BUILDBASE
+          docker tag $BLOBBER_BUILDBASE $BLOBBER_BUILD_BASE_REGISTRY:staging
           docker tag $BLOBBER_BUILDBASE $BLOBBER_BUILD_BASE_REGISTRY:$TAG-$SHORT_SHA
-          docker push $BLOBBER_BUILD_BASE_REGISTRY:$TAG
+          docker push $BLOBBER_BUILD_BASE_REGISTRY:staging
           docker push $BLOBBER_BUILD_BASE_REGISTRY:$TAG-$SHORT_SHA
 
       - name: Build validator
         run: |
+          export DOCKER_IMAGE_BASE="$BLOBBER_BUILD_BASE_REGISTRY:staging"
+
+          docker build --build-arg GIT_COMMIT=$GITHUB_SHA --build-arg DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE -t ${VALIDATOR_REGISTRY}:latest -f docker.local/validator.Dockerfile .
+          docker tag ${VALIDATOR_REGISTRY}:latest ${VALIDATOR_REGISTRY}:${TAG}
+          docker push ${VALIDATOR_REGISTRY}:${TAG}
+
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
-          export DOCKER_IMAGE_BASE="$BLOBBER_BUILD_BASE_REGISTRY:$TAG"
-          # export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
-          export DOCKER_BUILD="build --push"
-          export DOCKER_IMAGE_VALIDATOR="-t ${VALIDATOR_REGISTRY}:${TAG}"
-          export CONTEXT_NAME="$RUNNER_NAME" && (docker context inspect "$CONTEXT_NAME" >/dev/null 2>&1 || docker context create "$CONTEXT_NAME")
-          docker buildx inspect "validator-$RUNNER_NAME" || docker buildx create --name "validator-$RUNNER_NAME" --driver-opt network=host --buildkitd-flags '--allow-insecure-entitlement security.insecure' "$CONTEXT_NAME"
-          docker buildx use "validator-$RUNNER_NAME"
-          ./docker.local/bin/build.validator.sh
-          docker tag ${VALIDATOR_REGISTRY}:${TAG} ${VALIDATOR_REGISTRY}:${TAG}-${SHORT_SHA}
+          docker tag ${VALIDATOR_REGISTRY}:latest ${VALIDATOR_REGISTRY}:${TAG}-${SHORT_SHA}
           docker push ${VALIDATOR_REGISTRY}:${TAG}-${SHORT_SHA}
+
+      - name: Push latest
+        if: ${{ github.event.inputs.latest_tag == 'yes' || github.ref == 'refs/heads/master' }}
+        run: |
+            docker push ${VALIDATOR_REGISTRY}:latest
 
   system-tests:
     if: github.event_name != 'workflow_dispatch'
