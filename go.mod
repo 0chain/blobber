@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.12.1-0.20240207192047-6607342227a5
+	github.com/0chain/gosdk v1.14.0-RC4
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.2
 	github.com/go-openapi/runtime v0.26.0
@@ -21,7 +21,7 @@ require (
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/zap v1.24.0
-	golang.org/x/crypto v0.16.0
+	golang.org/x/crypto v0.17.0
 	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/sys v0.15.0
 	golang.org/x/time v0.3.0 // indirect
@@ -56,6 +56,7 @@ require (
 )
 
 require (
+	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.16.12 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.14.10 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.2.9 // indirect
@@ -67,10 +68,13 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.21.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.26.5 // indirect
 	github.com/aws/smithy-go v1.19.0 // indirect
+	github.com/hitenjain14/fasthttp v0.0.0-20240229173600-722723e15e17 // indirect
+	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	github.com/valyala/fasthttp v1.51.0 // indirect
 )
 
 require (
-	github.com/0chain/common v0.0.6-0.20230127095721-8df4d1d72565 // indirect
+	github.com/0chain/common v0.0.6-0.20230127095721-8df4d1d72565
 	github.com/Luzifer/go-openssl/v3 v3.1.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/btcsuite/btcd v0.23.4 // indirect
@@ -104,7 +108,7 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
-	github.com/h2non/filetype v1.1.3 // indirect
+	github.com/h2non/filetype v1.1.4-0.20231228185113-6469358c2bcb // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -113,7 +117,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/klauspost/compress v1.16.7 // indirect
+	github.com/klauspost/compress v1.17.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.4 // indirect
 	github.com/klauspost/reedsolomon v1.11.8 // indirect
 	github.com/machinebox/graphql v0.2.2 // indirect

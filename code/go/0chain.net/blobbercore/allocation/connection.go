@@ -174,6 +174,7 @@ func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, is
 		return false, common.NewError("connection_not_found", "connection not found for save file change")
 	}
 	connectionObj.lock.Lock()
+	connectionObj.UpdatedAt = time.Now()
 	change := connectionObj.changes[pathHash]
 	saveChange := false
 	if change == nil {
@@ -208,7 +209,7 @@ func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, is
 		change.seqPQ.Done(seqpriorityqueue.UploadData{
 			Offset:    offset,
 			DataBytes: dataWritten,
-		})
+		}, contentSize)
 	} else {
 		change.seqPQ.Push(seqpriorityqueue.UploadData{
 			Offset:    offset,
@@ -256,7 +257,7 @@ func cleanConnectionObj() {
 			connectionObj.cnclCtx()
 			for _, change := range connectionObj.changes {
 				if change.seqPQ != nil {
-					change.seqPQ.Done(seqpriorityqueue.UploadData{})
+					change.seqPQ.Done(seqpriorityqueue.UploadData{}, 1)
 				}
 			}
 			delete(connectionProcessor, connectionID)

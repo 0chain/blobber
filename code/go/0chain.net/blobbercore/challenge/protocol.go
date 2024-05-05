@@ -173,11 +173,12 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		}
 
 		challengeReadInput := &filestore.ChallengeReadBlockInput{
-			Hash:         objectPath.Meta["validation_root"].(string),
-			FileSize:     objectPath.Meta["size"].(int64),
-			BlockOffset:  blockoffset,
-			AllocationID: cr.AllocationID,
-			IsPrecommit:  fromPreCommit,
+			Hash:             objectPath.Meta["validation_root"].(string),
+			FileSize:         objectPath.Meta["size"].(int64),
+			BlockOffset:      blockoffset,
+			AllocationID:     cr.AllocationID,
+			IsPrecommit:      fromPreCommit,
+			FilestoreVersion: objectPath.FilestoreVersion,
 		}
 
 		t1 := time.Now()

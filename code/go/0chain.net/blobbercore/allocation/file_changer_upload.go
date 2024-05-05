@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
@@ -119,6 +120,7 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context, rootRef *reference
 		UpdatedAt:               ts,
 		HashToBeComputed:        true,
 		IsPrecommit:             true,
+		FilestoreVersion:        filestore.VERSION,
 	}
 
 	fileID, ok := fileIDMeta[newFile.Path]

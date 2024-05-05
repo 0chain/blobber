@@ -265,6 +265,7 @@ type Result struct {
 	PrevValidationRoot string
 	ThumbnailHash      string
 	PrevThumbnailHash  string
+	FilestoreVersion   int
 }
 
 // TODO: Need to speed up this function
@@ -281,7 +282,7 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 
 	err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		tx := datastore.GetStore().GetTransaction(ctx)
-		err := tx.Model(&reference.Ref{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Select("id", "validation_root", "thumbnail_hash", "prev_validation_root", "prev_thumbnail_hash").Where("allocation_id=? AND is_precommit=? AND type=?", a.AllocationID, true, reference.FILE).
+		err := tx.Model(&reference.Ref{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Select("id", "validation_root", "thumbnail_hash", "prev_validation_root", "prev_thumbnail_hash", "filestore_version").Where("allocation_id=? AND is_precommit=? AND type=?", a.AllocationID, true, reference.FILE).
 			FindInBatches(&refs, 50, func(tx *gorm.DB, batch int) error {
 
 				for _, ref := range refs {
@@ -303,13 +304,13 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 						}()
 
 						if count == 0 && ref.PrevValidationRoot != "" {
-							err := filestore.GetFileStore().DeleteFromFilestore(a.AllocationID, ref.PrevValidationRoot)
+							err := filestore.GetFileStore().DeleteFromFilestore(a.AllocationID, ref.PrevValidationRoot, ref.FilestoreVersion)
 							if err != nil {
 								logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
 									zap.String("validation_root", ref.ValidationRoot))
 							}
 						}
-						err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.ValidationRoot)
+						err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.ValidationRoot, ref.FilestoreVersion)
 						if err != nil {
 							logging.Logger.Error(fmt.Sprintf("Error while moving file: %s", err.Error()),
 								zap.String("validation_root", ref.ValidationRoot))
@@ -317,13 +318,13 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 
 						if ref.ThumbnailHash != "" && ref.ThumbnailHash != ref.PrevThumbnailHash {
 							if ref.PrevThumbnailHash != "" {
-								err := filestore.GetFileStore().DeleteFromFilestore(a.AllocationID, ref.PrevThumbnailHash)
+								err := filestore.GetFileStore().DeleteFromFilestore(a.AllocationID, ref.PrevThumbnailHash, ref.FilestoreVersion)
 								if err != nil {
 									logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail file: %s", err.Error()),
 										zap.String("thumbnail_hash", ref.ThumbnailHash))
 								}
 							}
-							err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.ThumbnailHash)
+							err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.ThumbnailHash, ref.FilestoreVersion)
 							if err != nil {
 								logging.Logger.Error(fmt.Sprintf("Error while moving thumbnail file: %s", err.Error()),
 									zap.String("thumbnail_hash", ref.ThumbnailHash))
@@ -380,7 +381,8 @@ func deleteFromFileStore(ctx context.Context, allocationID string) error {
 						}()
 
 						if count == 0 {
-							err := filestore.GetFileStore().DeleteFromFilestore(allocationID, res.ValidationRoot)
+							err := filestore.GetFileStore().DeleteFromFilestore(allocationID, res.ValidationRoot,
+								res.FilestoreVersion)
 							if err != nil {
 								logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
 									zap.String("validation_root", res.ValidationRoot))
@@ -388,7 +390,7 @@ func deleteFromFileStore(ctx context.Context, allocationID string) error {
 						}
 
 						if res.ThumbnailHash != "" {
-							err := filestore.GetFileStore().DeleteFromFilestore(allocationID, res.ThumbnailHash)
+							err := filestore.GetFileStore().DeleteFromFilestore(allocationID, res.ThumbnailHash, res.FilestoreVersion)
 							if err != nil {
 								logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail: %s", err.Error()),
 									zap.String("thumbnail", res.ThumbnailHash))

@@ -4,7 +4,10 @@ import (
 	"mime/multipart"
 )
 
-const CHUNK_SIZE = 64 * 1024
+const (
+	CHUNK_SIZE = 64 * 1024
+	VERSION    = 1
+)
 
 type FileInputData struct {
 	Name            string
@@ -49,9 +52,9 @@ type FileStorer interface {
 	WriteDataToTree(allocID, connID, fileName, filePathHash string, hahser *CommitHasher) error
 	CommitWrite(allocID, connID string, fileData *FileInputData) (bool, error)
 	DeleteTempFile(allocID, connID string, fileData *FileInputData) error
-	DeleteFile(allocID, contentHash string) error
-	MoveToFilestore(allocID, hash string) error
-	DeleteFromFilestore(allocID, hash string) error
+	DeleteFile(allocID, contentHash string, version int) error
+	MoveToFilestore(allocID, hash string, version int) error
+	DeleteFromFilestore(allocID, hash string, version int) error
 	DeletePreCommitDir(allocID string) error
 	DeleteAllocation(allocID string)
 	// GetFileBlock Get blocks of file starting from blockNum upto numBlocks. blockNum can't be less than 1.
@@ -61,7 +64,7 @@ type FileStorer interface {
 	GetTempFilesSizeOfAllocation(allocID string) uint64
 	GetTotalCommittedFileSize() uint64
 	GetCommittedFileSizeOfAllocation(allocID string) uint64
-	GetFilePathSize(allocID, filehash, thumbHash string) (int64, int64, error)
+	GetFilePathSize(allocID, filehash, thumbHash string, version int) (int64, int64, error)
 	GetTotalFilesSize() uint64
 	GetTotalFilesSizeOfAllocation(allocID string) uint64
 	GetTempFilePath(allocID, connID, fileName, filePathHash string) string
@@ -72,7 +75,7 @@ type FileStorer interface {
 	CalculateCurrentDiskCapacity() error
 	// GetPathForFile given allocation id and content hash of a file, its path is calculated.
 	// Will return error if allocation id or content hash are not of length 64
-	GetPathForFile(allocID, contentHash string) (string, error)
+	GetPathForFile(allocID, contentHash string, version int) (string, error)
 	// UpdateAllocationMetaData only updates if allocation size has changed or new allocation is allocated. Must use allocationID.
 	// Use of allocation Tx might leak memory. allocation size must be of int64 type otherwise it won't be updated
 	UpdateAllocationMetaData(m map[string]interface{}) error
@@ -94,14 +97,15 @@ type FileDownloadResponse struct {
 }
 
 type ReadBlockInput struct {
-	AllocationID   string
-	FileSize       int64
-	Hash           string
-	StartBlockNum  int
-	NumBlocks      int
-	IsThumbnail    bool
-	VerifyDownload bool
-	IsPrecommit    bool
+	AllocationID     string
+	FileSize         int64
+	Hash             string
+	StartBlockNum    int
+	NumBlocks        int
+	IsThumbnail      bool
+	VerifyDownload   bool
+	IsPrecommit      bool
+	FilestoreVersion int
 }
 
 type ChallengeResponse struct {
@@ -111,9 +115,10 @@ type ChallengeResponse struct {
 }
 
 type ChallengeReadBlockInput struct {
-	BlockOffset  int
-	FileSize     int64
-	Hash         string
-	AllocationID string
-	IsPrecommit  bool
+	BlockOffset      int
+	FileSize         int64
+	Hash             string
+	AllocationID     string
+	IsPrecommit      bool
+	FilestoreVersion int
 }
