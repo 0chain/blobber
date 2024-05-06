@@ -98,7 +98,9 @@ func (cmd *UpdateFileCommand) IsValidated(ctx context.Context, req *http.Request
 	}
 
 	origfile, _, err := req.FormFile(UploadFile)
-	if err != nil {
+	if err == http.ErrMissingFile && !cmd.fileChanger.IsFinal {
+		return common.NewError("invalid_parameters", "File is missing")
+	} else if err != nil && err != http.ErrMissingFile {
 		return common.NewError("invalid_parameters", "Error Reading multi parts for file."+err.Error())
 	}
 	cmd.contentFile = origfile
@@ -110,7 +112,9 @@ func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 	result := allocation.UploadResult{}
 
 	result.Filename = cmd.fileChanger.Filename
-	defer cmd.contentFile.Close()
+	if cmd.contentFile != nil {
+		defer cmd.contentFile.Close()
+	}
 
 	filePathHash := cmd.fileChanger.PathHash
 	connID := cmd.fileChanger.ConnectionID
