@@ -113,7 +113,9 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 	}
 
 	origfile, _, err := req.FormFile(UploadFile)
-	if err != nil {
+	if err == http.ErrMissingFile && !fileChanger.IsFinal {
+		return common.NewError("invalid_parameters", "Missing file")
+	} else if err != nil && err != http.ErrMissingFile {
 		return common.NewError("invalid_parameters", "Error Reading multi parts for file."+err.Error())
 	}
 	cmd.contentFile = origfile
@@ -125,7 +127,9 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocation) (allocation.UploadResult, error) {
 	logging.Logger.Info("UploadFileCommand.ProcessContent", zap.Any("fileChanger", cmd.fileChanger.Path), zap.Any("uploadOffset", cmd.fileChanger.UploadOffset), zap.Any("isFinal", cmd.fileChanger.IsFinal))
 	result := allocation.UploadResult{}
-	defer cmd.contentFile.Close()
+	if cmd.contentFile != nil {
+		defer cmd.contentFile.Close()
+	}
 
 	connectionID := cmd.fileChanger.ConnectionID
 
