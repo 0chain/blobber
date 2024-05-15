@@ -182,12 +182,6 @@ func (fs *FileStore) DeletePreCommitDir(allocID string) error {
 	if err != nil {
 		return common.NewError("pre_commit_dir_deletion_error", err.Error())
 	}
-	tempDir := fs.getAllocTempDir(allocID)
-	err = os.RemoveAll(tempDir)
-	if err != nil {
-		return common.NewError("temp_dir_deletion_error", err.Error())
-	}
-
 	return nil
 }
 

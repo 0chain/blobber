@@ -92,8 +92,8 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 	}
 
 	currTime := common.Now()
-	// blobber clock is allowed to be 60 seconds behind the current time
-	if wme.WM.Timestamp > currTime+60 {
+	// blobber clock is allowed to be 180 seconds behind the current time
+	if wme.WM.Timestamp > currTime+180 {
 		return common.NewError("write_marker_validation_failed", "Write Marker timestamp is in the future")
 	}
 
