@@ -210,7 +210,12 @@ func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, is
 			Offset:    offset,
 			DataBytes: dataWritten,
 		}, contentSize)
+		// If file is updated, then add the size difference
+		if change.existingRef != nil {
+			contentSize -= change.existingRef.Size
+		}
 		UpdateConnectionObjSize(connectionID, contentSize)
+
 	} else {
 		change.seqPQ.Push(seqpriorityqueue.UploadData{
 			Offset:    offset,
