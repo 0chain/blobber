@@ -398,6 +398,7 @@ func (fs *FileStore) DeleteTempFile(allocID, conID string, fd *FileInputData) er
 		return common.NewError("invalid_allocation_id", "Allocation id cannot be empty")
 	}
 	fileObjectPath := fs.getTempPathForFile(allocID, fd.Name, encryption.Hash(fd.Path), conID)
+	logging.Logger.Info("delete_temp_file", zap.String("allocation_id", allocID), zap.String("connection_id", conID), zap.String("file_name", fd.Name), zap.String("file_path", fileObjectPath))
 
 	finfo, err := os.Stat(fileObjectPath)
 	if err != nil {
