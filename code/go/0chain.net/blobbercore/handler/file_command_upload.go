@@ -164,7 +164,6 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		if fileOutputData.ContentSize != cmd.fileChanger.Size {
 			return result, common.NewError("upload_error", fmt.Sprintf("File size mismatch. Expected: %d, Actual: %d", cmd.fileChanger.Size, fileOutputData.ContentSize))
 		}
-		allocation.UpdateConnectionObjSize(connectionID, cmd.fileChanger.Size)
 	}
 
 	if cmd.thumbFile != nil {
