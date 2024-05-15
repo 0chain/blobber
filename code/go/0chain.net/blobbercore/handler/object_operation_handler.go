@@ -1402,6 +1402,8 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return nil, common.NewError("write_marker_verification_failed", "Verification of the write marker failed: "+err.Error())
 	}
 
+	writemarkerEntity.WM.ChainLength = latestWriteMarkerEntity.WM.ChainLength + 1
+
 	if writemarkerEntity.WM.ChainLength > config.Configuration.MaxChainLength {
 		return nil, common.NewError("chain_length_exceeded", "Chain length exceeded")
 	}

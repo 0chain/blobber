@@ -2,10 +2,12 @@ package writemarker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -136,8 +138,9 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context, startSeq int64) 
 	sn.AllocationRoot = wme.WM.AllocationRoot
 	sn.PrevAllocationRoot = wme.WM.PreviousAllocationRoot
 	sn.WriteMarker = &wme.WM
+	var seq []int64
 	err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-		sn.ChainData, err = GetMarkersForChain(ctx, wme.WM.AllocationID, startSeq, wme.Sequence-1)
+		sn.ChainData, seq, err = GetMarkersForChain(ctx, wme.WM.AllocationID, startSeq, wme.Sequence-1)
 		return err
 	})
 	if err != nil {
@@ -147,22 +150,26 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context, startSeq int64) 
 		}
 		return err
 	}
-
-	if sn.AllocationRoot == sn.PrevAllocationRoot {
-		// get nonce of prev WM
-		var prevWM *WriteMarkerEntity
-		prevWM, err = GetPreviousWM(ctx, sn.AllocationRoot, wme.WM.Timestamp)
-		if err != nil {
-			wme.StatusMessage = "Error getting previous write marker. " + err.Error()
-			if err := wme.UpdateStatus(ctx, Failed, "Error getting previous write marker. "+err.Error(), "", startSeq, wme.Sequence); err != nil {
-				Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
+	// If it is greater than we need to redeem mutliple write markers
+	if len(sn.ChainData) > (config.Configuration.MaxChainLength * 32) {
+		lastSeq := seq[len(seq)-1]
+		Logger.Info("chain_length_exceeded", zap.String("allocation_id", wme.WM.AllocationID), zap.Int64("last_seq", lastSeq))
+		var lastSeqWM *WriteMarkerEntity
+		err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+			lastSeqWM, err = GetWritemarkerFromSequence(ctx, wme.WM.AllocationID, lastSeq)
+			if err != nil {
+				return err
 			}
-			return err
+
+			return lastSeqWM.redeemMarker(ctx, startSeq)
+		})
+		if err != nil {
+			Logger.Error("chain_length_redeem_error", zap.String("allocation_id", wme.WM.AllocationID), zap.Int64("last_seq", lastSeq), zap.Error(err))
 		}
-		err = txn.ExecuteRollbackWM(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CLOSE_CONNECTION_SC_NAME, sn, 0, prevWM.CloseTxnNonce)
-	} else {
-		err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CLOSE_CONNECTION_SC_NAME, sn, 0)
+		return errors.New("chain length exceeded")
 	}
+
+	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CLOSE_CONNECTION_SC_NAME, sn, 0)
 	if err != nil {
 		Logger.Error("Failed during sending close connection to the miner. ", zap.String("err:", err.Error()))
 		wme.Status = Failed
@@ -252,6 +259,5 @@ func (wme *WriteMarkerEntity) VerifyRollbackMarker(ctx context.Context, dbAlloca
 	if !sigOK {
 		return common.NewError("write_marker_validation_failed", "Write marker signature is not valid")
 	}
-	wme.WM.ChainLength += 1
 	return nil
 }

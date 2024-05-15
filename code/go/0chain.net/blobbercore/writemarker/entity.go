@@ -266,7 +266,7 @@ func GetLatestCommittedWriteMarker(ctx context.Context, allocationID string) (*W
 	return wm, nil
 }
 
-func GetMarkersForChain(ctx context.Context, allocationID string, startSeq, endSeq int64) ([]byte, error) {
+func GetMarkersForChain(ctx context.Context, allocationID string, startSeq, endSeq int64) ([]byte, []int64, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 
 	unCommittedMarkers := make([]*WriteMarkerEntity, 0)
@@ -275,17 +275,31 @@ func GetMarkersForChain(ctx context.Context, allocationID string, startSeq, endS
 		Order("sequence asc").
 		Find(&unCommittedMarkers).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
-		return nil, err
+		return nil, nil, err
 	}
 	markers := make([]byte, 0, len(unCommittedMarkers))
+	seq := make([]int64, 0, len(unCommittedMarkers))
 	for _, marker := range unCommittedMarkers {
 		decodedHash, err := hex.DecodeString(marker.WM.AllocationRoot)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		markers = append(markers, decodedHash...)
+		seq = append(seq, marker.Sequence)
 	}
-	return markers, nil
+	return markers, seq, nil
+}
+
+func GetWritemarkerFromSequence(ctx context.Context, allocationID string, seq int64) (*WriteMarkerEntity, error) {
+	db := datastore.GetStore().GetTransaction(ctx)
+	wm := &WriteMarkerEntity{}
+	err := db.Table((WriteMarkerEntity{}).TableName()).
+		Where("allocation_id=? AND sequence=?", allocationID, seq).
+		Take(wm).Error
+	if err != nil {
+		return nil, err
+	}
+	return wm, nil
 }
 
 func CalculateChainHash(prevChainHash, newRoot string) string {
