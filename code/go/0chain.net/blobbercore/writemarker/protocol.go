@@ -25,8 +25,10 @@ type CommitConnection struct {
 	ChainData          []byte       `json:"chain_data"`
 }
 
+const timeGap = 180
+
 // VerifyMarker verify WriteMarker's hash and check allocation_root if it is unique
-func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *allocation.Allocation, co *allocation.AllocationChangeCollector) error {
+func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *allocation.Allocation, co *allocation.AllocationChangeCollector, latestWM *WriteMarkerEntity) error {
 	if wme == nil {
 		return common.NewError("invalid_write_marker", "No Write Marker was found")
 	}
@@ -93,8 +95,10 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 
 	currTime := common.Now()
 	// blobber clock is allowed to be 180 seconds behind the current time
-	if wme.WM.Timestamp > currTime+180 {
-		return common.NewError("write_marker_validation_failed", "Write Marker timestamp is in the future")
+	if wme.WM.Timestamp > currTime+timeGap {
+		if latestWM == nil || wme.WM.Timestamp > latestWM.WM.Timestamp+timeGap {
+			return common.NewError("write_marker_validation_failed", "Write Marker timestamp is in the future")
+		}
 	}
 
 	hashData := wme.WM.GetHashData()
