@@ -259,5 +259,6 @@ func (wme *WriteMarkerEntity) VerifyRollbackMarker(ctx context.Context, dbAlloca
 	if !sigOK {
 		return common.NewError("write_marker_validation_failed", "Write marker signature is not valid")
 	}
+	wme.WM.ChainLength += 1
 	return nil
 }

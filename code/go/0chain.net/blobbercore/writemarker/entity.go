@@ -142,7 +142,7 @@ func GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*WriteMa
 	// err := db.First(wm, "allocation_root = ?", allocation_root).Error
 	err := db.Table((WriteMarkerEntity{}).TableName()).
 		Where("allocation_root=?", allocation_root).
-		Order("timestamp desc").
+		Order("sequence desc").
 		Take(wm).Error
 	if err != nil {
 		return nil, err

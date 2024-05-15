@@ -1402,8 +1402,6 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return nil, common.NewError("write_marker_verification_failed", "Verification of the write marker failed: "+err.Error())
 	}
 
-	writemarkerEntity.WM.ChainLength = latestWriteMarkerEntity.WM.ChainLength + 1
-
 	if writemarkerEntity.WM.ChainLength > config.Configuration.MaxChainLength {
 		return nil, common.NewError("chain_length_exceeded", "Chain length exceeded")
 	}
@@ -1458,9 +1456,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	}
 
 	if fileMetaRoot != writeMarker.FileMetaRoot {
-		if latestWriteMarkerEntity != nil {
-			result.WriteMarker = latestWriteMarkerEntity
-		}
+		result.WriteMarker = latestWriteMarkerEntity
 		result.Success = false
 		result.ErrorMessage = "File meta root in the write marker does not match the calculated file meta root." +
 			" Expected hash: " + fileMetaRoot + "; Got: " + writeMarker.FileMetaRoot
