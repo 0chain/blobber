@@ -214,7 +214,6 @@ func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, is
 		if change.existingRef != nil {
 			contentSize -= change.existingRef.Size
 		}
-		UpdateConnectionObjSize(connectionID, contentSize)
 
 	} else {
 		change.seqPQ.Push(seqpriorityqueue.UploadData{
