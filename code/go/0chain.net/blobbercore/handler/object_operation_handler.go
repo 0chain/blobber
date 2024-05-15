@@ -618,7 +618,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("chain_length_exceeded", "Chain length exceeded")
 	}
 
-	err = writemarkerEntity.VerifyMarker(ctx, allocationObj, connectionObj)
+	err = writemarkerEntity.VerifyMarker(ctx, allocationObj, connectionObj, latestWriteMarkerEntity)
 	if err != nil {
 		result.AllocationRoot = allocationObj.AllocationRoot
 		result.ErrorMessage = "Verification of write marker failed: " + err.Error()
