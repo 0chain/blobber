@@ -210,6 +210,15 @@ func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, is
 			Offset:    offset,
 			DataBytes: dataWritten,
 		}, contentSize)
+		if change.existingRef != nil {
+			logging.Logger.Info("updateConnSize: ", zap.Int64("contentSize", contentSize), zap.Int64("currentSize", change.existingRef.Size))
+			contentSize -= change.existingRef.Size
+		} else {
+			logging.Logger.Info("updateConnSize: ", zap.Int64("contentSize", contentSize))
+		}
+		if contentSize != 0 {
+			UpdateConnectionObjSize(connectionID, contentSize)
+		}
 	} else {
 		change.seqPQ.Push(seqpriorityqueue.UploadData{
 			Offset:    offset,
