@@ -106,7 +106,7 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 		_ = os.Remove(tempFilePath)
 		return nil, common.NewError("file_size_mismatch", "File size is greater than expected")
 	}
-	logging.Logger.Info("temp_file_write: ", zap.String("filePath", fileData.Path), zap.Int64("currentSize", currentSize), zap.Int64("initialSize", initialSize), zap.Int64("writtenSize", writtenSize), zap.Int64("offset", fileData.UploadOffset), zap.Bool("ChunkUploaded", fileRef.ChunkUploaded))
+	logging.Logger.Info("temp_file_write: ", zap.String("filePath", fileData.Path), zap.Int64("currentSize", currentSize), zap.Int64("initialSize", initialSize), zap.Int64("writtenSize", writtenSize), zap.Int64("offset", fileData.UploadOffset), zap.String("tempFilePath", tempFilePath))
 	fileRef.Size = writtenSize
 	fileRef.Name = fileData.Name
 	fileRef.Path = fileData.Path
@@ -182,12 +182,6 @@ func (fs *FileStore) DeletePreCommitDir(allocID string) error {
 	if err != nil {
 		return common.NewError("pre_commit_dir_deletion_error", err.Error())
 	}
-	tempDir := fs.getAllocTempDir(allocID)
-	err = os.RemoveAll(tempDir)
-	if err != nil {
-		return common.NewError("temp_dir_deletion_error", err.Error())
-	}
-
 	return nil
 }
 
@@ -398,7 +392,7 @@ func (fs *FileStore) DeleteTempFile(allocID, conID string, fd *FileInputData) er
 		return common.NewError("invalid_allocation_id", "Allocation id cannot be empty")
 	}
 	fileObjectPath := fs.getTempPathForFile(allocID, fd.Name, encryption.Hash(fd.Path), conID)
-
+	logging.Logger.Info("deleting_temp_file", zap.String("fileObjectPath", fileObjectPath), zap.String("allocation_id", allocID), zap.String("connection_id", conID))
 	finfo, err := os.Stat(fileObjectPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
