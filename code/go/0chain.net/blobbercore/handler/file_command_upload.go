@@ -174,7 +174,7 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		}
 	}
 
-	saveChange, err := allocation.SaveFileChange(connectionID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, cmd.fileChanger.IsFinal, cmd.fileChanger.Size, cmd.fileChanger.UploadOffset, fileOutputData.Size)
+	saveChange, err := allocation.SaveFileChange(connectionID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, cmd.fileChanger.IsFinal, cmd.fileChanger.Size, cmd.fileChanger.UploadOffset, fileOutputData.Size, cmd.fileChanger.Size)
 	if err != nil {
 		logging.Logger.Error("UploadFileCommand.ProcessContent", zap.Error(err))
 		return result, err

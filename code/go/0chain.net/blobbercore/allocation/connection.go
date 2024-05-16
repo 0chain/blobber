@@ -166,7 +166,7 @@ func UpdateConnectionObjSize(connectionID string, addSize int64) {
 	connectionObj.UpdatedAt = time.Now()
 }
 
-func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, isFinal bool, contentSize int64, offset, dataWritten int64) (bool, error) {
+func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, isFinal bool, contentSize, offset, dataWritten, addSize int64) (bool, error) {
 	connectionObjMutex.RLock()
 	connectionObj := connectionProcessor[connectionID]
 	connectionObjMutex.RUnlock()
@@ -210,14 +210,8 @@ func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, is
 			Offset:    offset,
 			DataBytes: dataWritten,
 		}, contentSize)
-		if change.existingRef != nil {
-			logging.Logger.Info("updateConnSize: ", zap.Int64("contentSize", contentSize), zap.Int64("currentSize", change.existingRef.Size))
-			contentSize -= change.existingRef.Size
-		} else {
-			logging.Logger.Info("updateConnSize: ", zap.Int64("contentSize", contentSize))
-		}
-		if contentSize != 0 {
-			UpdateConnectionObjSize(connectionID, contentSize)
+		if addSize != 0 {
+			UpdateConnectionObjSize(connectionID, addSize)
 		}
 	} else {
 		change.seqPQ.Push(seqpriorityqueue.UploadData{
