@@ -147,7 +147,6 @@ func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		if fileOutputData.ContentSize != cmd.fileChanger.Size {
 			return result, common.NewError("upload_error", fmt.Sprintf("File size mismatch. Expected: %d, Actual: %d", cmd.fileChanger.Size, fileOutputData.ContentSize))
 		}
-		allocation.UpdateConnectionObjSize(connID, cmd.fileChanger.Size-cmd.existingFileRef.Size)
 	}
 
 	if cmd.thumbFile != nil {
@@ -157,7 +156,7 @@ func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		}
 	}
 
-	saveChange, err := allocation.SaveFileChange(connID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, cmd.fileChanger.IsFinal, cmd.fileChanger.Size, cmd.fileChanger.UploadOffset, fileOutputData.Size)
+	saveChange, err := allocation.SaveFileChange(connID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, cmd.fileChanger.IsFinal, cmd.fileChanger.Size, cmd.fileChanger.UploadOffset, fileOutputData.Size, cmd.fileChanger.Size-cmd.existingFileRef.Size)
 	if err != nil {
 		return result, err
 	}
