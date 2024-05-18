@@ -6,8 +6,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"go.uber.org/zap"
 )
 
 func DeleteObject(ctx context.Context, rootRef *Ref, allocationID, objPath string, ts common.Timestamp) error {
@@ -37,7 +35,6 @@ func DeleteObject(ctx context.Context, rootRef *Ref, allocationID, objPath strin
 		return nil
 	}
 	parentPath, deleteFileName := filepath.Split(objPath)
-	logging.Logger.Info("delete_object", zap.String("parent_path", parentPath), zap.String("delete_file_name", deleteFileName))
 	rootRef.UpdatedAt = ts
 	fields, err := common.GetPathFields(parentPath)
 	if err != nil {
@@ -63,9 +60,10 @@ func DeleteObject(ctx context.Context, rootRef *Ref, allocationID, objPath strin
 			return common.NewError("invalid_reference_path", "Reference path has invalid references")
 		}
 	}
-	logging.Logger.Info("delete_object", zap.Any("dir_ref", dirRef))
+
 	for i, child := range dirRef.Children {
-		if child.Name == deleteFileName {
+		basePath := filepath.Base(child.Path)
+		if basePath == deleteFileName {
 			dirRef.RemoveChild(i)
 			break
 		}
