@@ -35,7 +35,6 @@ func DeleteObject(ctx context.Context, rootRef *Ref, allocationID, objPath strin
 		return nil
 	}
 	parentPath, deleteFileName := filepath.Split(objPath)
-
 	rootRef.UpdatedAt = ts
 	fields, err := common.GetPathFields(parentPath)
 	if err != nil {
@@ -63,7 +62,8 @@ func DeleteObject(ctx context.Context, rootRef *Ref, allocationID, objPath strin
 	}
 
 	for i, child := range dirRef.Children {
-		if child.Name == deleteFileName {
+		basePath := filepath.Base(child.Path)
+		if basePath == deleteFileName {
 			dirRef.RemoveChild(i)
 			break
 		}
