@@ -102,7 +102,7 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context, rootRef *reference
 		ValidationRootSignature: nf.ValidationRootSignature,
 		CustomMeta:              nf.CustomMeta,
 		FixedMerkleRoot:         nf.FixedMerkleRoot,
-		Name:                    filepath.Base(nf.Path),
+		Name:                    nf.Filename,
 		Path:                    nf.Path,
 		ParentPath:              dirRef.Path,
 		Type:                    reference.FILE,
