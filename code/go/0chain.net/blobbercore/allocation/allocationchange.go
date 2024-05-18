@@ -231,6 +231,7 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocatio
 	if err != nil {
 		return rootRef, err
 	}
+	logging.Logger.Info("ApplyChanges", zap.String("allocation_id", cc.AllocationID), zap.Any("root_ref", *rootRef))
 	err = collector.Finalize(ctx)
 	return rootRef, err
 }
