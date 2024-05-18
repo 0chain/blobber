@@ -255,8 +255,11 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 	}, nil
 }
 
-// swagger:route GET /v1/file/download/{allocation} downloadFile
-// Download Handler (downloadFile)
+// swagger:route GET /v1/file/download/{allocation} GetDownloadFile
+// Download a file.
+//
+// Download Handler (downloadFile).
+//
 // parameters:
 //   +name: allocation
 //     description: TxHash of the allocation in question.

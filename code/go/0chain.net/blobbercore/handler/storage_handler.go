@@ -274,7 +274,8 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	return result, nil
 }
 
-// swagger:route GET /v1/file/list/{allocation} list
+// swagger:route GET /v1/file/list/{allocation} GetListFiles
+// List files.
 // ListHandler is the handler to respond to list requests from clients, 
 // it returns a list of files in the allocation,
 // along with the metadata of the files.
@@ -331,6 +332,14 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 //     in: header
 //     type: string
 //     required: true
+//  +name: X-App-Client-Signature
+//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//     in: header
+//     type: string
+//  +name: X-App-Client-Signature-V2
+//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//     in: header
+//     type: string
 //
 // responses:
 //
@@ -946,7 +955,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 		)
 
 	default:
-		return nil, common.NewError("invalid_parameters", "refType param should have value regular/updated/deleted")
+		return nil, common.NewError("invalid_parameters", "refType param should have value regular/updated")
 	}
 
 	if err != nil {

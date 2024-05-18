@@ -388,7 +388,7 @@ func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type,
 // refs ordered by path in ascending order, this will return paths in decending order for same timestamp.
 // So if a file is created with path "/a/b/c/d/e/f.txt" and if "/a" didn't exist previously then
 // creation date for "/a", "/a/b", "/a/b/c", "/a/b/c/d", "/a/b/c/d/e" and "/a/b/c/d/e/f.txt" will be the same.
-// The refs returned will be in "/a/b/c/d/e/f.txt", "/a/b/c/d/e", ... order.
+// The refs returned will be in "/a", "/a/b", .. "/a/b/c/d/e/f.txt" order.
 //
 // pageLimit --> maximum number of refs to return
 // fromDate --> timestamp to begin searching refs from i.e. refs created date greater than fromDate

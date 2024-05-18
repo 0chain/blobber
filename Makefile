@@ -193,4 +193,5 @@ endif
 markdown-docs:
 	swagger generate spec -o ./swagger.yaml -w ./code/go/0chain.net -m
 	sed -i '' "s/in\:\ form/in\:\ formData/g" ./swagger.yaml
+	yq -i '(.paths.*.*.parameters.[] | select(.in == "formData") | select(.type == "object")).type = "file"' swagger.yaml
 	swagger generate markdown -f ./swagger.yaml --output=swagger.md

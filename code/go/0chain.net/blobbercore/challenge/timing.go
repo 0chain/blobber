@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+// swagger:model ChallengeTiming
 type ChallengeTiming struct {
 	// ChallengeID is the challenge ID generated on blockchain.
 	ChallengeID string `gorm:"column:challenge_id;size:64;primaryKey" json:"id"`

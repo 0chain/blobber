@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// swagger:model ShareInfo
 type ShareInfo struct {
 	ID                        int       `gorm:"column:id;primaryKey"`
 	OwnerID                   string    `gorm:"column:owner_id;size:64;not null;index:idx_marketplace_share_info_for_owner,priority:1" json:"owner_id,omitempty"`
