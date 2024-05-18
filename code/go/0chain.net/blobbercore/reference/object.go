@@ -63,7 +63,7 @@ func DeleteObject(ctx context.Context, rootRef *Ref, allocationID, objPath strin
 
 	for i, child := range dirRef.Children {
 		basePath := filepath.Base(child.Path)
-		if basePath == deleteFileName {
+		if basePath == deleteFileName || child.Path == objPath {
 			dirRef.RemoveChild(i)
 			break
 		}
