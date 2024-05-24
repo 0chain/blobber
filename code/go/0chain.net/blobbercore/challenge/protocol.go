@@ -286,6 +286,19 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 				return
 			}
 
+			if validationTicket.ValidatorID != validatorID {
+				numFailed++
+				logging.Logger.Error(
+					"[challenge]resp: ",
+					zap.String("validator",
+						validatorID),
+					zap.Any("resp", string(resp)),
+					zap.Any("error", "Validator ID mismatch"),
+				)
+				updateMapAndSlice(validatorID, i, nil)
+				return
+			}
+
 			logging.Logger.Info(
 				"[challenge]resp: Got response from the validator.",
 				zap.Any("validator_response", validationTicket),
