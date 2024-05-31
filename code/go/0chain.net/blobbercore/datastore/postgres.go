@@ -66,9 +66,9 @@ func (store *postgresStore) Open() error {
 		return common.NewErrorf("db_open_error", "Error opening the DB connection: %v", err)
 	}
 
-	sqldb.SetMaxIdleConns(100)
-	sqldb.SetMaxOpenConns(200)
-	sqldb.SetConnMaxLifetime(20 * time.Minute)
+	sqldb.SetMaxIdleConns(250)
+	sqldb.SetMaxOpenConns(1000)
+	sqldb.SetConnMaxLifetime(30 * time.Minute)
 	sqldb.SetConnMaxIdleTime(5 * time.Minute)
 	// Enable Logger, show detailed log
 	//db.LogMode(true)
@@ -108,6 +108,9 @@ func (store *postgresStore) WithNewTransaction(f func(ctx context.Context) error
 	defer ctx.Done()
 
 	tx := store.GetTransaction(ctx)
+	timeoutCtx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	defer cancel()
+	tx.DB = tx.WithContext(timeoutCtx)
 	err := f(ctx)
 	if err != nil {
 		tx.Rollback()
