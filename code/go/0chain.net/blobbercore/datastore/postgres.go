@@ -8,7 +8,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -86,14 +85,7 @@ func (store *postgresStore) Close() {
 }
 
 func (store *postgresStore) CreateTransaction(ctx context.Context) context.Context {
-	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	db := store.db.WithContext(timeoutCtx).Begin()
-	if db.Error == nil {
-		db = db.WithContext(ctx)
-	} else {
-		logging.Logger.Error("Error creating transaction", zap.Error(db.Error))
-	}
+	db := store.db.WithContext(ctx).Begin()
 	return context.WithValue(ctx, ContextKeyTransaction, EnhanceDB(db))
 }
 
@@ -107,9 +99,9 @@ func (store *postgresStore) GetTransaction(ctx context.Context) *EnhancedDB {
 }
 
 func (store *postgresStore) WithNewTransaction(f func(ctx context.Context) error) error {
-	ctx := store.CreateTransaction(context.TODO())
-	defer ctx.Done()
-
+	timeoutctx, cancel := context.WithTimeout(context.TODO(), 45*time.Second)
+	defer cancel()
+	ctx := store.CreateTransaction(timeoutctx)
 	tx := store.GetTransaction(ctx)
 	if tx.Error != nil {
 		return tx.Error
