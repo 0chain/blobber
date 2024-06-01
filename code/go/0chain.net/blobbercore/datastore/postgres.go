@@ -8,6 +8,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -66,8 +67,8 @@ func (store *postgresStore) Open() error {
 		return common.NewErrorf("db_open_error", "Error opening the DB connection: %v", err)
 	}
 
-	sqldb.SetMaxIdleConns(250)
-	sqldb.SetMaxOpenConns(1000)
+	sqldb.SetMaxIdleConns(100)
+	sqldb.SetMaxOpenConns(400)
 	sqldb.SetConnMaxLifetime(30 * time.Minute)
 	sqldb.SetConnMaxIdleTime(5 * time.Minute)
 	// Enable Logger, show detailed log
@@ -85,12 +86,14 @@ func (store *postgresStore) Close() {
 }
 
 func (store *postgresStore) CreateTransaction(ctx context.Context) context.Context {
-	//conn := ctx.Value(ContextKeyTransaction)
-	//if conn != nil {
-	//	return ctx
-	//}
-
-	db := store.db.Begin()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	db := store.db.WithContext(timeoutCtx).Begin()
+	if db.Error == nil {
+		db = db.WithContext(ctx)
+	} else {
+		logging.Logger.Error("Error creating transaction", zap.Error(db.Error))
+	}
 	return context.WithValue(ctx, ContextKeyTransaction, EnhanceDB(db))
 }
 
@@ -108,9 +111,9 @@ func (store *postgresStore) WithNewTransaction(f func(ctx context.Context) error
 	defer ctx.Done()
 
 	tx := store.GetTransaction(ctx)
-	timeoutCtx, cancel := context.WithTimeout(ctx, 1*time.Minute)
-	defer cancel()
-	tx.DB = tx.WithContext(timeoutCtx)
+	if tx.Error != nil {
+		return tx.Error
+	}
 	err := f(ctx)
 	if err != nil {
 		tx.Rollback()
@@ -127,6 +130,9 @@ func (store *postgresStore) WithTransaction(ctx context.Context, f func(ctx cont
 	if tx == nil {
 		ctx = store.CreateTransaction(ctx)
 		tx = store.GetTransaction(ctx)
+		if tx.Error != nil {
+			return tx.Error
+		}
 	}
 
 	err := f(ctx)

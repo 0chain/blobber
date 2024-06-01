@@ -1285,7 +1285,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 		return nil, err
 	}
 	// call process content, which writes to file checks if conn obj needs to be updated and if commit hasher needs to be called
-	res, err := cmd.ProcessContent(allocationObj)
+	res, err := cmd.ProcessContent(ctx, allocationObj)
 	if err != nil {
 		return nil, err
 	}
