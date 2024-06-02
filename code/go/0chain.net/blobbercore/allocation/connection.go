@@ -185,9 +185,6 @@ func SaveFileChange(ctx context.Context, connectionID, pathHash, fileName string
 		change.lock.Lock()
 		defer change.lock.Unlock()
 		connectionObj.lock.Unlock()
-		change.lock.Lock()
-		defer change.lock.Unlock()
-		connectionObj.lock.Unlock()
 		dbConnectionObj, err := GetAllocationChanges(ctx, connectionID, connectionObj.AllocationID, connectionObj.ClientID)
 		if err != nil {
 			return saveChange, err
@@ -203,9 +200,9 @@ func SaveFileChange(ctx context.Context, connectionID, pathHash, fileName string
 		saveChange = true
 		elapsedChange = time.Since(changeTime)
 	} else {
-		connectionObj.lock.Unlock()
 		change.lock.Lock()
 		defer change.lock.Unlock()
+		connectionObj.lock.Unlock()
 	}
 	if change.isFinalized {
 		return false, nil
