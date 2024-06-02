@@ -196,9 +196,9 @@ func SaveFileChange(ctx context.Context, connectionID, pathHash, fileName string
 		go hasher.Start(connectionObj.ctx, connectionID, connectionObj.AllocationID, fileName, pathHash, change.seqPQ)
 		saveChange = true
 	} else {
-		connectionObj.lock.Unlock()
 		change.lock.Lock()
 		defer change.lock.Unlock()
+		connectionObj.lock.Unlock()
 	}
 	if change.isFinalized {
 		return false, nil
