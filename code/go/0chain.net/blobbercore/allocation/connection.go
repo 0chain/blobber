@@ -182,13 +182,15 @@ func SaveFileChange(ctx context.Context, connectionID, pathHash, fileName string
 		changeTime := time.Now()
 		change = &ConnectionChange{}
 		connectionObj.changes[pathHash] = change
+		change.lock.Lock()
+		defer change.lock.Unlock()
+		connectionObj.lock.Unlock()
 		dbConnectionObj, err := GetAllocationChanges(ctx, connectionID, connectionObj.AllocationID, connectionObj.ClientID)
 		if err != nil {
 			return saveChange, err
 		}
 		err = cmd.UpdateChange(ctx, dbConnectionObj)
 		if err != nil {
-			connectionObj.lock.Unlock()
 			return saveChange, err
 		}
 		hasher := filestore.GetNewCommitHasher(contentSize)
@@ -197,10 +199,11 @@ func SaveFileChange(ctx context.Context, connectionID, pathHash, fileName string
 		go hasher.Start(connectionObj.ctx, connectionID, connectionObj.AllocationID, fileName, pathHash, change.seqPQ)
 		saveChange = true
 		elapsedChange = time.Since(changeTime)
+	} else {
+		connectionObj.lock.Unlock()
+		change.lock.Lock()
+		defer change.lock.Unlock()
 	}
-	connectionObj.lock.Unlock()
-	change.lock.Lock()
-	defer change.lock.Unlock()
 	if change.isFinalized {
 		return false, nil
 	}
