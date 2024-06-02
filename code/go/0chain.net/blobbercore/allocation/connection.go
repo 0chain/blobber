@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/seqpriorityqueue"
@@ -166,7 +165,7 @@ func UpdateConnectionObjSize(connectionID string, addSize int64) {
 	connectionObj.UpdatedAt = time.Now()
 }
 
-func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, isFinal bool, contentSize, offset, dataWritten, addSize int64) (bool, error) {
+func SaveFileChange(ctx context.Context, connectionID, pathHash, fileName string, cmd FileCommand, isFinal bool, contentSize, offset, dataWritten, addSize int64) (bool, error) {
 	connectionObjMutex.RLock()
 	connectionObj := connectionProcessor[connectionID]
 	connectionObjMutex.RUnlock()
@@ -175,31 +174,32 @@ func SaveFileChange(connectionID, pathHash, fileName string, cmd FileCommand, is
 	}
 	connectionObj.lock.Lock()
 	connectionObj.UpdatedAt = time.Now()
-	change := connectionObj.changes[pathHash]
 	saveChange := false
+	change := connectionObj.changes[pathHash]
 	if change == nil {
 		change = &ConnectionChange{}
 		connectionObj.changes[pathHash] = change
-		err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-			dbConnectionObj, err := GetAllocationChanges(ctx, connectionID, connectionObj.AllocationID, connectionObj.ClientID)
-			if err != nil {
-				return err
-			}
-			return cmd.UpdateChange(ctx, dbConnectionObj)
-		})
+		change.lock.Lock()
+		defer change.lock.Unlock()
+		connectionObj.lock.Unlock()
+		dbConnectionObj, err := GetAllocationChanges(ctx, connectionID, connectionObj.AllocationID, connectionObj.ClientID)
 		if err != nil {
-			connectionObj.lock.Unlock()
-			return false, err
+			return saveChange, err
+		}
+		err = cmd.UpdateChange(ctx, dbConnectionObj)
+		if err != nil {
+			return saveChange, err
 		}
 		hasher := filestore.GetNewCommitHasher(contentSize)
 		change.hasher = hasher
 		change.seqPQ = seqpriorityqueue.NewSeqPriorityQueue(contentSize)
 		go hasher.Start(connectionObj.ctx, connectionID, connectionObj.AllocationID, fileName, pathHash, change.seqPQ)
 		saveChange = true
+	} else {
+		connectionObj.lock.Unlock()
+		change.lock.Lock()
+		defer change.lock.Unlock()
 	}
-	connectionObj.lock.Unlock()
-	change.lock.Lock()
-	defer change.lock.Unlock()
 	if change.isFinalized {
 		return false, nil
 	}

@@ -106,7 +106,7 @@ func (cmd *UpdateFileCommand) IsValidated(ctx context.Context, req *http.Request
 }
 
 // ProcessContent flush file to FileStorage
-func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocation) (allocation.UploadResult, error) {
+func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, allocationObj *allocation.Allocation) (allocation.UploadResult, error) {
 	result := allocation.UploadResult{}
 
 	result.Filename = cmd.fileChanger.Filename
@@ -156,7 +156,7 @@ func (cmd *UpdateFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		}
 	}
 
-	saveChange, err := allocation.SaveFileChange(connID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, cmd.fileChanger.IsFinal, cmd.fileChanger.Size, cmd.fileChanger.UploadOffset, fileOutputData.Size, cmd.fileChanger.Size-cmd.existingFileRef.Size)
+	saveChange, err := allocation.SaveFileChange(ctx, connID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, cmd.fileChanger.IsFinal, cmd.fileChanger.Size, cmd.fileChanger.UploadOffset, fileOutputData.Size, cmd.fileChanger.Size-cmd.existingFileRef.Size)
 	if err != nil {
 		return result, err
 	}
