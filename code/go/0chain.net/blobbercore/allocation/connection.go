@@ -175,13 +175,16 @@ func SaveFileChange(ctx context.Context, connectionID, pathHash, fileName string
 	}
 	connectionObj.lock.Lock()
 	connectionObj.UpdatedAt = time.Now()
-	change := connectionObj.changes[pathHash]
 	saveChange := false
+	change := connectionObj.changes[pathHash]
 	var elapsedChange time.Duration
 	if change == nil {
 		changeTime := time.Now()
 		change = &ConnectionChange{}
 		connectionObj.changes[pathHash] = change
+		change.lock.Lock()
+		defer change.lock.Unlock()
+		connectionObj.lock.Unlock()
 		change.lock.Lock()
 		defer change.lock.Unlock()
 		connectionObj.lock.Unlock()
