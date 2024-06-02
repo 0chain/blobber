@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 
@@ -123,7 +124,6 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 
 // ProcessContent flush file to FileStorage
 func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, allocationObj *allocation.Allocation) (allocation.UploadResult, error) {
-	logging.Logger.Info("UploadFileCommand.ProcessContent", zap.Any("fileChanger", cmd.fileChanger.Path), zap.Any("uploadOffset", cmd.fileChanger.UploadOffset), zap.Any("isFinal", cmd.fileChanger.IsFinal))
 	result := allocation.UploadResult{}
 	defer cmd.contentFile.Close()
 
@@ -139,18 +139,21 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, allocationObj 
 		FilePathHash: cmd.fileChanger.PathHash,
 		Size:         cmd.fileChanger.Size,
 	}
+	now := time.Now()
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionID, fileInputData, cmd.contentFile)
 	if err != nil {
 		logging.Logger.Error("UploadFileCommand.ProcessContent", zap.Error(err))
 		return result, common.NewError("upload_error", "Failed to write file. "+err.Error())
 	}
-
+	elapsedWriteFile := time.Since(now)
+	now = time.Now()
 	result.Filename = cmd.fileChanger.Filename
 	result.ValidationRoot = fileOutputData.ValidationRoot
 	result.Size = fileOutputData.Size
 
 	allocationSize := allocation.GetConnectionObjSize(connectionID)
-
+	elapsedGetConnectionObjSize := time.Since(now)
+	now = time.Now()
 	cmd.fileChanger.AllocationID = allocationObj.ID
 
 	cmd.allocationChange = &allocation.AllocationChange{}
@@ -193,6 +196,7 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, allocationObj 
 		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
 	}
 
+	logging.Logger.Info("UploadFileCommand: ", zap.Duration("elapsedWriteFile", elapsedWriteFile), zap.Duration("elapsedGetConnectionObjSize", elapsedGetConnectionObjSize), zap.Duration("elapsedSaveChange", time.Since(now)))
 	return result, nil
 }
 

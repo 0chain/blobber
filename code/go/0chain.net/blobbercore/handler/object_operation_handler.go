@@ -1278,12 +1278,15 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 	}
 
 	elapsedVerifySig := time.Since(st)
+	st = time.Now()
 
 	cmd := createFileCommand(r)
 	err = cmd.IsValidated(ctx, r, allocationObj, clientID)
 	if err != nil {
 		return nil, err
 	}
+	elapsedIsValidated := time.Since(st)
+	st = time.Now()
 	// call process content, which writes to file checks if conn obj needs to be updated and if commit hasher needs to be called
 	res, err := cmd.ProcessContent(ctx, allocationObj)
 	if err != nil {
@@ -1305,6 +1308,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 	if blocks > 0 {
 		go AddUploadedData(clientID, blocks)
 	}
+	elapsedProcessContent := time.Since(st)
 	Logger.Info("[upload]elapsed",
 		zap.String("alloc_id", allocationID),
 		zap.String("file", cmd.GetPath()),
@@ -1312,7 +1316,8 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 		zap.Duration("get_processor", elapsedGetConnectionProcessor),
 		zap.Duration("get_alloc", elapsedAllocation),
 		zap.Duration("sig", elapsedVerifySig),
-		zap.Duration("validate", time.Since(st)),
+		zap.Duration("validate", elapsedIsValidated),
+		zap.Duration("process_content", elapsedProcessContent),
 		zap.Duration("total", time.Since(startTime)))
 	return &res, nil
 }
