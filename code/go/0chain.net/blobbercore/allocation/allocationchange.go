@@ -135,7 +135,7 @@ func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clien
 		allocationID,
 		clientID,
 		DeletedConnection,
-	).Preload("Changes").First(cc).Error
+	).Preload("Changes").Take(cc).Error
 
 	if err == nil {
 		cc.ComputeProperties()

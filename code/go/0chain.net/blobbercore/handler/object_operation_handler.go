@@ -1285,7 +1285,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 		return nil, err
 	}
 	// call process content, which writes to file checks if conn obj needs to be updated and if commit hasher needs to be called
-	res, err := cmd.ProcessContent(allocationObj)
+	res, err := cmd.ProcessContent(ctx, allocationObj)
 	if err != nil {
 		return nil, err
 	}
@@ -1415,8 +1415,9 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	}
 
 	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedVerifyWM
-	c := datastore.GetStore().CreateTransaction(context.TODO())
-	defer c.Done()
+	timeoutCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
+	defer cancel()
+	c := datastore.GetStore().CreateTransaction(timeoutCtx)
 	txn := datastore.GetStore().GetTransaction(c)
 	err = allocation.ApplyRollback(c, allocationID)
 	if err != nil {

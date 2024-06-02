@@ -67,8 +67,8 @@ func (store *postgresStore) Open() error {
 	}
 
 	sqldb.SetMaxIdleConns(100)
-	sqldb.SetMaxOpenConns(200)
-	sqldb.SetConnMaxLifetime(20 * time.Minute)
+	sqldb.SetMaxOpenConns(400)
+	sqldb.SetConnMaxLifetime(30 * time.Minute)
 	sqldb.SetConnMaxIdleTime(5 * time.Minute)
 	// Enable Logger, show detailed log
 	//db.LogMode(true)
@@ -85,12 +85,7 @@ func (store *postgresStore) Close() {
 }
 
 func (store *postgresStore) CreateTransaction(ctx context.Context) context.Context {
-	//conn := ctx.Value(ContextKeyTransaction)
-	//if conn != nil {
-	//	return ctx
-	//}
-
-	db := store.db.Begin()
+	db := store.db.WithContext(ctx).Begin()
 	return context.WithValue(ctx, ContextKeyTransaction, EnhanceDB(db))
 }
 
@@ -104,10 +99,13 @@ func (store *postgresStore) GetTransaction(ctx context.Context) *EnhancedDB {
 }
 
 func (store *postgresStore) WithNewTransaction(f func(ctx context.Context) error) error {
-	ctx := store.CreateTransaction(context.TODO())
-	defer ctx.Done()
-
+	timeoutctx, cancel := context.WithTimeout(context.TODO(), 45*time.Second)
+	defer cancel()
+	ctx := store.CreateTransaction(timeoutctx)
 	tx := store.GetTransaction(ctx)
+	if tx.Error != nil {
+		return tx.Error
+	}
 	err := f(ctx)
 	if err != nil {
 		tx.Rollback()
@@ -124,6 +122,9 @@ func (store *postgresStore) WithTransaction(ctx context.Context, f func(ctx cont
 	if tx == nil {
 		ctx = store.CreateTransaction(ctx)
 		tx = store.GetTransaction(ctx)
+		if tx.Error != nil {
+			return tx.Error
+		}
 	}
 
 	err := f(ctx)
