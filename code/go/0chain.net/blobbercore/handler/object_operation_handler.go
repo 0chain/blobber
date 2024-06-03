@@ -842,6 +842,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	allocationChange := &allocation.AllocationChange{}
 	allocationChange.ConnectionID = connectionObj.ID
 	allocationChange.Size = 0
+	allocationChange.LookupHash = pathHash
 	allocationChange.Operation = constants.FileOperationRename
 	dfc := &allocation.RenameFileChange{ConnectionID: connectionObj.ID,
 		AllocationID: connectionObj.AllocationID, Path: objectRef.Path, Type: objectRef.Type}
@@ -951,6 +952,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	allocationChange := &allocation.AllocationChange{}
 	allocationChange.ConnectionID = connectionObj.ID
 	allocationChange.Size = objectRef.Size
+	allocationChange.LookupHash = pathHash
 	allocationChange.Operation = constants.FileOperationCopy
 	dfc := &allocation.CopyFileChange{ConnectionID: connectionObj.ID,
 		AllocationID: connectionObj.AllocationID, DestPath: destPath}
@@ -1062,6 +1064,7 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 	allocationChange := &allocation.AllocationChange{}
 	allocationChange.ConnectionID = connectionObj.ID
 	allocationChange.Size = 0
+	allocationChange.LookupHash = pathHash
 	allocationChange.Operation = constants.FileOperationMove
 	dfc := &allocation.MoveFileChange{
 		ConnectionID: connectionObj.ID,
