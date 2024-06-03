@@ -237,7 +237,7 @@ func (cmd *UploadFileCommand) UpdateChange(ctx context.Context, connectionObj *a
 		if c.Operation != constants.FileOperationInsert || cmd.fileChanger.Path != filePath {
 			continue
 		}
-		c.Size = connectionObj.Size
+		c.Size = cmd.fileChanger.Size
 		c.Input, _ = cmd.fileChanger.Marshal()
 
 		//c.ModelWithTS.UpdatedAt = time.Now()
@@ -253,6 +253,12 @@ func (cmd *UploadFileCommand) UpdateChange(ctx context.Context, connectionObj *a
 	connectionObj.AddChange(cmd.allocationChange, cmd.fileChanger)
 
 	return connectionObj.Save(ctx)
+}
+
+func (cmd *UploadFileCommand) AddChange(ctx context.Context) error {
+	connectionInput, _ := cmd.fileChanger.Marshal()
+	cmd.allocationChange.Input = connectionInput
+	return cmd.allocationChange.Create(ctx)
 }
 
 func (cmd *UploadFileCommand) GetNumBlocks() int64 {

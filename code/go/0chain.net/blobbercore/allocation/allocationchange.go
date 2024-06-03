@@ -97,6 +97,11 @@ func (change *AllocationChange) Save(ctx context.Context) error {
 	return db.Save(change).Error
 }
 
+func (change *AllocationChange) Create(ctx context.Context) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+	return db.Create(change).Error
+}
+
 func ParseAffectedFilePath(input string) (string, error) {
 	inputMap := make(map[string]interface{})
 	err := json.Unmarshal([]byte(input), &inputMap)

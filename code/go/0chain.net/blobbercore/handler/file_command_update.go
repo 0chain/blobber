@@ -231,6 +231,12 @@ func (cmd *UpdateFileCommand) UpdateChange(ctx context.Context, connectionObj *a
 	return connectionObj.Save(ctx)
 }
 
+func (cmd *UpdateFileCommand) AddChange(ctx context.Context) error {
+	connectionInput, _ := cmd.fileChanger.Marshal()
+	cmd.allocationChange.Input = connectionInput
+	return cmd.allocationChange.Create(ctx)
+}
+
 func (cmd *UpdateFileCommand) GetNumBlocks() int64 {
 	if cmd.fileChanger.IsFinal {
 		return int64(math.Ceil(float64(cmd.fileChanger.Size*1.0) / float64(cmd.fileChanger.ChunkSize)))
