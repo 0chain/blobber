@@ -233,6 +233,7 @@ func (cmd *UpdateFileCommand) UpdateChange(ctx context.Context, connectionObj *a
 
 func (cmd *UpdateFileCommand) AddChange(ctx context.Context) error {
 	connectionInput, _ := cmd.fileChanger.Marshal()
+	cmd.allocationChange.LookupHash = cmd.existingFileRef.LookupHash
 	cmd.allocationChange.Input = connectionInput
 	return cmd.allocationChange.Create(ctx)
 }

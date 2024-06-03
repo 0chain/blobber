@@ -73,6 +73,7 @@ type AllocationChange struct {
 	Connection   AllocationChangeCollector `gorm:"foreignKey:ConnectionID"` // References allocation_connections(id)
 	Input        string                    `gorm:"column:input"`
 	FilePath     string                    `gorm:"-"`
+	LookupHash   string                    `gorm:"column:lookup_hash;size:64"`
 	datastore.ModelWithTS
 }
 

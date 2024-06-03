@@ -257,6 +257,7 @@ func (cmd *UploadFileCommand) UpdateChange(ctx context.Context, connectionObj *a
 
 func (cmd *UploadFileCommand) AddChange(ctx context.Context) error {
 	connectionInput, _ := cmd.fileChanger.Marshal()
+	cmd.allocationChange.LookupHash = reference.GetReferenceLookup(cmd.fileChanger.AllocationID, cmd.fileChanger.Path)
 	cmd.allocationChange.Input = connectionInput
 	return cmd.allocationChange.Create(ctx)
 }
