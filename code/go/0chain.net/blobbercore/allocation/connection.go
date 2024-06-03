@@ -184,12 +184,15 @@ func SaveFileChange(ctx context.Context, connectionID, pathHash, fileName string
 		connectionObj.changes[pathHash] = change
 		change.lock.Lock()
 		defer change.lock.Unlock()
-		connectionObj.lock.Unlock()
-		dbConnectionObj, err := GetAllocationChanges(ctx, connectionID, connectionObj.AllocationID, connectionObj.ClientID)
-		if err != nil {
-			return saveChange, err
+		allocationChangeCollector := &AllocationChangeCollector{
+			AllocationID: connectionObj.AllocationID,
+			ID:           connectionID,
+			ClientID:     connectionObj.ClientID,
+			Size:         connectionObj.Size,
+			Status:       InProgressConnection,
 		}
-		err = cmd.UpdateChange(ctx, dbConnectionObj)
+		connectionObj.lock.Unlock()
+		err := cmd.UpdateChange(ctx, allocationChangeCollector)
 		if err != nil {
 			return saveChange, err
 		}
