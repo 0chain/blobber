@@ -166,7 +166,6 @@ func UpdateConnectionObjSize(connectionID string, addSize int64) {
 }
 
 func SaveFileChange(ctx context.Context, connectionID, pathHash, fileName string, cmd FileCommand, isFinal bool, contentSize, offset, dataWritten, addSize int64) (bool, error) {
-	now := time.Now()
 	connectionObjMutex.RLock()
 	connectionObj := connectionProcessor[connectionID]
 	connectionObjMutex.RUnlock()
@@ -177,9 +176,7 @@ func SaveFileChange(ctx context.Context, connectionID, pathHash, fileName string
 	connectionObj.UpdatedAt = time.Now()
 	saveChange := false
 	change := connectionObj.changes[pathHash]
-	var elapsedChange time.Duration
 	if change == nil {
-		changeTime := time.Now()
 		change = &ConnectionChange{}
 		connectionObj.changes[pathHash] = change
 		change.lock.Lock()
@@ -194,7 +191,6 @@ func SaveFileChange(ctx context.Context, connectionID, pathHash, fileName string
 		change.seqPQ = seqpriorityqueue.NewSeqPriorityQueue(contentSize)
 		go hasher.Start(connectionObj.ctx, connectionID, connectionObj.AllocationID, fileName, pathHash, change.seqPQ)
 		saveChange = true
-		elapsedChange = time.Since(changeTime)
 	} else {
 		change.lock.Lock()
 		defer change.lock.Unlock()
@@ -219,7 +215,6 @@ func SaveFileChange(ctx context.Context, connectionID, pathHash, fileName string
 			DataBytes: dataWritten,
 		})
 	}
-	logging.Logger.Info("saveFileChange: ", zap.Duration("elapsedChange", elapsedChange), zap.Duration("total", time.Since(now)))
 	return saveChange, nil
 }
 
