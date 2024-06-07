@@ -185,7 +185,7 @@ func (fs *FileStore) DeletePreCommitDir(allocID string) error {
 	return nil
 }
 
-func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData) (bool, error) {
+func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData) (_ bool, err error) {
 
 	logging.Logger.Info("Committing write", zap.String("allocation_id", allocID), zap.Any("file_data", fileData))
 	filePathHash := encryption.Hash(fileData.Path)
@@ -198,7 +198,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 
 	preCommitPath := fs.getPreCommitPathForFile(allocID, fileHash, VERSION)
 
-	err := createDirs(filepath.Dir(preCommitPath))
+	err = createDirs(filepath.Dir(preCommitPath))
 	if err != nil {
 		return false, common.NewError("blob_object_precommit_dir_creation_error", err.Error())
 	}
@@ -288,12 +288,14 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	validationRoot := hex.EncodeToString(validationRootBytes)
 	elapsedRoot := time.Since(now) - elapsedWait
 	if fmtRoot != fileData.FixedMerkleRoot {
-		return false, common.NewError("fixed_merkle_root_mismatch",
+		err = common.NewError("fixed_merkle_root_mismatch",
 			fmt.Sprintf("Expected %s got %s", fileData.FixedMerkleRoot, fmtRoot))
+		return false, err
 	}
 	if validationRoot != fileData.ValidationRoot {
-		return false, common.NewError("validation_root_mismatch",
+		err = common.NewError("validation_root_mismatch",
 			"calculated validation root does not match with client's validation root")
+		return false, err
 	}
 
 	err = os.Rename(tempFilePath, preCommitPath)
