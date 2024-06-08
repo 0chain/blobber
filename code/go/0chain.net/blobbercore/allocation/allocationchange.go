@@ -95,10 +95,10 @@ func (ac *AllocationChange) BeforeSave(tx *gorm.DB) error {
 func (change *AllocationChange) Save(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 
-	return db.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "connection_id"}, {Name: "lookup_hash"}},
-		DoUpdates: clause.AssignmentColumns([]string{"size", "input"}),
-	}).Create(change).Error
+	return db.Table(change.TableName()).Where("connection_id = ? and lookup_hash = ?", change.ConnectionID, change.LookupHash).Updates(map[string]interface{}{
+		"size":  change.Size,
+		"input": change.Input,
+	}).Error
 }
 
 func (change *AllocationChange) Create(ctx context.Context) error {
