@@ -66,7 +66,6 @@ func (ac *AllocationChangeCollector) BeforeSave(tx *gorm.DB) error {
 }
 
 type AllocationChange struct {
-	ChangeID     int64                     `gorm:"column:id"`
 	Size         int64                     `gorm:"column:size;not null;default:0"`
 	Operation    string                    `gorm:"column:operation;size:20;not null"`
 	ConnectionID string                    `gorm:"column:connection_id;size:64;not null"`
