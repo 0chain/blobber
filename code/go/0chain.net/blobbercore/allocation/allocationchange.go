@@ -221,10 +221,12 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 
 func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocationRoot, prevAllocationRoot string,
 	ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error) {
+	now := time.Now()
 	rootRef, err := cc.GetRootRef(ctx)
 	if err != nil {
 		return rootRef, err
 	}
+	elapsedRootRef := time.Since(now)
 	if rootRef.Hash != prevAllocationRoot {
 		return rootRef, common.NewError("invalid_prev_root", "Invalid prev root")
 	}
@@ -235,12 +237,16 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocatio
 			return rootRef, err
 		}
 	}
+	elapsedApplyChanges := time.Since(now) - elapsedRootRef
 	collector := reference.NewCollector(len(cc.Changes))
 	_, err = rootRef.CalculateHash(ctx, true, collector)
 	if err != nil {
 		return rootRef, err
 	}
+	elapsedCalculateHash := time.Since(now) - elapsedApplyChanges - elapsedRootRef
 	err = collector.Finalize(ctx)
+	elapsedFinalize := time.Since(now) - elapsedCalculateHash - elapsedApplyChanges - elapsedRootRef
+	logging.Logger.Info("applyChanges: ", zap.String("allocation_id", cc.AllocationID), zap.Duration("elapsedRootRef", elapsedRootRef), zap.Duration("elapsedApplyChanges", elapsedApplyChanges), zap.Duration("elapsedCalculateHash", elapsedCalculateHash), zap.Duration("elapsedFinalize", elapsedFinalize))
 	return rootRef, err
 }
 

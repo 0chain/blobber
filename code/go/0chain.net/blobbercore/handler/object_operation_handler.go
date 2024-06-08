@@ -671,7 +671,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
-		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
+		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem - elapsedMoveToFilestore
 
 	allocationRoot := rootRef.Hash
 	fileMetaRoot := rootRef.FileMetaHash
