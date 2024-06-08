@@ -64,7 +64,11 @@ func (cmd *DeleteFileCommand) IsValidated(ctx context.Context, req *http.Request
 
 // UpdateChange add DeleteFileChange in db
 func (cmd *DeleteFileCommand) UpdateChange(ctx context.Context) error {
-	return nil
+	err := cmd.AddChange(ctx)
+	if err == gorm.ErrDuplicatedKey {
+		return nil
+	}
+	return err
 }
 
 func (cmd *DeleteFileCommand) AddChange(ctx context.Context) error {
