@@ -11,6 +11,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 )
 
 // DeleteFileCommand command for deleting file
@@ -91,7 +92,7 @@ func (cmd *DeleteFileCommand) ProcessContent(_ context.Context, allocationObj *a
 	cmd.allocationChange.ConnectionID = connectionID
 	cmd.allocationChange.Size = 0 - deleteSize
 	cmd.allocationChange.Operation = constants.FileOperationDelete
-	cmd.allocationChange.LookupHash = cmd.existingFileRef.LookupHash
+	cmd.allocationChange.LookupHash = encryption.Hash(connectionID + cmd.path)
 
 	allocation.UpdateConnectionObjSize(connectionID, cmd.allocationChange.Size)
 
