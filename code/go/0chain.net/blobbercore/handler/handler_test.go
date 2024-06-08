@@ -277,7 +277,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 				WithArgs(aa, aa, aa, aa, aa, aa, aa).
 				WillReturnResult(sqlmock.NewResult(0, 0))
 			mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "allocation_changes"`)).
-				WithArgs(aa, aa, aa, aa, aa, aa).
+				WithArgs(aa, aa, aa, aa, aa, aa, aa).
 				WillReturnRows(
 					sqlmock.NewRows([]string{}),
 				)
@@ -657,7 +657,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					WillReturnResult(sqlmock.NewResult(0, 0))
 
 				mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "allocation_changes"`)).
-					WithArgs(aa, aa, aa, aa, aa, aa).
+					WithArgs(aa, aa, aa, aa, aa, aa, aa).
 					WillReturnRows(
 						sqlmock.NewRows([]string{}),
 					)
@@ -743,7 +743,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					WillReturnResult(sqlmock.NewResult(0, 0))
 
 				mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "allocation_changes"`)).
-					WithArgs(aa, aa, aa, aa, aa, aa).
+					WithArgs(aa, aa, aa, aa, aa, aa, aa).
 					WillReturnRows(
 						sqlmock.NewRows([]string{}),
 					)
@@ -847,17 +847,8 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						sqlmock.NewRows([]string{"found"}).
 							AddRow(false),
 					)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocation_connections" WHERE`)).
-					WithArgs(connectionID, alloc.ID, alloc.OwnerID, allocation.DeletedConnection).
-					WillReturnRows(
-						sqlmock.NewRows([]string{}).
-							AddRow(),
-					)
-				mock.ExpectExec(`INSERT INTO "allocation_connections"`).
-					WithArgs(aa, aa, aa, aa, aa, aa, aa).
-					WillReturnResult(sqlmock.NewResult(0, 0))
 				mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "allocation_changes"`)).
-					WithArgs(aa, aa, aa, aa, aa, aa).
+					WithArgs(aa, aa, aa, aa, aa, aa, aa).
 					WillReturnRows(
 						sqlmock.NewRows([]string{}),
 					)

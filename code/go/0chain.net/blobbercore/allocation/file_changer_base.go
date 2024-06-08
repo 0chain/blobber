@@ -96,6 +96,9 @@ type FileCommand interface {
 	// UpdateChange update AllocationChangeProcessor. It will be president in db for committing transcation
 	UpdateChange(ctx context.Context, connectionObj *AllocationChangeCollector) error
 
+	// AddChange add Allocation change to db
+	AddChange(ctx context.Context) error
+
 	//NumBlocks return number of blocks uploaded by the client
 	GetNumBlocks() int64
 }
