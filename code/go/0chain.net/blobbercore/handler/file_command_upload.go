@@ -225,14 +225,14 @@ func (cmd *UploadFileCommand) reloadChange() {
 // UpdateChange replace AddFileChange in db
 func (cmd *UploadFileCommand) UpdateChange(ctx context.Context) error {
 	connectionInput, _ := cmd.fileChanger.Marshal()
-	cmd.allocationChange.LookupHash = reference.GetReferenceLookup(cmd.fileChanger.AllocationID, cmd.fileChanger.Path)
+	cmd.allocationChange.LookupHash = encryption.Hash(cmd.fileChanger.ConnectionID + cmd.fileChanger.Path)
 	cmd.allocationChange.Input = connectionInput
 	return cmd.allocationChange.Save(ctx)
 }
 
 func (cmd *UploadFileCommand) AddChange(ctx context.Context) error {
 	connectionInput, _ := cmd.fileChanger.Marshal()
-	cmd.allocationChange.LookupHash = reference.GetReferenceLookup(cmd.fileChanger.AllocationID, cmd.fileChanger.Path)
+	cmd.allocationChange.LookupHash = encryption.Hash(cmd.fileChanger.ConnectionID + cmd.fileChanger.Path)
 	cmd.allocationChange.Input = connectionInput
 	return cmd.allocationChange.Create(ctx)
 }
