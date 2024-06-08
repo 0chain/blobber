@@ -94,7 +94,7 @@ type FileCommand interface {
 	ProcessThumbnail(allocationObj *Allocation) error
 
 	// UpdateChange update AllocationChangeProcessor. It will be president in db for committing transcation
-	UpdateChange(ctx context.Context, connectionObj *AllocationChangeCollector) error
+	UpdateChange(ctx context.Context) error
 
 	// AddChange add Allocation change to db
 	AddChange(ctx context.Context) error
