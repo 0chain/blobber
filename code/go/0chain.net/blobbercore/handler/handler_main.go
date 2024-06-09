@@ -22,13 +22,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/v1/file/download/{allocation}", RateLimitByFileRL(common.ToByteStream(WithConnection(DownloadHandler)))).Methods(http.MethodGet, http.MethodOptions)
 }
 
-// swagger:route GET /v1/block/magic/get getmagicblock
-// a handler to respond to block queries
-//
-// responses:
-//  200: ListResult
-//  404:
-/* ListHandler is the handler to respond to list requests from clients*/
+
 func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return listHandler(ctx, r)
 }

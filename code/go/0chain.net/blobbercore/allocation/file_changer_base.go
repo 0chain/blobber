@@ -11,6 +11,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 )
 
+// swagger:model BaseFileChanger 
 // BaseFileChanger base file change processor
 type BaseFileChanger struct {
 	//client side: unmarshal them from 'updateMeta'/'uploadMeta'

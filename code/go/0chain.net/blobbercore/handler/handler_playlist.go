@@ -8,7 +8,64 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
-// LoadPlaylist load latest playlist
+// swagger:route GET /v1/file/playlist/{allocation} GetPlaylist
+// Get playlist.
+// Loads playlist from a given path in an allocation.
+//
+// parameters:
+//   +name: allocation
+//     in: path
+//     type: string
+//     required: true
+//     description: allocation id
+//	 +name: X-App-Client-ID
+//     description: The ID/Wallet address of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: X-App-Client-Key
+// 	   description: The key of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: ALLOCATION-ID
+//	   description: The ID of the allocation in question.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature
+//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//     in: header
+//     type: string
+//  +name: X-App-Client-Signature-V2
+//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//     in: header
+//     type: string
+//  +name: since
+//     description: The lookup hash of the file from which to start the playlist. The retrieved playlist will start from the id associated with this lookup hash and going forward.
+//     in: query
+//     type: string
+//     required: false
+//  +name: auth_token
+//     description: The auth token to access the playlist. This is required when the playlist is accessed by a non-owner of the allocation.
+//     in: query
+//     type: string
+//     required: false
+//  +name: lookup_hash
+//     description: The lookup hash of the file for which the playlist is to be retrieved. This is required when the playlist is accessed by a non-owner of the allocation.
+//     in: query
+//     type: string
+//     required: false
+//  +name: path
+//     description: The path of the file for which the playlist is to be retrieved. This is required when the playlist is accessed by the owner of the allocation.
+//     in: query
+//     type: string
+//     required: false
+//
+// responses:
+//   200: []PlaylistFile
+//   400:
+//   500:
 func LoadPlaylist(ctx *Context) (interface{}, error) {
 	q := ctx.Request.URL.Query()
 
@@ -54,7 +111,54 @@ func LoadPlaylist(ctx *Context) (interface{}, error) {
 	return reference.LoadPlaylist(ctx, ctx.AllocationId, q.Get("path"), since)
 }
 
-// LoadPlaylistFile load playlist file
+// swagger:route GET /v1/playlist/file/{allocation} GetPlaylistFile
+// Get playlist file.
+// Loads the metadata of a the playlist file with the given lookup hash.
+//
+// parameters:
+//   +name: allocation
+//     in: path
+//     type: string
+//     required: true
+//     description: allocation id
+//	 +name: X-App-Client-ID
+//     description: The ID/Wallet address of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: X-App-Client-Key
+// 	   description: The key of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: ALLOCATION-ID
+//	   description: The ID of the allocation in question.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature
+//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//     in: header
+//     type: string
+//  +name: X-App-Client-Signature-V2
+//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//     in: header
+//     type: string
+//  +name: auth_token
+//     description: The auth token to access the playlist. This is required when the playlist is accessed by a non-owner of the allocation.
+//     in: query
+//     type: string
+//     required: false
+//  +name: lookup_hash
+//     description: The lookup hash of the file for which the playlist is to be retrieved.
+//     in: query
+//     type: string
+//     required: false
+//
+// responses:
+//   200: PlaylistFile
+//   400:
+//   500:
 func LoadPlaylistFile(ctx *Context) (interface{}, error) {
 	q := ctx.Request.URL.Query()
 
