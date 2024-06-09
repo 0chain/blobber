@@ -256,7 +256,7 @@ func tryAgain(md *markerData) {
 
 // Can add more cases where we don't want to retry
 func retryRedeem(errString string) bool {
-	return !strings.Contains(errString, "value not present") || !strings.Contains(errString, "Blobber is not part of the allocation")
+	return !strings.Contains(errString, "value not present") && !strings.Contains(errString, "Blobber is not part of the allocation")
 }
 
 func startCollector(ctx context.Context) {

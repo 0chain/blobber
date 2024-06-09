@@ -427,6 +427,7 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 	tempFilePath := GetFileStore().GetTempFilePath(allocID, connID, fileName, filePathHash)
 	f, err := os.Open(tempFilePath)
 	if err != nil {
+		logging.Logger.Error("hasher_open", zap.Error(err), zap.String("tempFilePath", tempFilePath))
 		c.hashErr = err
 		return
 	}

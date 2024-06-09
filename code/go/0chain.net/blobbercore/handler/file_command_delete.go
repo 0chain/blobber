@@ -68,7 +68,7 @@ func (cmd *DeleteFileCommand) UpdateChange(ctx context.Context, connectionObj *a
 }
 
 // ProcessContent flush file to FileStorage
-func (cmd *DeleteFileCommand) ProcessContent(allocationObj *allocation.Allocation) (allocation.UploadResult, error) {
+func (cmd *DeleteFileCommand) ProcessContent(_ context.Context, allocationObj *allocation.Allocation) (allocation.UploadResult, error) {
 	deleteSize := cmd.existingFileRef.Size
 	connectionID := cmd.connectionID
 	cmd.changeProcessor = &allocation.DeleteFileChange{ConnectionID: connectionID,

@@ -122,7 +122,7 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 }
 
 // ProcessContent flush file to FileStorage
-func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocation) (allocation.UploadResult, error) {
+func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, allocationObj *allocation.Allocation) (allocation.UploadResult, error) {
 	logging.Logger.Info("UploadFileCommand.ProcessContent", zap.Any("fileChanger", cmd.fileChanger.Path), zap.Any("uploadOffset", cmd.fileChanger.UploadOffset), zap.Any("isFinal", cmd.fileChanger.IsFinal))
 	result := allocation.UploadResult{}
 	defer cmd.contentFile.Close()
@@ -164,7 +164,6 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		if fileOutputData.ContentSize != cmd.fileChanger.Size {
 			return result, common.NewError("upload_error", fmt.Sprintf("File size mismatch. Expected: %d, Actual: %d", cmd.fileChanger.Size, fileOutputData.ContentSize))
 		}
-		allocation.UpdateConnectionObjSize(connectionID, cmd.fileChanger.Size)
 	}
 
 	if cmd.thumbFile != nil {
@@ -175,7 +174,7 @@ func (cmd *UploadFileCommand) ProcessContent(allocationObj *allocation.Allocatio
 		}
 	}
 
-	saveChange, err := allocation.SaveFileChange(connectionID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, cmd.fileChanger.IsFinal, cmd.fileChanger.Size, cmd.fileChanger.UploadOffset, fileOutputData.Size)
+	saveChange, err := allocation.SaveFileChange(ctx, connectionID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, cmd.fileChanger.IsFinal, cmd.fileChanger.Size, cmd.fileChanger.UploadOffset, fileOutputData.Size, cmd.fileChanger.Size)
 	if err != nil {
 		logging.Logger.Error("UploadFileCommand.ProcessContent", zap.Error(err))
 		return result, err

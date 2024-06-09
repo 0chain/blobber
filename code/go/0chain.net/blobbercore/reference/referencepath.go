@@ -16,7 +16,7 @@ import (
 type ReferencePath struct {
 	Meta map[string]interface{} `json:"meta_data"`
 	List []*ReferencePath       `json:"list,omitempty"`
-	Ref  *Ref
+	Ref  *Ref                   `json:"-"`
 }
 
 func GetReferencePath(ctx context.Context, allocationID, path string) (*Ref, error) {

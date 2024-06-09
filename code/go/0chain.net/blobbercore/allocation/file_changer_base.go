@@ -89,7 +89,7 @@ type FileCommand interface {
 	IsValidated(ctx context.Context, req *http.Request, allocationObj *Allocation, clientID string) error
 
 	// ProcessContent flush file to FileStorage
-	ProcessContent(allocationObj *Allocation) (UploadResult, error)
+	ProcessContent(ctx context.Context, allocationObj *Allocation) (UploadResult, error)
 
 	// ProcessThumbnail flush thumbnail file to FileStorage if it has.
 	ProcessThumbnail(allocationObj *Allocation) error
