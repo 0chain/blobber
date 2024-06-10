@@ -16,7 +16,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const MAX_RETRIES = 5
+const MAX_RETRIES = 3
 const SLEEP_BETWEEN_RETRIES = 5
 
 func NewHTTPRequest(method, url string, data []byte) (*http.Request, context.Context, context.CancelFunc, error) {
@@ -27,7 +27,7 @@ func NewHTTPRequest(method, url string, data []byte) (*http.Request, context.Con
 	req.Header.Set("X-App-Client-ID", node.Self.ID)
 	req.Header.Set("X-App-Client-Key", node.Self.PublicKey)
 	req.Header.Set("X-App-Request-Hash", requestHash)
-	ctx, cncl := context.WithTimeout(context.Background(), time.Second*60)
+	ctx, cncl := context.WithTimeout(context.Background(), time.Second*90)
 	return req, ctx, cncl, err
 }
 
@@ -71,7 +71,7 @@ func SendPostRequest(url string, data []byte, wg *sync.WaitGroup) (body []byte, 
 		time.Sleep(SLEEP_BETWEEN_RETRIES * time.Second)
 	}
 	if resp == nil || err != nil {
-		Logger.Error("Failed after multiple retries", zap.Any("url", url), zap.Int("retried", MAX_RETRIES), zap.Error(err))
+		Logger.Error("Failed after multiple retries", zap.Any("url", url), zap.Int("retried", MAX_RETRIES), zap.Int("post_data_len", len(data)), zap.Error(err))
 		return nil, err
 	}
 	if resp.Body == nil {
