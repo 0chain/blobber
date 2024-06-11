@@ -601,6 +601,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		}
 
 		if latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size != writeMarker.ChainSize {
+			logging.Logger.Error("latestWMCommit: ", zap.String("allocationRoot", latestWriteMarkerEntity.WM.AllocationRoot), zap.String("allocationID", allocationID), zap.Int64("latestWMChainLength", latestWriteMarkerEntity.WM.ChainSize), zap.Int64("connectionObjSize", connectionObj.Size), zap.Int64("writeMarkerChainSize", writeMarker.ChainSize))
 			return nil, common.NewErrorf("invalid_chain_size",
 				"Invalid chain size. expected:%v got %v", latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size, writeMarker.ChainSize)
 		}

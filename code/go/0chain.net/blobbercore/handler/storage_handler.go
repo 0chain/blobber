@@ -21,6 +21,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 )
@@ -639,6 +640,7 @@ func (fsh *StorageHandler) GetObjectTree(ctx context.Context, r *http.Request) (
 		if latestWM.Status == writemarker.Committed {
 			latestWM.WM.ChainLength = 0 // start a new chain
 		}
+		logging.Logger.Info("latestWMrefPath: ", zap.String("allocationRoot", latestWM.WM.AllocationRoot), zap.String("allocationID", allocationID), zap.Int64("latestWMChainLength", latestWM.WM.ChainSize))
 		refPathResult.LatestWM = &latestWM.WM
 	}
 	return &refPathResult, nil
