@@ -123,7 +123,6 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 
 // ProcessContent flush file to FileStorage
 func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, allocationObj *allocation.Allocation) (allocation.UploadResult, error) {
-	logging.Logger.Info("UploadFileCommand.ProcessContent", zap.Any("fileChanger", cmd.fileChanger.Path), zap.Any("uploadOffset", cmd.fileChanger.UploadOffset), zap.Any("isFinal", cmd.fileChanger.IsFinal))
 	result := allocation.UploadResult{}
 	defer cmd.contentFile.Close()
 
@@ -144,13 +143,11 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, allocationObj 
 		logging.Logger.Error("UploadFileCommand.ProcessContent", zap.Error(err))
 		return result, common.NewError("upload_error", "Failed to write file. "+err.Error())
 	}
-
 	result.Filename = cmd.fileChanger.Filename
 	result.ValidationRoot = fileOutputData.ValidationRoot
 	result.Size = fileOutputData.Size
 
 	allocationSize := allocation.GetConnectionObjSize(connectionID)
-
 	cmd.fileChanger.AllocationID = allocationObj.ID
 
 	cmd.allocationChange = &allocation.AllocationChange{}
@@ -233,7 +230,7 @@ func (cmd *UploadFileCommand) UpdateChange(ctx context.Context, connectionObj *a
 		if c.Operation != constants.FileOperationInsert || cmd.fileChanger.Path != filePath {
 			continue
 		}
-		c.Size = connectionObj.Size
+		c.Size = cmd.fileChanger.Size
 		c.Input, _ = cmd.fileChanger.Marshal()
 
 		//c.ModelWithTS.UpdatedAt = time.Now()
@@ -249,6 +246,13 @@ func (cmd *UploadFileCommand) UpdateChange(ctx context.Context, connectionObj *a
 	connectionObj.AddChange(cmd.allocationChange, cmd.fileChanger)
 
 	return connectionObj.Save(ctx)
+}
+
+func (cmd *UploadFileCommand) AddChange(ctx context.Context) error {
+	connectionInput, _ := cmd.fileChanger.Marshal()
+	cmd.allocationChange.LookupHash = reference.GetReferenceLookup(cmd.fileChanger.AllocationID, cmd.fileChanger.Path)
+	cmd.allocationChange.Input = connectionInput
+	return cmd.allocationChange.Create(ctx)
 }
 
 func (cmd *UploadFileCommand) GetNumBlocks() int64 {

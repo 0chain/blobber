@@ -57,6 +57,7 @@ func (cmd *DeleteFileCommand) IsValidated(ctx context.Context, req *http.Request
 		}
 		return common.NewError("bad_db_operation", err.Error())
 	}
+	cmd.existingFileRef.LookupHash = lookUpHash
 	return nil
 }
 
@@ -65,6 +66,12 @@ func (cmd *DeleteFileCommand) UpdateChange(ctx context.Context, connectionObj *a
 	connectionObj.AddChange(cmd.allocationChange, cmd.changeProcessor)
 
 	return connectionObj.Save(ctx)
+}
+
+func (cmd *DeleteFileCommand) AddChange(ctx context.Context) error {
+	connectionInput, _ := cmd.changeProcessor.Marshal()
+	cmd.allocationChange.Input = connectionInput
+	return cmd.allocationChange.Create(ctx)
 }
 
 // ProcessContent flush file to FileStorage
@@ -86,6 +93,7 @@ func (cmd *DeleteFileCommand) ProcessContent(_ context.Context, allocationObj *a
 	cmd.allocationChange.ConnectionID = connectionID
 	cmd.allocationChange.Size = 0 - deleteSize
 	cmd.allocationChange.Operation = constants.FileOperationDelete
+	cmd.allocationChange.LookupHash = cmd.existingFileRef.LookupHash
 
 	allocation.UpdateConnectionObjSize(connectionID, cmd.allocationChange.Size)
 

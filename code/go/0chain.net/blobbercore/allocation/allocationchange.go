@@ -73,6 +73,7 @@ type AllocationChange struct {
 	Connection   AllocationChangeCollector `gorm:"foreignKey:ConnectionID"` // References allocation_connections(id)
 	Input        string                    `gorm:"column:input"`
 	FilePath     string                    `gorm:"-"`
+	LookupHash   string                    `gorm:"column:lookup_hash;size:64"`
 	datastore.ModelWithTS
 }
 
@@ -95,6 +96,11 @@ func (change *AllocationChange) Save(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 
 	return db.Save(change).Error
+}
+
+func (change *AllocationChange) Create(ctx context.Context) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+	return db.Create(change).Error
 }
 
 func ParseAffectedFilePath(input string) (string, error) {
