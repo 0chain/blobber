@@ -63,9 +63,7 @@ func (cmd *DeleteFileCommand) IsValidated(ctx context.Context, req *http.Request
 
 // UpdateChange add DeleteFileChange in db
 func (cmd *DeleteFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
-	connectionObj.AddChange(cmd.allocationChange, cmd.changeProcessor)
-
-	return connectionObj.Save(ctx)
+	return cmd.AddChange(ctx)
 }
 
 func (cmd *DeleteFileCommand) AddChange(ctx context.Context) error {
