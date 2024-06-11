@@ -66,14 +66,13 @@ func (ac *AllocationChangeCollector) BeforeSave(tx *gorm.DB) error {
 }
 
 type AllocationChange struct {
-	ChangeID     int64                     `gorm:"column:id;primaryKey"`
 	Size         int64                     `gorm:"column:size;not null;default:0"`
 	Operation    string                    `gorm:"column:operation;size:20;not null"`
 	ConnectionID string                    `gorm:"column:connection_id;size:64;not null"`
 	Connection   AllocationChangeCollector `gorm:"foreignKey:ConnectionID"` // References allocation_connections(id)
 	Input        string                    `gorm:"column:input"`
 	FilePath     string                    `gorm:"-"`
-	LookupHash   string                    `gorm:"column:lookup_hash;size:64"`
+	LookupHash   string                    `gorm:"column:lookup_hash;primaryKey;size:64"`
 	datastore.ModelWithTS
 }
 
@@ -95,7 +94,10 @@ func (ac *AllocationChange) BeforeSave(tx *gorm.DB) error {
 func (change *AllocationChange) Save(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 
-	return db.Save(change).Error
+	return db.Table(change.TableName()).Where("lookup_hash = ?", change.ConnectionID, change.LookupHash).Updates(map[string]interface{}{
+		"size":  change.Size,
+		"input": change.Input,
+	}).Error
 }
 
 func (change *AllocationChange) Create(ctx context.Context) error {
