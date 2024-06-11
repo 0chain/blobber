@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -41,11 +42,18 @@ func SendMultiPostRequest(urls []string, data []byte) {
 	wg.Wait()
 }
 
-func SendPostRequest(url string, data []byte, wg *sync.WaitGroup) (body []byte, err error) {
+func SendPostRequest(postURL string, data []byte, wg *sync.WaitGroup) (body []byte, err error) {
 	if wg != nil {
 		defer wg.Done()
 	}
 	var resp *http.Response
+	u, err := url.Parse(postURL)
+	if err != nil {
+		return nil, err
+	}
+	if u.Scheme == "" {
+		u.Scheme = "https"
+	}
 	for i := 0; i < MAX_RETRIES; i++ {
 		var (
 			req  *http.Request
@@ -53,7 +61,7 @@ func SendPostRequest(url string, data []byte, wg *sync.WaitGroup) (body []byte, 
 			cncl context.CancelFunc
 		)
 
-		req, ctx, cncl, err = NewHTTPRequest(http.MethodPost, url, data)
+		req, ctx, cncl, err = NewHTTPRequest(http.MethodPost, u.String(), data)
 		defer cncl()
 
 		resp, err = http.DefaultClient.Do(req.WithContext(ctx))
@@ -71,7 +79,7 @@ func SendPostRequest(url string, data []byte, wg *sync.WaitGroup) (body []byte, 
 		time.Sleep(SLEEP_BETWEEN_RETRIES * time.Second)
 	}
 	if resp == nil || err != nil {
-		Logger.Error("Failed after multiple retries", zap.Any("url", url), zap.Int("retried", MAX_RETRIES), zap.Int("post_data_len", len(data)), zap.Error(err))
+		Logger.Error("Failed after multiple retries", zap.Any("url", u.String()), zap.Int("retried", MAX_RETRIES), zap.Int("post_data_len", len(data)), zap.Error(err))
 		return nil, err
 	}
 	if resp.Body == nil {

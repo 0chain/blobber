@@ -77,22 +77,22 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 
 	isExist = a.ID != ""
 
-	if !isExist {
-		foundBlobber := false
-		for _, blobberConnection := range sa.BlobberDetails {
-			if blobberConnection.BlobberID != node.Self.ID {
-				continue
-			}
-			foundBlobber = true
+	foundBlobber := false
+	for _, blobberConnection := range sa.BlobberDetails {
+		if blobberConnection.BlobberID != node.Self.ID {
+			continue
+		}
+		foundBlobber = true
+		a.BlobberSize = int64(math.Ceil(float64(sa.Size) / float64(sa.DataShards)))
+		if !isExist {
 			a.AllocationRoot = ""
-			a.BlobberSize = int64(math.Ceil(float64(sa.Size) / float64(sa.DataShards)))
 			a.BlobberSizeUsed = 0
-			break
 		}
-		if !foundBlobber {
-			return nil, common.NewError("invalid_blobber",
-				"Blobber is not part of the open connection transaction")
-		}
+		break
+	}
+	if !foundBlobber {
+		return nil, common.NewError("invalid_blobber",
+			"Blobber is not part of the open connection transaction")
 	}
 
 	// set/update fields
@@ -151,6 +151,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 			"time_unit":        a.TimeUnit,
 			"file_options":     a.FileOptions,
 			"start_time":       a.StartTime,
+			"blobber_size":     a.BlobberSize,
 		}
 
 		updateOption := func(alloc *Allocation) {
@@ -164,6 +165,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 			alloc.TimeUnit = a.TimeUnit
 			alloc.FileOptions = a.FileOptions
 			alloc.StartTime = a.StartTime
+			alloc.BlobberSize = a.BlobberSize
 		}
 		err = Repo.UpdateAllocation(ctx, a, updateMap, updateOption)
 	}
