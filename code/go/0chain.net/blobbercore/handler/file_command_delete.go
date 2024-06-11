@@ -11,6 +11,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 )
 
 // DeleteFileCommand command for deleting file
@@ -62,10 +63,12 @@ func (cmd *DeleteFileCommand) IsValidated(ctx context.Context, req *http.Request
 }
 
 // UpdateChange add DeleteFileChange in db
-func (cmd *DeleteFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
-	connectionObj.AddChange(cmd.allocationChange, cmd.changeProcessor)
-
-	return connectionObj.Save(ctx)
+func (cmd *DeleteFileCommand) UpdateChange(ctx context.Context) error {
+	err := cmd.AddChange(ctx)
+	if err == gorm.ErrDuplicatedKey {
+		return nil
+	}
+	return err
 }
 
 func (cmd *DeleteFileCommand) AddChange(ctx context.Context) error {
@@ -93,7 +96,7 @@ func (cmd *DeleteFileCommand) ProcessContent(_ context.Context, allocationObj *a
 	cmd.allocationChange.ConnectionID = connectionID
 	cmd.allocationChange.Size = 0 - deleteSize
 	cmd.allocationChange.Operation = constants.FileOperationDelete
-	cmd.allocationChange.LookupHash = cmd.existingFileRef.LookupHash
+	cmd.allocationChange.LookupHash = encryption.Hash(connectionID + cmd.path)
 
 	allocation.UpdateConnectionObjSize(connectionID, cmd.allocationChange.Size)
 

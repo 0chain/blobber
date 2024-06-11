@@ -601,6 +601,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		}
 
 		if latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size != writeMarker.ChainSize {
+			logging.Logger.Error("latestWMCommit: ", zap.String("allocationRoot", latestWriteMarkerEntity.WM.AllocationRoot), zap.String("allocationID", allocationID), zap.Int64("latestWMChainLength", latestWriteMarkerEntity.WM.ChainSize), zap.Int64("connectionObjSize", connectionObj.Size), zap.Int64("writeMarkerChainSize", writeMarker.ChainSize))
 			return nil, common.NewErrorf("invalid_chain_size",
 				"Invalid chain size. expected:%v got %v", latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size, writeMarker.ChainSize)
 		}
@@ -671,7 +672,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
-		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
+		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem - elapsedMoveToFilestore
 
 	allocationRoot := rootRef.Hash
 	fileMetaRoot := rootRef.FileMetaHash
@@ -1297,11 +1298,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 	}
 	// Update/Save the change
 	if res.UpdateChange {
-		dbConnectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
-		if err != nil {
-			return nil, err
-		}
-		err = cmd.UpdateChange(ctx, dbConnectionObj)
+		err = cmd.UpdateChange(ctx)
 		if err != nil {
 			return nil, err
 		}

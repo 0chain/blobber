@@ -223,34 +223,16 @@ func (cmd *UploadFileCommand) reloadChange() {
 }
 
 // UpdateChange replace AddFileChange in db
-func (cmd *UploadFileCommand) UpdateChange(ctx context.Context, connectionObj *allocation.AllocationChangeCollector) error {
-	cmd.fileChanger.AllocationID = connectionObj.AllocationID
-	for _, c := range connectionObj.Changes {
-		filePath, _ := c.GetOrParseAffectedFilePath()
-		if c.Operation != constants.FileOperationInsert || cmd.fileChanger.Path != filePath {
-			continue
-		}
-		c.Size = cmd.fileChanger.Size
-		c.Input, _ = cmd.fileChanger.Marshal()
-
-		//c.ModelWithTS.UpdatedAt = time.Now()
-		err := connectionObj.Save(ctx)
-		if err != nil {
-			return err
-		}
-
-		return c.Save(ctx)
-	}
-
-	//NOT FOUND
-	connectionObj.AddChange(cmd.allocationChange, cmd.fileChanger)
-
-	return connectionObj.Save(ctx)
+func (cmd *UploadFileCommand) UpdateChange(ctx context.Context) error {
+	connectionInput, _ := cmd.fileChanger.Marshal()
+	cmd.allocationChange.LookupHash = encryption.Hash(cmd.fileChanger.ConnectionID + cmd.fileChanger.Path)
+	cmd.allocationChange.Input = connectionInput
+	return cmd.allocationChange.Save(ctx)
 }
 
 func (cmd *UploadFileCommand) AddChange(ctx context.Context) error {
 	connectionInput, _ := cmd.fileChanger.Marshal()
-	cmd.allocationChange.LookupHash = reference.GetReferenceLookup(cmd.fileChanger.AllocationID, cmd.fileChanger.Path)
+	cmd.allocationChange.LookupHash = encryption.Hash(cmd.fileChanger.ConnectionID + cmd.fileChanger.Path)
 	cmd.allocationChange.Input = connectionInput
 	return cmd.allocationChange.Create(ctx)
 }
