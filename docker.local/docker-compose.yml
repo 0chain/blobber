@@ -11,6 +11,7 @@ services:
       - "543${BLOBBER}:5432"
     labels:
       zchain: "postgres"
+    shm_size: 8gb   
   validator:
     image: validator
     environment:
