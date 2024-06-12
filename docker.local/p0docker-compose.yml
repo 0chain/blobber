@@ -19,7 +19,7 @@ services:
       testnet0:
         ipv4_address: 198.18.8.${BLOBBER}
     restart: on-failure:5
-    shm_size: 8gb 
+    shm_size: 4gb 
 
   validator:
     container_name: validator-${BLOBBER}
