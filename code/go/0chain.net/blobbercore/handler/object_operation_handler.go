@@ -1297,11 +1297,11 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 	}
 	// Update/Save the change
 	if res.UpdateChange {
-		dbConnectionObj, err := allocation.GetConnectionObj(ctx, connectionID, allocationID, clientID)
+		_, err := allocation.GetConnectionObj(ctx, connectionID, allocationID, clientID)
 		if err != nil {
 			return nil, err
 		}
-		err = cmd.UpdateChange(ctx, dbConnectionObj)
+		err = cmd.UpdateChange(ctx)
 		if err != nil {
 			return nil, err
 		}
