@@ -162,6 +162,34 @@ func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clien
 	return nil, err
 }
 
+func GetConnectionObj(ctx context.Context, connectionID, allocationID, clientID string) (*AllocationChangeCollector, error) {
+	cc := &AllocationChangeCollector{}
+	db := datastore.GetStore().GetTransaction(ctx)
+	err := db.Where("id = ? and allocation_id = ? and client_id = ?",
+		connectionID,
+		allocationID,
+		clientID,
+	).Take(cc).Error
+
+	if err == nil {
+		return cc, nil
+	}
+
+	if err == gorm.ErrRecordNotFound {
+		cc.ID = connectionID
+		cc.AllocationID = allocationID
+		cc.ClientID = clientID
+		cc.Status = NewConnection
+		err = cc.Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return cc, nil
+	}
+
+	return nil, err
+}
+
 func (cc *AllocationChangeCollector) AddChange(allocationChange *AllocationChange, changeProcessor AllocationChangeProcessor) {
 	cc.AllocationChanges = append(cc.AllocationChanges, changeProcessor)
 	allocationChange.Input, _ = changeProcessor.Marshal()
