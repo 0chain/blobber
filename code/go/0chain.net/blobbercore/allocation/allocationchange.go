@@ -98,6 +98,15 @@ func (change *AllocationChange) Save(ctx context.Context) error {
 	return db.Save(change).Error
 }
 
+func (change *AllocationChange) Update(ctx context.Context) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+	return db.Table(change.TableName()).Where("lookup_hash = ?", change.LookupHash).Updates(map[string]interface{}{
+		"size":       change.Size,
+		"updated_at": time.Now(),
+		"input":      change.Input,
+	}).Error
+}
+
 func (change *AllocationChange) Create(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	return db.Create(change).Error
@@ -159,6 +168,34 @@ func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clien
 		cc.Status = NewConnection
 		return cc, nil
 	}
+	return nil, err
+}
+
+func GetConnectionObj(ctx context.Context, connectionID, allocationID, clientID string) (*AllocationChangeCollector, error) {
+	cc := &AllocationChangeCollector{}
+	db := datastore.GetStore().GetTransaction(ctx)
+	err := db.Where("id = ? and allocation_id = ? and client_id = ?",
+		connectionID,
+		allocationID,
+		clientID,
+	).Take(cc).Error
+
+	if err == nil {
+		return cc, nil
+	}
+
+	if err == gorm.ErrRecordNotFound {
+		cc.ID = connectionID
+		cc.AllocationID = allocationID
+		cc.ClientID = clientID
+		cc.Status = NewConnection
+		err = cc.Create(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return cc, nil
+	}
+
 	return nil, err
 }
 
