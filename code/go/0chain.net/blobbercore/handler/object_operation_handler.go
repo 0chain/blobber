@@ -258,7 +258,8 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 // swagger:route GET /v1/file/download/{allocation} GetDownloadFile
 // Download a file.
 //
-// Download Handler (downloadFile).
+// Download Handler (downloadFile). The response is either a byte stream or a FileDownloadResponse, which contains the file data or the thumbnail data, and the merkle proof if the download is verified.
+// This depends on the "X-Verify-Download" header. If the header is set to "true", the response is a FileDownloadResponse, otherwise it is a byte stream.
 //
 // parameters:
 //   +name: allocation
@@ -340,7 +341,7 @@ func (fsh *StorageHandler) RedeemReadMarker(ctx context.Context, r *http.Request
 //
 // responses:
 //
-//   200: FileDownloadResponse | []byte
+//   200: FileDownloadResponse
 //   400:
 
 func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (interface{}, error) {
