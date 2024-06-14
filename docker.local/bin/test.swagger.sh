@@ -46,6 +46,6 @@ echo "3> Create swagger.yaml file."
 docker run $platform $INTERACTIVE -v $(pwd):/codecov $DOCKER_IMAGE_SWAGGER bash -c "\
 cd /codecov/code/go/0chain.net/; \
 swagger generate spec -w . -m -o swagger.yaml; \
-sed -i "s/in\:\ form/in\:\ formData/g" ./swagger.yaml; \
-yq -i '(.paths.*.*.parameters.[] | select(.in == "formData") | select(.type == "object")).type = "file"' swagger.yaml; \
+sed -i \"s/in\:\ form/in\:\ formData/g\" ./swagger.yaml; \
+yq -i '(.paths.*.*.parameters.[] | select(.in == \"formData\") | select(.type == \"object\")).type = \"file\"' swagger.yaml; \
 swagger generate markdown -f swagger.yaml --output=swagger.md"
