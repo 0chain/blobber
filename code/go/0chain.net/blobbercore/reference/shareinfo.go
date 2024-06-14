@@ -85,7 +85,7 @@ func GetShareInfo(ctx context.Context, clientID, filePathHash string) (*ShareInf
 			ClientID:     clientID,
 			FilePathHash: filePathHash,
 		}).
-		First(shareInfo).Error
+		Take(shareInfo).Error
 
 	if err != nil {
 		return nil, err
