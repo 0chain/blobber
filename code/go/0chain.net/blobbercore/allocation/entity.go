@@ -207,7 +207,7 @@ func AddToPending(ctx context.Context, clientID, allocationID string, pendingWri
 	defer lock.Unlock()
 
 	pending := new(Pending)
-	err = db.Model(&Pending{}).Where("id=?", key).First(pending).Error
+	err = db.Model(&Pending{}).Where("id=?", key).Take(pending).Error
 	switch {
 	case err == nil:
 		pending.PendingWrite += pendingWrite

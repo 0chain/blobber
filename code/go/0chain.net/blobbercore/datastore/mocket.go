@@ -2,6 +2,7 @@ package datastore
 
 import (
 	"context"
+	"database/sql"
 
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	mocket "github.com/selvatico/go-mocket"
@@ -71,7 +72,7 @@ func (store *Mocket) Close() {
 	}
 }
 
-func (store *Mocket) CreateTransaction(ctx context.Context) context.Context {
+func (store *Mocket) CreateTransaction(ctx context.Context,opts ...*sql.TxOptions) context.Context {
 	db := store.db.Begin()
 	return context.WithValue(ctx, ContextKeyTransaction, EnhanceDB(db))
 }

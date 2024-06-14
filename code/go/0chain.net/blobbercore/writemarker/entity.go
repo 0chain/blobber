@@ -139,7 +139,6 @@ func (wm *WriteMarkerEntity) OnChain() bool {
 func GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*WriteMarkerEntity, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	wm := &WriteMarkerEntity{}
-	// err := db.First(wm, "allocation_root = ?", allocation_root).Error
 	err := db.Table((WriteMarkerEntity{}).TableName()).
 		Where("allocation_root=?", allocation_root).
 		Order("sequence desc").
