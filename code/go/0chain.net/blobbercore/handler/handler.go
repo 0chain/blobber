@@ -210,6 +210,8 @@ func setupHandlers(r *mux.Router) {
 	// r.HandleFunc("/_stats", common.AuthenticateAdmin(StatsHandler))
 	r.HandleFunc("/_stats", RateLimitByCommmitRL(StatsHandler))
 
+	r.HandleFunc("_client_details", common.ToJSONResponse(GetBlobberInfo))
+
 	r.HandleFunc("/_logs", RateLimitByCommmitRL(common.ToJSONResponse(GetLogs)))
 
 	// r.HandleFunc("/_cleanupdisk", common.AuthenticateAdmin(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))
@@ -390,52 +392,53 @@ func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error
 // Retrieve file meta data from the blobber.
 //
 // parameters:
-//	 +name: allocation
-//	   description: the allocation ID
-//	   required: true
-//	   in: path
-//	   type: string
-//	 +name: X-App-Client-ID
-//     description: The ID/Wallet address of the client sending the request.
-//     in: header
-//     type: string
-//     required: true
-//	 +name: X-App-Client-Key
-// 	   description: The key of the client sending the request.
-//     in: header
-//     type: string
-//     required: true
-//	 +name: ALLOCATION-ID
-//	   description: The ID of the allocation in question.
-//     in: header
-//     type: string
-//     required: true
-//  +name: X-App-Client-Signature
-//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
-//     in: header
-//     type: string
-//  +name: X-App-Client-Signature-V2
-//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
-//     in: header
-//     type: string
-//  +name: name
-//     description: the name of the file
-//     required: false
-//     in: query
-//     type: string
-//  +name: path
-//     description: Path of the file to be copied. Required only if `path_hash` is not provided.
-//     in: query
-//     type: string
-//  +name: path_hash
-//     description: Hash of the path of the file to be copied. Required only if `path` is not provided.
-//     in: query
-//     type: string
-//  +name: auth_token
-//     description: The auth ticket for the file to show meta data of if the client does not own it. Check File Sharing docs for more info.
-//     in: query
-//     type: string
-//     required: false
+//
+//		 +name: allocation
+//		   description: the allocation ID
+//		   required: true
+//		   in: path
+//		   type: string
+//		 +name: X-App-Client-ID
+//	    description: The ID/Wallet address of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		 +name: X-App-Client-Key
+//		   description: The key of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		 +name: ALLOCATION-ID
+//		   description: The ID of the allocation in question.
+//	    in: header
+//	    type: string
+//	    required: true
+//	 +name: X-App-Client-Signature
+//	    description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//	    in: header
+//	    type: string
+//	 +name: X-App-Client-Signature-V2
+//	    description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//	    in: header
+//	    type: string
+//	 +name: name
+//	    description: the name of the file
+//	    required: false
+//	    in: query
+//	    type: string
+//	 +name: path
+//	    description: Path of the file to be copied. Required only if `path_hash` is not provided.
+//	    in: query
+//	    type: string
+//	 +name: path_hash
+//	    description: Hash of the path of the file to be copied. Required only if `path` is not provided.
+//	    in: query
+//	    type: string
+//	 +name: auth_token
+//	    description: The auth ticket for the file to show meta data of if the client does not own it. Check File Sharing docs for more info.
+//	    in: query
+//	    type: string
+//	    required: false
 //
 // responses:
 //
@@ -533,34 +536,34 @@ func downloadHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 //
 // parameters:
 //
-//	+name: allocation
-//	   description: the allocation ID
-//	   required: true
-//	   in: path
-//	   type: string
-//	+name: X-App-Client-ID
-//     description: The ID/Wallet address of the client sending the request.
-//     in: header
-//     type: string
-//     required: true
-//	+name: X-App-Client-Key
-// 	   description: The key of the client sending the request.
-//     in: header
-//     type: string
-//     required: true
-//	+name: ALLOCATION-ID
-//	   description: The ID of the allocation in question.
-//     in: header
-//     type: string
-//     required: true
-//  +name: X-App-Client-Signature
-//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
-//     in: header
-//     type: string
-//  +name: X-App-Client-Signature-V2
-//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
-//     in: header
-//     type: string
+//		+name: allocation
+//		   description: the allocation ID
+//		   required: true
+//		   in: path
+//		   type: string
+//		+name: X-App-Client-ID
+//	    description: The ID/Wallet address of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		+name: X-App-Client-Key
+//		   description: The key of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		+name: ALLOCATION-ID
+//		   description: The ID of the allocation in question.
+//	    in: header
+//	    type: string
+//	    required: true
+//	 +name: X-App-Client-Signature
+//	    description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//	    in: header
+//	    type: string
+//	 +name: X-App-Client-Signature-V2
+//	    description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//	    in: header
+//	    type: string
 //
 // responses:
 //
@@ -593,39 +596,39 @@ func listHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 //
 // parameters:
 //
-//	 +name: allocation
-//	   description: the allocation ID
-//	   required: true
-//	   in: path
-//	   type: string
-//	 +name: X-App-Client-ID
-//     description: The ID/Wallet address of the client sending the request.
-//     in: header
-//     type: string
-//     required: true
-//	 +name: X-App-Client-Key
-// 	   description: The key of the client sending the request.
-//     in: header
-//     type: string
-//     required: true
-//	 +name: ALLOCATION-ID
-//	   description: The ID of the allocation in question.
-//     in: header
-//     type: string
-//     required: true
-//  +name: X-App-Client-Signature
-//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
-//     in: header
-//     type: string
-//  +name: X-App-Client-Signature-V2
-//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
-//     in: header
-//     type: string
-//	+name: connection_id
-//	   description: the ID of the connection to submit.
-//	   required: true
-//	   in: query
-//	   type: string
+//		 +name: allocation
+//		   description: the allocation ID
+//		   required: true
+//		   in: path
+//		   type: string
+//		 +name: X-App-Client-ID
+//	    description: The ID/Wallet address of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		 +name: X-App-Client-Key
+//		   description: The key of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		 +name: ALLOCATION-ID
+//		   description: The ID of the allocation in question.
+//	    in: header
+//	    type: string
+//	    required: true
+//	 +name: X-App-Client-Signature
+//	    description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//	    in: header
+//	    type: string
+//	 +name: X-App-Client-Signature-V2
+//	    description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//	    in: header
+//	    type: string
+//		+name: connection_id
+//		   description: the ID of the connection to submit.
+//		   required: true
+//		   in: query
+//		   type: string
 //
 // responses:
 //
@@ -758,42 +761,42 @@ func RollbackHandler(ctx context.Context, r *http.Request) (interface{}, int, er
 //
 // parameters:
 //
-//	+name: allocation
-//	   description: the allocation ID
-//	   required: true
-//	   in: path
+//		+name: allocation
+//		   description: the allocation ID
+//		   required: true
+//		   in: path
+//		   type: string
+//		+name: X-App-Client-ID
+//	    description: The ID/Wallet address of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		+name: X-App-Client-Key
+//		   description: The key of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		+name: ALLOCATION-ID
+//		   description: The ID of the allocation in question.
+//	    in: header
+//	    type: string
+//	    required: true
+//	 +name: X-App-Client-Signature
+//	    description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//	    in: header
+//	    type: string
+//	 +name: X-App-Client-Signature-V2
+//	    description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//	    in: header
+//	    type: string
+//	 +name: path
+//	   description: Path of the file needed to get reference path of. Required only if no "paths" are provided.
+//	   in: query
 //	   type: string
-//	+name: X-App-Client-ID
-//     description: The ID/Wallet address of the client sending the request.
-//     in: header
-//     type: string
-//     required: true
-//	+name: X-App-Client-Key
-// 	   description: The key of the client sending the request.
-//     in: header
-//     type: string
-//     required: true
-//	+name: ALLOCATION-ID
-//	   description: The ID of the allocation in question.
-//     in: header
-//     type: string
-//     required: true
-//  +name: X-App-Client-Signature
-//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
-//     in: header
-//     type: string
-//  +name: X-App-Client-Signature-V2
-//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
-//     in: header
-//     type: string
-//  +name: path
-//    description: Path of the file needed to get reference path of. Required only if no "paths" are provided.
-//    in: query
-//    type: string
-//  +name: paths
-//    description: Paths of the files needed to get reference path of. Required only if no "path" is provided. Should be provided as valid JSON array.
-//    in: query
-//    type: string
+//	 +name: paths
+//	   description: Paths of the files needed to get reference path of. Required only if no "path" is provided. Should be provided as valid JSON array.
+//	   in: query
+//	   type: string
 //
 // responses:
 //
@@ -820,39 +823,40 @@ func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, er
 //
 // parameters:
 //
-//	+name: allocation
-//	   description: the allocation ID
-//	   required: true
-//	   in: path
-//	   type: string
-//	+name: X-App-Client-ID
-//     description: The ID/Wallet address of the client sending the request.
-//     in: header
-//     type: string
-//     required: true
-//	+name: X-App-Client-Key
-// 	   description: The key of the client sending the request.
-//     in: header
-//     type: string
-//     required: true
-//	+name: ALLOCATION-ID
-//	   description: The ID of the allocation in question.
-//     in: header
-//     type: string
-//     required: true
-//  +name: X-App-Client-Signature
-//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
-//     in: header
-//     type: string
-//  +name: X-App-Client-Signature-V2
-//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
-//     in: header
-//     type: string
+//		+name: allocation
+//		   description: the allocation ID
+//		   required: true
+//		   in: path
+//		   type: string
+//		+name: X-App-Client-ID
+//	    description: The ID/Wallet address of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		+name: X-App-Client-Key
+//		   description: The key of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		+name: ALLOCATION-ID
+//		   description: The ID of the allocation in question.
+//	    in: header
+//	    type: string
+//	    required: true
+//	 +name: X-App-Client-Signature
+//	    description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//	    in: header
+//	    type: string
+//	 +name: X-App-Client-Signature-V2
+//	    description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//	    in: header
+//	    type: string
 //
 // responses:
-//   200: LatestWriteMarkerResult
-//   400:
-//   500:
+//
+//	200: LatestWriteMarkerResult
+//	400:
+//	500:
 func WriteMarkerHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
@@ -1456,58 +1460,59 @@ func CreateDirHandler(ctx context.Context, r *http.Request) (interface{}, error)
 //
 // parameters:
 //
-//	+name: allocation
-//	   description: the allocation ID
+//		+name: allocation
+//		   description: the allocation ID
+//		   required: true
+//		   in: path
+//		   type: string
+//		 +name: X-App-Client-ID
+//	    description: The ID/Wallet address of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		 +name: X-App-Client-Key
+//		   description: The key of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		 +name: ALLOCATION-ID
+//		   description: The ID of the allocation in question.
+//	    in: header
+//	    type: string
+//	    required: true
+//	 +name: X-App-Client-Signature
+//	    description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//	    in: header
+//	    type: string
+//	 +name: X-App-Client-Signature-V2
+//	    description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//	    in: header
+//	    type: string
+//		+name: connection_id
+//		   description: ID of the connection related to this process. Check 2-PC documentation.
+//		   required: true
+//		   in: query
+//		   type: string
+//	 +name: uploadMeta
+//	    description: Metadata of the file to be uploaded. It should be a valid JSON object following the UploadFileChanger schema.
+//	    in: form
+//	    type: string
+//	    required: true
+//	 +name: uploadThumbnailFile
+//	   description: Thumbnail file to be uploaded. It should be a valid image file.
+//	   in: form
+//	   type: file
+//	 +name: uploadFile
+//	   description: File to be uploaded.
+//	   in: form
+//	   type: file
 //	   required: true
-//	   in: path
-//	   type: string
-//	 +name: X-App-Client-ID
-//     description: The ID/Wallet address of the client sending the request.
-//     in: header
-//     type: string
-//     required: true
-//	 +name: X-App-Client-Key
-// 	   description: The key of the client sending the request.
-//     in: header
-//     type: string
-//     required: true
-//	 +name: ALLOCATION-ID
-//	   description: The ID of the allocation in question.
-//     in: header
-//     type: string
-//     required: true
-//  +name: X-App-Client-Signature
-//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
-//     in: header
-//     type: string
-//  +name: X-App-Client-Signature-V2
-//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
-//     in: header
-//     type: string
-//	+name: connection_id
-//	   description: ID of the connection related to this process. Check 2-PC documentation.
-//	   required: true
-//	   in: query
-//	   type: string
-//  +name: uploadMeta
-//     description: Metadata of the file to be uploaded. It should be a valid JSON object following the UploadFileChanger schema.
-//     in: form
-//     type: string
-//     required: true
-//  +name: uploadThumbnailFile
-//    description: Thumbnail file to be uploaded. It should be a valid image file.
-//    in: form
-//    type: file
-//  +name: uploadFile
-//    description: File to be uploaded.
-//    in: form
-//    type: file
-//    required: true
 //
 // responses:
-//  200: UploadResult
-//  400:
-//  500:
+//
+//	200: UploadResult
+//	400:
+//	500:
 func uploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
@@ -1529,6 +1534,11 @@ func writeResponse(w http.ResponseWriter, resp []byte) {
 	if err != nil {
 		Logger.Error("Error sending StatsHandler response", zap.Error(err))
 	}
+}
+
+func GetBlobberInfo(ctx context.Context, r *http.Request) (interface{}, error) {
+	blobberInfo := GetBlobberInfoJson()
+	return blobberInfo, nil
 }
 
 // todo wrap with connection
@@ -1650,7 +1660,7 @@ func CleanupDiskHandler(ctx context.Context, r *http.Request) (interface{}, erro
 //  +name: X-App-Client-Signature-V2
 //     description: Digital signature of the client used to verify the request. Overrides X-App-Client-Signature if provided.
 //     in: header
-//     type: string 
+//     type: string
 // +name: path
 //     description: Path of the file to be shared.
 //     in: query
@@ -1871,55 +1881,56 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 // Retrieve shared files in an allocation by its owner.
 //
 // parameters:
-//	+name: allocation
-//	   description: the allocation ID
-//	   required: true
-//	   in: path
-//	   type: string
-//	 +name: X-App-Client-ID
-//     description: The ID/Wallet address of the client sending the request.
-//     in: header
-//     type: string
-//     required: true
-//	 +name: X-App-Client-Key
-// 	   description: The key of the client sending the request.
-//     in: header
-//     type: string
-//     required: true
-//	 +name: ALLOCATION-ID
-//	   description: The ID of the allocation in question.
-//     in: header
-//     type: string
-//     required: true
-//  +name: X-App-Client-Signature
-//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
-//     in: header
-//     type: string
-//  +name: X-App-Client-Signature-V2
-//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
-//     in: header
-//     type: string
-//   +name: offset
-//     in: query
-//     type: integer
-//     required: false
-//     description: Pagination offset, start of the page to retrieve. Default is 0.
-//   +name: limit
-//     in: query
-//     type: integer
-//     required: false
-//     description: Pagination limit, number of entries in the page to retrieve. Default is 20.
-//   +name: sort
-//     in: query
-//     type: string
-//     required: false
-//     description: Direction of sorting based on challenge closure time, either "asc" or "desc". Default is "asc"
+//
+//		+name: allocation
+//		   description: the allocation ID
+//		   required: true
+//		   in: path
+//		   type: string
+//		 +name: X-App-Client-ID
+//	    description: The ID/Wallet address of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		 +name: X-App-Client-Key
+//		   description: The key of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		 +name: ALLOCATION-ID
+//		   description: The ID of the allocation in question.
+//	    in: header
+//	    type: string
+//	    required: true
+//	 +name: X-App-Client-Signature
+//	    description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//	    in: header
+//	    type: string
+//	 +name: X-App-Client-Signature-V2
+//	    description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//	    in: header
+//	    type: string
+//	  +name: offset
+//	    in: query
+//	    type: integer
+//	    required: false
+//	    description: Pagination offset, start of the page to retrieve. Default is 0.
+//	  +name: limit
+//	    in: query
+//	    type: integer
+//	    required: false
+//	    description: Pagination limit, number of entries in the page to retrieve. Default is 20.
+//	  +name: sort
+//	    in: query
+//	    type: string
+//	    required: false
+//	    description: Direction of sorting based on challenge closure time, either "asc" or "desc". Default is "asc"
 //
 // responses:
 //
-//   200: []ShareInfo
-//   400:
-//   500:
+//	200: []ShareInfo
+//	400:
+//	500:
 func ListShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
