@@ -16,6 +16,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
+// swagger:model UploadFileChanger
 // UploadFileChanger file change processor for continuous upload in INIT/APPEND/FINALIZE
 type UploadFileChanger struct {
 	BaseFileChanger

@@ -90,6 +90,7 @@ func GetFileStore() FileStorer {
 	return fileStore
 }
 
+// swagger:model FileDownloadResponse
 type FileDownloadResponse struct {
 	Nodes   [][][]byte
 	Indexes [][]int

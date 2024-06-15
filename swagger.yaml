@@ -1,0 +1,2616 @@
+basePath: /
+consumes:
+  - application/json
+  - application/x-www-form-urlencoded
+  - multipart/form-data
+definitions:
+  Allocation:
+    properties:
+      AllocationRoot:
+        description: AllocationRoot allcation_root of last write_marker
+        type: string
+      BlobberSize:
+        format: int64
+        type: integer
+      BlobberSizeUsed:
+        format: int64
+        type: integer
+      CleanedUp:
+        description: Ending and cleaning
+        type: boolean
+      Expiration:
+        $ref: '#/definitions/Timestamp'
+      FileMetaRoot:
+        type: string
+      Finalized:
+        type: boolean
+      ID:
+        type: string
+      IsRedeemRequired:
+        type: boolean
+      LastRedeemedSeq:
+        format: int64
+        type: integer
+      LatestRedeemedWM:
+        type: string
+      OwnerID:
+        type: string
+      OwnerPublicKey:
+        type: string
+      RepairerID:
+        type: string
+      StartTime:
+        $ref: '#/definitions/Timestamp'
+      Terms:
+        description: |-
+          Has many terms
+          If Preload("Terms") is required replace tag `gorm:"-"` with `gorm:"foreignKey:AllocationID"`
+        items:
+          $ref: '#/definitions/Terms'
+        type: array
+      TimeUnit:
+        $ref: '#/definitions/Duration'
+      TotalSize:
+        format: int64
+        type: integer
+      Tx:
+        type: string
+      UsedSize:
+        format: int64
+        type: integer
+      file_options:
+        description: |-
+          FileOptions to define file restrictions on an allocation for third-parties
+          default 00000000 for all crud operations suggesting only owner has the below listed abilities.
+          enabling option/s allows any third party to perform certain ops
+          00000001 - 1  - upload
+          00000010 - 2  - delete
+          00000100 - 4  - update
+          00001000 - 8  - move
+          00010000 - 16 - copy
+          00100000 - 32 - rename
+        format: uint16
+        type: integer
+        x-go-name: FileOptions
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation
+  AuthTicket:
+    properties:
+      actual_file_hash:
+        type: string
+        x-go-name: ActualFileHash
+      allocation_id:
+        type: string
+        x-go-name: AllocationID
+      client_id:
+        type: string
+        x-go-name: ClientID
+      encrypted:
+        type: boolean
+        x-go-name: Encrypted
+      expiration:
+        $ref: '#/definitions/Timestamp'
+      file_name:
+        type: string
+        x-go-name: FileName
+      file_path_hash:
+        type: string
+        x-go-name: FilePathHash
+      owner_id:
+        type: string
+        x-go-name: OwnerID
+      re_encryption_key:
+        type: string
+        x-go-name: ReEncryptionKey
+      reference_type:
+        type: string
+        x-go-name: RefType
+      signature:
+        type: string
+        x-go-name: Signature
+      timestamp:
+        $ref: '#/definitions/Timestamp'
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker
+  AuthTicketResponse:
+    properties:
+      auth_ticket:
+        type: string
+        x-go-name: AuthTicket
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/handler
+  BaseFileChanger:
+    properties:
+      actual_file_hash_signature:
+        description: 'client side:'
+        type: string
+        x-go-name: ActualFileHashSignature
+      actual_hash:
+        description: 'client side:'
+        type: string
+        x-go-name: ActualHash
+      actual_size:
+        description: 'client side:'
+        format: int64
+        type: integer
+        x-go-name: ActualSize
+      actual_thumb_hash:
+        description: 'client side:'
+        type: string
+        x-go-name: ActualThumbnailHash
+      actual_thumb_size:
+        description: 'client side:'
+        format: int64
+        type: integer
+        x-go-name: ActualThumbnailSize
+      allocation_id:
+        description: 'server side: update them by ChangeProcessor'
+        type: string
+        x-go-name: AllocationID
+      chunk_end_index:
+        format: int64
+        type: integer
+        x-go-name: ChunkEndIndex
+      chunk_hash:
+        type: string
+        x-go-name: ChunkHash
+      chunk_size:
+        format: int64
+        type: integer
+        x-go-name: ChunkSize
+      chunk_start_index:
+        format: int64
+        type: integer
+        x-go-name: ChunkStartIndex
+      connection_id:
+        description: 'client side: unmarshal them from ''updateMeta''/''uploadMeta'''
+        type: string
+        x-go-name: ConnectionID
+      custom_meta:
+        type: string
+        x-go-name: CustomMeta
+      encrypted_key:
+        type: string
+        x-go-name: EncryptedKey
+      encrypted_key_point:
+        type: string
+        x-go-name: EncryptedKeyPoint
+      filename:
+        description: 'client side:'
+        type: string
+        x-go-name: Filename
+      filepath:
+        description: 'client side:'
+        type: string
+        x-go-name: Path
+      fixed_merkle_root:
+        description: |-
+          client side:
+          client side:
+        type: string
+        x-go-name: FixedMerkleRoot
+      is_final:
+        type: boolean
+        x-go-name: IsFinal
+      mimetype:
+        description: 'client side:'
+        type: string
+        x-go-name: MimeType
+      size:
+        format: int64
+        type: integer
+        x-go-name: Size
+      thumbnail_content_hash:
+        description: 'server side:'
+        type: string
+        x-go-name: ThumbnailHash
+      thumbnail_filename:
+        type: string
+        x-go-name: ThumbnailFilename
+      thumbnail_size:
+        format: int64
+        type: integer
+        x-go-name: ThumbnailSize
+      upload_offset:
+        format: int64
+        type: integer
+        x-go-name: UploadOffset
+      validation_root:
+        description: 'client side:'
+        type: string
+        x-go-name: ValidationRoot
+      validation_root_signature:
+        description: 'client side:'
+        type: string
+        x-go-name: ValidationRootSignature
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation
+  ChallengeTiming:
+    properties:
+      cancelled:
+        $ref: '#/definitions/Timestamp'
+      closed:
+        $ref: '#/definitions/Timestamp'
+      complete_validation:
+        $ref: '#/definitions/Timestamp'
+      created_at_blobber:
+        $ref: '#/definitions/Timestamp'
+      created_at_chain:
+        $ref: '#/definitions/Timestamp'
+      expiration:
+        $ref: '#/definitions/Timestamp'
+      file_size:
+        description: FileSize is size of file that was randomly selected for challenge
+        format: int64
+        type: integer
+        x-go-name: FileSize
+      id:
+        description: ChallengeID is the challenge ID generated on blockchain.
+        type: string
+        x-go-name: ChallengeID
+      proof_gen_time:
+        description: ProofGenTime is the time taken in millisecond to generate challenge proof for the file
+        format: int64
+        type: integer
+        x-go-name: ProofGenTime
+      txn_submission:
+        $ref: '#/definitions/Timestamp'
+      txn_verification:
+        $ref: '#/definitions/Timestamp'
+      updated:
+        $ref: '#/definitions/Timestamp'
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/challenge
+  CommitResult:
+    properties:
+      allocation_root:
+        type: string
+        x-go-name: AllocationRoot
+      error_msg:
+        type: string
+        x-go-name: ErrorMessage
+      success:
+        type: boolean
+        x-go-name: Success
+      write_marker:
+        $ref: '#/definitions/WriteMarkerEntity'
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp
+  ConnectionResult:
+    properties:
+      allocation_root:
+        type: string
+        x-go-name: AllocationRoot
+      connection_id:
+        type: string
+        x-go-name: ConnectionID
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp
+  DeletedAt:
+    $ref: '#/definitions/NullTime'
+  DownloadResponse:
+    properties:
+      data:
+        items:
+          format: uint8
+          type: integer
+        type: array
+        x-go-name: Data
+      latest_rm:
+        $ref: '#/definitions/ReadMarker'
+      success:
+        type: boolean
+        x-go-name: Success
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp
+  Duration:
+    description: |-
+      A Duration represents the elapsed time between two instants
+      as an int64 nanosecond count. The representation limits the
+      largest representable duration to approximately 290 years.
+    format: int64
+    type: integer
+    x-go-package: time
+  FileDownloadResponse:
+    properties:
+      Data:
+        items:
+          format: uint8
+          type: integer
+        type: array
+      Indexes:
+        items:
+          items:
+            format: int64
+            type: integer
+          type: array
+        type: array
+      Nodes:
+        items:
+          items:
+            items:
+              format: uint8
+              type: integer
+            type: array
+          type: array
+        type: array
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore
+  FileStats:
+    properties:
+      DeletedAt:
+        $ref: '#/definitions/DeletedAt'
+      Ref:
+        $ref: '#/definitions/Ref'
+      created_at:
+        format: date-time
+        type: string
+        x-go-name: CreatedAt
+      last_challenge_txn:
+        type: string
+        x-go-name: LastChallengeResponseTxn
+      num_of_block_downloads:
+        format: int64
+        type: integer
+        x-go-name: NumBlockDownloads
+      num_of_challenges:
+        format: int64
+        type: integer
+        x-go-name: SuccessChallenges
+      num_of_failed_challenges:
+        format: int64
+        type: integer
+        x-go-name: FailedChallenges
+      num_of_updates:
+        format: int64
+        type: integer
+        x-go-name: NumUpdates
+      on_chain:
+        type: boolean
+        x-go-name: OnChain
+      updated_at:
+        format: date-time
+        type: string
+        x-go-name: UpdatedAt
+      write_marker_txn:
+        type: string
+        x-go-name: WriteMarkerRedeemTxn
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference
+  LatestWriteMarkerResult:
+    properties:
+      latest_write_marker:
+        $ref: '#/definitions/WriteMarker'
+      prev_write_marker:
+        $ref: '#/definitions/WriteMarker'
+      version:
+        type: string
+        x-go-name: Version
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp
+  ListResult:
+    properties:
+      allocation_root:
+        type: string
+        x-go-name: AllocationRoot
+      list:
+        items:
+          additionalProperties: {}
+          type: object
+        type: array
+        x-go-name: Entities
+      meta_data:
+        additionalProperties: {}
+        type: object
+        x-go-name: Meta
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp
+  LockStatus:
+    description: LockStatus lock status
+    format: int64
+    type: integer
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker
+  ModelWithTS:
+    properties:
+      created_at:
+        format: date-time
+        type: string
+        x-go-name: CreatedAt
+      updated_at:
+        format: date-time
+        type: string
+        x-go-name: UpdatedAt
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore
+  NullTime:
+    description: |-
+      NullTime implements the [Scanner] interface so
+      it can be used as a scan destination, similar to [NullString].
+    properties:
+      Time:
+        format: date-time
+        type: string
+      Valid:
+        type: boolean
+    title: NullTime represents a [time.Time] that may be null.
+    type: object
+    x-go-package: database/sql
+  PaginatedRef:
+    properties:
+      actual_file_hash:
+        type: string
+        x-go-name: ActualFileHash
+      actual_file_hash_signature:
+        type: string
+        x-go-name: ActualFileHashSignature
+      actual_file_size:
+        format: int64
+        type: integer
+        x-go-name: ActualFileSize
+      actual_thumbnail_hash:
+        type: string
+        x-go-name: ActualThumbnailHash
+      actual_thumbnail_size:
+        format: int64
+        type: integer
+        x-go-name: ActualThumbnailSize
+      allocation_id:
+        type: string
+        x-go-name: AllocationID
+      allocation_root:
+        type: string
+        x-go-name: AllocationRoot
+      chunk_size:
+        format: int64
+        type: integer
+        x-go-name: ChunkSize
+      created_at:
+        $ref: '#/definitions/Timestamp'
+      custom_meta:
+        type: string
+        x-go-name: CustomMeta
+      encrypted_key:
+        type: string
+        x-go-name: EncryptedKey
+      encrypted_key_point:
+        type: string
+        x-go-name: EncryptedKeyPoint
+      file_id:
+        type: string
+        x-go-name: FileID
+      fixed_merkle_root:
+        type: string
+        x-go-name: FixedMerkleRoot
+      hash:
+        type: string
+        x-go-name: Hash
+      id:
+        format: int64
+        type: integer
+        x-go-name: ID
+      level:
+        format: int64
+        type: integer
+        x-go-name: PathLevel
+      lookup_hash:
+        type: string
+        x-go-name: LookupHash
+      mimetype:
+        type: string
+        x-go-name: MimeType
+      name:
+        type: string
+        x-go-name: Name
+      num_blocks:
+        format: int64
+        type: integer
+        x-go-name: NumBlocks
+      parent_path:
+        type: string
+        x-go-name: ParentPath
+      path:
+        type: string
+        x-go-name: Path
+      path_hash:
+        type: string
+        x-go-name: PathHash
+      size:
+        format: int64
+        type: integer
+        x-go-name: Size
+      thumbnail_hash:
+        type: string
+        x-go-name: ThumbnailHash
+      thumbnail_size:
+        format: int64
+        type: integer
+        x-go-name: ThumbnailSize
+      type:
+        type: string
+        x-go-name: Type
+      updated_at:
+        $ref: '#/definitions/Timestamp'
+      validation_root:
+        type: string
+        x-go-name: ValidationRoot
+      validation_root_signature:
+        type: string
+        x-go-name: ValidationRootSignature
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference
+  PlaylistFile:
+    properties:
+      lookup_hash:
+        type: string
+        x-go-name: LookupHash
+      mimetype:
+        type: string
+        x-go-name: MimeType
+      name:
+        type: string
+        x-go-name: Name
+      num_of_blocks:
+        format: int64
+        type: integer
+        x-go-name: NumBlocks
+      parent_path:
+        type: string
+        x-go-name: ParentPath
+      path:
+        type: string
+        x-go-name: Path
+      size:
+        format: int64
+        type: integer
+        x-go-name: Size
+      type:
+        type: string
+        x-go-name: Type
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference
+  ReadMarker:
+    properties:
+      allocation_id:
+        type: string
+        x-go-name: AllocationID
+      blobber_id:
+        type: string
+        x-go-name: BlobberID
+      client_id:
+        type: string
+        x-go-name: ClientID
+      client_public_key:
+        type: string
+        x-go-name: ClientPublicKey
+      counter:
+        format: int64
+        type: integer
+        x-go-name: ReadCounter
+      owner_id:
+        type: string
+        x-go-name: OwnerID
+      session_rc:
+        format: int64
+        type: integer
+        x-go-name: SessionRC
+      signature:
+        type: string
+        x-go-name: Signature
+      timestamp:
+        $ref: '#/definitions/Timestamp'
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker
+  RecentRefResult:
+    properties:
+      offset:
+        format: int64
+        type: integer
+        x-go-name: Offset
+      refs:
+        items:
+          $ref: '#/definitions/PaginatedRef'
+        type: array
+        x-go-name: Refs
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp
+  Ref:
+    properties:
+      ActualFileHash:
+        type: string
+      ActualFileSize:
+        format: int64
+        type: integer
+      ActualThumbnailHash:
+        type: string
+      ActualThumbnailSize:
+        format: int64
+        type: integer
+      AllocationID:
+        type: string
+      AllocationRoot:
+        type: string
+      Children:
+        items:
+          $ref: '#/definitions/Ref'
+        type: array
+      ChunkSize:
+        format: int64
+        type: integer
+      CreatedAt:
+        $ref: '#/definitions/Timestamp'
+      CustomMeta:
+        type: string
+      DeletedAt:
+        $ref: '#/definitions/DeletedAt'
+      EncryptedKey:
+        type: string
+      EncryptedKeyPoint:
+        type: string
+      FileID:
+        type: string
+      FileMetaHash:
+        type: string
+      FixedMerkleRoot:
+        type: string
+      Hash:
+        type: string
+      HashToBeComputed:
+        type: boolean
+      ID:
+        format: int64
+        type: integer
+      IsPrecommit:
+        type: boolean
+      LookupHash:
+        type: string
+      MimeType:
+        type: string
+      Name:
+        type: string
+      NumBlocks:
+        format: int64
+        type: integer
+      ParentPath:
+        type: string
+      Path:
+        type: string
+      PathHash:
+        type: string
+      PathLevel:
+        format: int64
+        type: integer
+      PrevThumbnailHash:
+        type: string
+      Size:
+        format: int64
+        type: integer
+      ThumbnailHash:
+        type: string
+      ThumbnailSize:
+        format: int64
+        type: integer
+      Type:
+        type: string
+      UpdatedAt:
+        $ref: '#/definitions/Timestamp'
+      ValidationRoot:
+        type: string
+      actual_file_hash_signature:
+        type: string
+        x-go-name: ActualFileHashSignature
+      num_of_block_downloads:
+        format: int64
+        type: integer
+        x-go-name: NumBlockDownloads
+      num_of_updates:
+        format: int64
+        type: integer
+        x-go-name: NumUpdates
+      prev_validation_root:
+        type: string
+        x-go-name: PrevValidationRoot
+      validation_root_signature:
+        type: string
+        x-go-name: ValidationRootSignature
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference
+  RefResult:
+    properties:
+      latest_write_marker:
+        $ref: '#/definitions/WriteMarker'
+      offset_date:
+        $ref: '#/definitions/Timestamp'
+      offset_path:
+        type: string
+        x-go-name: OffsetPath
+      refs:
+        items:
+          $ref: '#/definitions/PaginatedRef'
+        type: array
+        x-go-name: Refs
+      total_pages:
+        format: int64
+        type: integer
+        x-go-name: TotalPages
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp
+  ReferencePath:
+    properties:
+      Ref:
+        $ref: '#/definitions/Ref'
+      list:
+        items:
+          $ref: '#/definitions/ReferencePath'
+        type: array
+        x-go-name: List
+      meta_data:
+        additionalProperties: {}
+        type: object
+        x-go-name: Meta
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference
+  ReferencePathResult:
+    properties:
+      Ref:
+        $ref: '#/definitions/Ref'
+      latest_write_marker:
+        $ref: '#/definitions/WriteMarker'
+      list:
+        items:
+          $ref: '#/definitions/ReferencePath'
+        type: array
+        x-go-name: List
+      meta_data:
+        additionalProperties: {}
+        type: object
+        x-go-name: Meta
+      version:
+        type: string
+        x-go-name: Version
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp
+  ShareInfo:
+    properties:
+      ID:
+        format: int64
+        type: integer
+      available_at:
+        format: date-time
+        type: string
+        x-go-name: AvailableAt
+      client_encryption_public_key:
+        type: string
+        x-go-name: ClientEncryptionPublicKey
+      client_id:
+        type: string
+        x-go-name: ClientID
+      expiry_at:
+        format: date-time
+        type: string
+        x-go-name: ExpiryAt
+      file_path_hash:
+        type: string
+        x-go-name: FilePathHash
+      owner_id:
+        type: string
+        x-go-name: OwnerID
+      re_encryption_key:
+        type: string
+        x-go-name: ReEncryptionKey
+      revoked:
+        type: boolean
+        x-go-name: Revoked
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference
+  Terms:
+    properties:
+      Allocation:
+        $ref: '#/definitions/Allocation'
+      AllocationID:
+        type: string
+      BlobberID:
+        type: string
+      ID:
+        format: int64
+        type: integer
+      ReadPrice:
+        format: uint64
+        type: integer
+      WritePrice:
+        format: uint64
+        type: integer
+    title: Terms for allocation by its Tx.
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation
+  Timestamp:
+    format: int64
+    title: Timestamp - just a wrapper to control the json encoding */
+    type: integer
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/core/common
+  UploadFileChanger:
+    properties:
+      actual_file_hash_signature:
+        description: 'client side:'
+        type: string
+        x-go-name: ActualFileHashSignature
+      actual_hash:
+        description: 'client side:'
+        type: string
+        x-go-name: ActualHash
+      actual_size:
+        description: 'client side:'
+        format: int64
+        type: integer
+        x-go-name: ActualSize
+      actual_thumb_hash:
+        description: 'client side:'
+        type: string
+        x-go-name: ActualThumbnailHash
+      actual_thumb_size:
+        description: 'client side:'
+        format: int64
+        type: integer
+        x-go-name: ActualThumbnailSize
+      allocation_id:
+        description: 'server side: update them by ChangeProcessor'
+        type: string
+        x-go-name: AllocationID
+      chunk_end_index:
+        format: int64
+        type: integer
+        x-go-name: ChunkEndIndex
+      chunk_hash:
+        type: string
+        x-go-name: ChunkHash
+      chunk_size:
+        format: int64
+        type: integer
+        x-go-name: ChunkSize
+      chunk_start_index:
+        format: int64
+        type: integer
+        x-go-name: ChunkStartIndex
+      connection_id:
+        description: 'client side: unmarshal them from ''updateMeta''/''uploadMeta'''
+        type: string
+        x-go-name: ConnectionID
+      custom_meta:
+        type: string
+        x-go-name: CustomMeta
+      encrypted_key:
+        type: string
+        x-go-name: EncryptedKey
+      encrypted_key_point:
+        type: string
+        x-go-name: EncryptedKeyPoint
+      filename:
+        description: 'client side:'
+        type: string
+        x-go-name: Filename
+      filepath:
+        description: 'client side:'
+        type: string
+        x-go-name: Path
+      fixed_merkle_root:
+        description: |-
+          client side:
+          client side:
+        type: string
+        x-go-name: FixedMerkleRoot
+      is_final:
+        type: boolean
+        x-go-name: IsFinal
+      mimetype:
+        description: 'client side:'
+        type: string
+        x-go-name: MimeType
+      size:
+        format: int64
+        type: integer
+        x-go-name: Size
+      thumbnail_content_hash:
+        description: 'server side:'
+        type: string
+        x-go-name: ThumbnailHash
+      thumbnail_filename:
+        type: string
+        x-go-name: ThumbnailFilename
+      thumbnail_size:
+        format: int64
+        type: integer
+        x-go-name: ThumbnailSize
+      upload_offset:
+        format: int64
+        type: integer
+        x-go-name: UploadOffset
+      validation_root:
+        description: 'client side:'
+        type: string
+        x-go-name: ValidationRoot
+      validation_root_signature:
+        description: 'client side:'
+        type: string
+        x-go-name: ValidationRootSignature
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation
+  UploadResult:
+    properties:
+      filename:
+        type: string
+        x-go-name: Filename
+      fixed_merkle_root:
+        type: string
+        x-go-name: FixedMerkleRoot
+      hash:
+        type: string
+        x-go-name: Hash
+      size:
+        format: int64
+        type: integer
+        x-go-name: Size
+      upload_length:
+        description: UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
+        format: int64
+        type: integer
+        x-go-name: UploadLength
+      upload_offset:
+        description: Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
+        format: int64
+        type: integer
+        x-go-name: UploadOffset
+      validation_root:
+        type: string
+        x-go-name: ValidationRoot
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation
+  WriteMarker:
+    properties:
+      allocation_id:
+        type: string
+        x-go-name: AllocationID
+      allocation_root:
+        type: string
+        x-go-name: AllocationRoot
+      blobber_id:
+        type: string
+        x-go-name: BlobberID
+      chain_hash:
+        description: ChainHash is the sha256 hash of the previous chain hash and the current allocation root
+        type: string
+        x-go-name: ChainHash
+      chain_length:
+        format: int64
+        type: integer
+        x-go-name: ChainLength
+      chain_size:
+        format: int64
+        type: integer
+        x-go-name: ChainSize
+      client_id:
+        type: string
+        x-go-name: ClientID
+      file_meta_root:
+        type: string
+        x-go-name: FileMetaRoot
+      prev_allocation_root:
+        type: string
+        x-go-name: PreviousAllocationRoot
+      signature:
+        type: string
+        x-go-name: Signature
+      size:
+        format: int64
+        type: integer
+        x-go-name: Size
+      timestamp:
+        $ref: '#/definitions/Timestamp'
+      version:
+        type: string
+        x-go-name: Version
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker
+  WriteMarkerEntity:
+    properties:
+      ClientPublicKey:
+        type: string
+      CloseTxnID:
+        type: string
+      CloseTxnNonce:
+        format: int64
+        type: integer
+      ConnectionID:
+        type: string
+      Latest:
+        type: boolean
+      ReedeemRetries:
+        format: int64
+        type: integer
+      Sequence:
+        format: int64
+        type: integer
+      Status:
+        $ref: '#/definitions/WriteMarkerStatus'
+      StatusMessage:
+        type: string
+      WM:
+        $ref: '#/definitions/WriteMarker'
+      created_at:
+        format: date-time
+        type: string
+        x-go-name: CreatedAt
+      updated_at:
+        format: date-time
+        type: string
+        x-go-name: UpdatedAt
+    type: object
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker
+  WriteMarkerLockResult:
+    properties:
+      created_at:
+        format: int64
+        type: integer
+        x-go-name: CreatedAt
+      status:
+        $ref: '#/definitions/LockStatus'
+    type: object
+    x-go-name: LockResult
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker
+  WriteMarkerStatus:
+    format: int64
+    type: integer
+    x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker
+info:
+  description: Documentation of the blobber API.
+  title: Züs Blobber API.
+  version: 1.12.0
+paths:
+  /allocation:
+    get:
+      description: Retrieve allocation details as stored in the blobber.
+      operationId: GetAllocation
+      parameters:
+        - description: allocation ID
+          in: query
+          name: id
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+      responses:
+        "200":
+          description: Allocation
+          schema:
+            $ref: '#/definitions/Allocation'
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Get allocation details.
+  /challenge-timings-by-challengeId:
+    get:
+      description: Retrieve challenge timing for the given challenge ID by the blobber admin.
+      operationId: GetChallengeTimingByChallengeID
+      parameters:
+        - description: Authorization header (Basic auth). MUST be provided to fulfil the request
+          in: header
+          name: Authorization
+          required: true
+          type: string
+        - description: Challenge ID for which to retrieve the challenge timing
+          in: query
+          name: challenge_id
+          required: true
+          type: string
+      responses:
+        "200":
+          description: ChallengeTiming
+          schema:
+            $ref: '#/definitions/ChallengeTiming'
+      summary: Get challenge timing by challenge ID.
+  /challengetimings:
+    get:
+      description: Retrieve challenge timings for the blobber admin.
+      operationId: GetChallengeTimings
+      parameters:
+        - description: Authorization header (Basic auth). MUST be provided to fulfil the request
+          in: header
+          name: Authorization
+          required: true
+          type: string
+        - description: An optional timestamp from which to retrieve the challenge timings
+          in: query
+          name: from
+          type: integer
+        - description: Pagination offset, start of the page to retrieve. Default is 0.
+          in: query
+          name: offset
+          type: integer
+        - description: Pagination limit, number of entries in the page to retrieve. Default is 20.
+          in: query
+          name: limit
+          type: integer
+        - description: Direction of sorting based on challenge closure time, either "asc" or "desc". Default is "asc"
+          in: query
+          name: sort
+          type: string
+      responses:
+        "200":
+          description: ChallengeTiming
+          schema:
+            items:
+              $ref: '#/definitions/ChallengeTiming'
+            type: array
+      summary: Get challenge timings.
+  /v1/auth/generate:
+    get:
+      description: Generate and retrieve blobber authentication ticket signed by the blobber's signature. Used by restricted blobbers to enable users to use them to host allocations.
+      operationId: GetAuthTicket
+      parameters:
+        - description: Digital signature to verify that the sender is 0box service.
+          in: header
+          name: Zbox-Signature
+          type: string
+        - description: Client ID is used as a payload to the token generated. The token represents a signed version of this string by the blobber's private key.
+          in: query
+          name: client_id
+          type: string
+      responses:
+        "200":
+          description: AuthTicketResponse
+          schema:
+            $ref: '#/definitions/AuthTicketResponse'
+      summary: Generate blobber authentication ticket.
+  /v1/connection/commit/{allocation}:
+    post:
+      description: Used to commit the storage operation provided its connection id.
+      operationId: PostCommit
+      parameters:
+        - description: the allocation ID
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: the connection ID of the storage operation to commit
+          in: query
+          name: connection_id
+          required: true
+          type: string
+        - description: The write marker corresponding to the operation. Write price is used to redeem storage cost from the network. It follows the format of the [Write Marker](#write-marker)
+          in: query
+          name: write_marker
+          required: true
+          type: string
+      responses:
+        "200":
+          description: CommitResult
+          schema:
+            $ref: '#/definitions/CommitResult'
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Commit operation.
+  /v1/connection/create/{allocation}:
+    post:
+      description: Connections are used to distinguish between different storage operations, also to claim reward from the chain using write markers.
+      operationId: PostConnection
+      parameters:
+        - description: the allocation ID
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: the ID of the connection to submit.
+          in: query
+          name: connection_id
+          required: true
+          type: string
+      responses:
+        "200":
+          description: ConnectionResult
+          schema:
+            $ref: '#/definitions/ConnectionResult'
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Store connection in DB.
+  /v1/connection/redeem/{allocation}:
+    post:
+      description: Submit the connection ID to redeem the storage cost from the network.
+      operationId: PostRedeem
+      parameters:
+        - description: the allocation ID
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+      responses:
+        "200":
+          description: DownloadResponse
+          schema:
+            $ref: '#/definitions/DownloadResponse'
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Redeem conncetion.
+  /v1/connection/rollback/{allocation}:
+    post:
+      description: RollbackHandler used to commit the storage operation provided its connection id.
+      operationId: PostRollback
+      parameters:
+        - description: the allocation ID
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: the connection ID of the storage operation to rollback
+          in: query
+          name: connection_id
+          required: true
+          type: string
+        - description: The write marker corresponding to the operation. Write price is used to redeem storage cost from the network. It follows the format of the [Write Marker](#write-marker)
+          in: query
+          name: write_marker
+          required: true
+          type: string
+      responses:
+        "200":
+          description: CommitResult
+          schema:
+            $ref: '#/definitions/CommitResult'
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Rollback operation.
+  /v1/dir/{allocation}:
+    post:
+      description: Creates a directory in an allocation. Can only be run by the owner of the allocation.
+      operationId: PostCreateDir
+      parameters:
+        - description: the allocation ID
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: Path of the directory to be created.
+          in: query
+          name: dir_path
+          required: true
+          type: string
+      responses:
+        "200":
+          description: UploadResult
+          schema:
+            $ref: '#/definitions/UploadResult'
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Create a directory.
+  /v1/file/copy/{allocation}:
+    post:
+      description: |-
+        Copy a file in an allocation. Can only be run by the owner of the allocation.
+        The allocation should permit copy for this operation to succeed. Check System Features > Storage > File Operations > File Permissions for more info.
+      operationId: PostCopy
+      parameters:
+        - description: the allocation ID
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: Path of the file to be copied. Required only if `path_hash` is not provided.
+          in: query
+          name: path
+          type: string
+        - description: Hash of the path of the file to be copied. Required only if `path` is not provided.
+          in: query
+          name: path_hash
+          type: string
+        - description: Destination path of the file to be copied.
+          in: query
+          name: dest
+          required: true
+          type: string
+        - description: Connection ID related to this process. Blobber uses the connection id to redeem rewards for storage operations and distinguish the operation. Connection should be using the create connection endpoint.
+          in: query
+          name: connection_id
+          required: true
+          type: string
+      responses:
+        "200":
+          description: UploadResult
+          schema:
+            $ref: '#/definitions/UploadResult'
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Copy a file.
+  /v1/file/download/{allocation}:
+    get:
+      description: Download Handler (downloadFile).
+      operationId: GetDownloadFile
+      parameters:
+        - description: TxHash of the allocation in question.
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: The ID of the connection used for the download. Usually, the download process occurs in multiple requests, on per block, where all of them are done in a single connection between the client and the blobber.
+          in: header
+          name: X-Connection-ID
+          type: string
+        - description: The hash of the path of the file to download. If not provided, will be calculated from "X-Path" parameter.
+          in: header
+          name: X-Path-Hash
+          type: string
+        - description: The path of the file to download.
+          in: header
+          name: X-Path
+          required: true
+          type: string
+        - default: 0
+          description: The block number of the file to download. Must be 0 or greater (valid index).
+          in: header
+          name: X-Block-Num
+          type: integer
+        - default: 0
+          description: The number of blocks to download. Must be 0 or greater.
+          in: header
+          name: X-Num-Blocks
+          type: integer
+        - description: The read marker to use for the download (check [ReadMarker](#/responses/ReadMarker)).
+          in: header
+          name: X-Read-Marker
+          type: string
+        - description: The auth token to use for the download. If the file is shared, the auth token is required.
+          in: header
+          name: X-Auth-Token
+          type: string
+        - description: Download mode. Either "full" for full file download, or "thumbnail" to download the thumbnail of the file
+          in: header
+          name: X-Mode
+          type: string
+        - description: If set to "true", the download should be verified. If the mode is "thumbnail", the thumbnail hash stored in the db is compared with the hash of the actual file. If the mode is "full", merkle proof is calculated and returned in the response.
+          in: header
+          name: X-Verify-Download
+          type: string
+        - description: If its value is "v2" then both allocation_id and blobber url base are hashed and verified using X-App-Client-Signature-V2.
+          in: header
+          name: X-Version
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+      responses:
+        "200":
+          description: '| []byte'
+          schema:
+            $ref: '#/definitions/FileDownloadResponse'
+        "400":
+          description: ""
+      summary: Download a file.
+  /v1/file/latestwritemarker/{allocation}:
+    get:
+      description: Retrieve the latest write marker associated with the allocation
+      operationId: GetLatestWriteMarker
+      parameters:
+        - description: the allocation ID
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+      responses:
+        "200":
+          description: LatestWriteMarkerResult
+          schema:
+            $ref: '#/definitions/LatestWriteMarkerResult'
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Get latest write marker.
+  /v1/file/list/{allocation}:
+    get:
+      description: "ListHandler is the handler to respond to list requests from clients, \nit returns a list of files in the allocation,\nalong with the metadata of the files."
+      operationId: GetListFiles
+      parameters:
+        - description: TxHash of the allocation in question.
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The path needed to list info about
+          in: query
+          name: path
+          required: true
+          type: string
+        - description: Lookuphash of the path needed to list info about, which is a hex hash of the path concatenated with the allocation ID.
+          in: query
+          name: path_hash
+          type: string
+        - description: The auth ticket for the file to download if the client does not own it. Check File Sharing docs for more info.
+          in: query
+          name: auth_token
+          type: string
+        - description: Whether or not to list the files inside the directory, not just data about the path itself.
+          in: query
+          name: list
+          type: boolean
+        - description: The number of files to return (for pagination).
+          in: query
+          name: limit
+          required: true
+          type: integer
+        - description: The number of files to skip before returning (for pagination).
+          in: query
+          name: offset
+          required: true
+          type: integer
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+      responses:
+        "200":
+          description: ListResult
+          schema:
+            $ref: '#/definitions/ListResult'
+        "400":
+          description: ""
+      summary: List files.
+  /v1/file/meta/{allocation}:
+    get:
+      description: Retrieve file meta data from the blobber.
+      operationId: GetFileMeta
+      parameters:
+        - description: the allocation ID
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: the name of the file
+          in: query
+          name: name
+          type: string
+        - description: Path of the file to be copied. Required only if `path_hash` is not provided.
+          in: query
+          name: path
+          type: string
+        - description: Hash of the path of the file to be copied. Required only if `path` is not provided.
+          in: query
+          name: path_hash
+          type: string
+        - description: The auth ticket for the file to show meta data of if the client does not own it. Check File Sharing docs for more info.
+          in: query
+          name: auth_token
+          type: string
+      responses:
+        "200":
+          description: ""
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Get file meta data.
+  /v1/file/move/{allocation}:
+    post:
+      description: |-
+        Mova a file from a path to another in an allocation. Can only be run by the owner of the allocation.
+        The allocation should permit move for this operation to succeed. Check System Features > Storage > File Operations > File Permissions for more info.
+      operationId: PostMove
+      parameters:
+        - description: the allocation ID
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: Path of the file to be moved. Required only if `path_hash` is not provided.
+          in: query
+          name: path
+          type: string
+        - description: Hash of the path of the file to be moved. Required only if `path` is not provided.
+          in: query
+          name: path_hash
+          type: string
+        - description: Destination path of the file to be moved.
+          in: query
+          name: dest
+          required: true
+          type: string
+        - description: Connection ID related to this process. Blobber uses the connection id to redeem rewards for storage operations and distinguish the operation. Connection should be using the create connection endpoint.
+          in: query
+          name: connection_id
+          required: true
+          type: string
+      responses:
+        "200":
+          description: UploadResult
+          schema:
+            $ref: '#/definitions/UploadResult'
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Move a file.
+  /v1/file/objecttree/{allocation}:
+    get:
+      description: Retrieve object tree reference path. Similar to reference path.
+      operationId: GetObjectTree
+      parameters:
+        - description: allocation ID
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: Path of the file needed to get reference path of. Required only if no "paths" are provided.
+          in: query
+          name: path
+          type: string
+      responses:
+        "200":
+          description: ReferencePathResult
+          schema:
+            $ref: '#/definitions/ReferencePathResult'
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Get path object tree.
+  /v1/file/playlist/{allocation}:
+    get:
+      description: Loads playlist from a given path in an allocation.
+      operationId: GetPlaylist
+      parameters:
+        - description: allocation id
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: The lookup hash of the file from which to start the playlist. The retrieved playlist will start from the id associated with this lookup hash and going forward.
+          in: query
+          name: since
+          type: string
+        - description: The auth token to access the playlist. This is required when the playlist is accessed by a non-owner of the allocation.
+          in: query
+          name: auth_token
+          type: string
+        - description: The lookup hash of the file for which the playlist is to be retrieved. This is required when the playlist is accessed by a non-owner of the allocation.
+          in: query
+          name: lookup_hash
+          type: string
+        - description: The path of the file for which the playlist is to be retrieved. This is required when the playlist is accessed by the owner of the allocation.
+          in: query
+          name: path
+          type: string
+      responses:
+        "200":
+          description: PlaylistFile
+          schema:
+            items:
+              $ref: '#/definitions/PlaylistFile'
+            type: array
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Get playlist.
+  /v1/file/referencepath/{allocation}:
+    get:
+      description: |-
+        Retrieve references of all the decendents of a given path including itself, known as reference path. Reference (shorted as Ref) is the representation of a certain path in the DB including its metadata.
+        It also returns the latest write marker associated with the allocation.
+      operationId: GetReferencePath
+      parameters:
+        - description: the allocation ID
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: Path of the file needed to get reference path of. Required only if no "paths" are provided.
+          in: query
+          name: path
+          type: string
+        - description: Paths of the files needed to get reference path of. Required only if no "path" is provided. Should be provided as valid JSON array.
+          in: query
+          name: paths
+          type: string
+      responses:
+        "200":
+          description: ReferencePathResult
+          schema:
+            $ref: '#/definitions/ReferencePathResult'
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Get reference path.
+  /v1/file/refs/{allocation}:
+    get:
+      description: Retrieve recent references added to an allocation, starting at a specific date, organized in a paginated table.
+      operationId: GetRecentRefs
+      parameters:
+        - description: allocation ID
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: Number of records to show per page. If provided more than 100, it will be set to 100. Default is 20.
+          in: query
+          name: limit
+          type: integer
+        - description: Pagination offset. Default is 0.
+          in: query
+          name: offset
+          type: string
+        - description: Timestamp to start listing from. Ignored if not provided.
+          in: query
+          name: from-date
+          type: integer
+      responses:
+        "200":
+          description: RecentRefResult
+          schema:
+            $ref: '#/definitions/RecentRefResult'
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Get recent references.
+  /v1/file/rename/{allocation}:
+    post:
+      description: |-
+        Rename a file in an allocation. Can only be run by the owner of the allocation.
+        The allocation should permit rename for this operation to succeed. Check System Features > Storage > File Operations > File Permissions for more info.
+      operationId: PostRename
+      parameters:
+        - description: the allocation ID
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: Path of the file to be renamed. Required only if `path_hash` is not provided.
+          in: query
+          name: path
+          type: string
+        - description: Hash of the path of the file to be renamed. Required only if `path` is not provided.
+          in: query
+          name: path_hash
+          type: string
+        - description: Name to be set to the file/directory.
+          in: query
+          name: new_name
+          required: true
+          type: string
+        - description: Connection ID related to this process. Blobber uses the connection id to redeem rewards for storage and distinguish the operation. Connection should be using the create connection endpoint.
+          in: query
+          name: connection_id
+          required: true
+          type: string
+      responses:
+        "200":
+          description: UploadResult
+          schema:
+            $ref: '#/definitions/UploadResult'
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Rename file.
+  /v1/file/stats/{allocation}:
+    get:
+      description: Retrieve file stats from the blobber.
+      operationId: GetFileStats
+      parameters:
+        - description: the allocation ID
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: Path of the file to be copied. Required only if `path_hash` is not provided.
+          in: query
+          name: path
+          type: string
+        - description: Hash of the path of the file to be copied. Required only if `path` is not provided.
+          in: query
+          name: path_hash
+          type: string
+      responses:
+        "200":
+          description: FileStats
+          schema:
+            $ref: '#/definitions/FileStats'
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Get file stats.
+  /v1/file/upload/{allocation}:
+    delete:
+      description: DeleteHandler is the handler to respond to delete requests from clients. The allocation should permit delete for this operation to succeed. Check System Features > Storage > File Operations > File Permissions for more info.
+      operationId: DeleteFile
+      parameters:
+        - description: the allocation ID
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: ID of the connection related to this process. Check 2-PC documentation.
+          in: query
+          name: connection_id
+          required: true
+          type: string
+        - description: Path of the file to be deleted.
+          in: query
+          name: path
+          required: true
+          type: string
+      responses:
+        "200":
+          description: UploadResult
+          schema:
+            $ref: '#/definitions/UploadResult'
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Delete a file.
+    post:
+      description: uploadHandler is the handler to respond to upload requests from clients. The allocation should permit upload for this operation to succeed. Check System Features > Storage > File Operations > File Permissions for more info.
+      operationId: PostUploadFile
+      parameters:
+        - description: the allocation ID
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: ID of the connection related to this process. Check 2-PC documentation.
+          in: query
+          name: connection_id
+          required: true
+          type: string
+        - description: Metadata of the file to be uploaded. It should be a valid JSON object following the UploadFileChanger schema.
+          in: formData
+          name: uploadMeta
+          required: true
+          type: string
+        - description: Thumbnail file to be uploaded. It should be a valid image file.
+          in: formData
+          name: uploadThumbnailFile
+          type: file
+        - description: File to be uploaded.
+          in: formData
+          name: uploadFile
+          required: true
+          type: file
+      responses:
+        "200":
+          description: UploadResult
+          schema:
+            $ref: '#/definitions/UploadResult'
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Upload a file.
+    put:
+      description: UpdateHandler is the handler to respond to update requests from clients. The allocation should permit update for this operation to succeed. Check System Features > Storage > File Operations > File Permissions for more info.
+      operationId: PutUpdateFile
+      parameters:
+        - description: the allocation ID
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: ID of the connection related to this process. Check 2-PC documentation.
+          in: query
+          name: connection_id
+          required: true
+          type: string
+        - description: Metadata of the file to be replaced with the current file. It should be a valid JSON object following the UploadFileChanger schema.
+          in: formData
+          name: uploadMeta
+          required: true
+          type: string
+        - description: Thumbnail file to be replaced. It should be a valid image file.
+          in: formData
+          name: uploadThumbnailFile
+          type: file
+        - description: File to replace the existing one.
+          in: formData
+          name: uploadFile
+          required: true
+          type: file
+      responses:
+        "200":
+          description: UploadResult
+          schema:
+            $ref: '#/definitions/UploadResult'
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Update/Replace a file.
+  /v1/marketplace/shareinfo/{allocation}:
+    delete:
+      description: Handle revoke share requests from clients.
+      operationId: DeleteShare
+      parameters:
+        - description: TxHash of the allocation in question.
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request.
+          in: header
+          name: X-App-Client-Signature
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request. Overrides X-App-Client-Signature if provided.
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: Path of the file to be shared.
+          in: query
+          name: path
+          required: true
+          type: string
+        - description: The ID of the client to revoke access to the file (in case of private sharing).
+          in: query
+          name: refereeClientID
+          type: string
+      responses:
+        "200":
+          description: ""
+        "400":
+          description: ""
+      summary: Revokes access to a shared file.
+    get:
+      description: Retrieve shared files in an allocation by its owner.
+      operationId: GetListShareInfo
+      parameters:
+        - description: the allocation ID
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: Pagination offset, start of the page to retrieve. Default is 0.
+          in: query
+          name: offset
+          type: integer
+        - description: Pagination limit, number of entries in the page to retrieve. Default is 20.
+          in: query
+          name: limit
+          type: integer
+        - description: Direction of sorting based on challenge closure time, either "asc" or "desc". Default is "asc"
+          in: query
+          name: sort
+          type: string
+      responses:
+        "200":
+          description: ShareInfo
+          schema:
+            items:
+              $ref: '#/definitions/ShareInfo'
+            type: array
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: List shared files.
+    post:
+      description: Handle share file requests from clients.
+      operationId: PostShareInfo
+      parameters:
+        - description: TxHash of the allocation in question.
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request.
+          in: header
+          name: X-App-Client-Signature
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request. Overrides X-App-Client-Signature if provided.
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: Public key of the referee client in case of private sharing. Used for proxy re-encryption.
+          in: formData
+          name: encryption_public_key
+          type: string
+        - description: Time after which the file will be accessible for sharing.
+          in: formData
+          name: available_after
+          type: string
+        - description: Body of the auth ticket used to verify the file access. Follows the structure of [`AuthTicket`](#auth-ticket)
+          in: formData
+          name: auth_ticket
+          required: true
+          type: string
+      responses:
+        "200":
+          description: ""
+        "400":
+          description: ""
+      summary: Share a file.
+  /v1/playlist/file/{allocation}:
+    get:
+      description: Loads the metadata of a the playlist file with the given lookup hash.
+      operationId: GetPlaylistFile
+      parameters:
+        - description: allocation id
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: The auth token to access the playlist. This is required when the playlist is accessed by a non-owner of the allocation.
+          in: query
+          name: auth_token
+          type: string
+        - description: The lookup hash of the file for which the playlist is to be retrieved.
+          in: query
+          name: lookup_hash
+          type: string
+      responses:
+        "200":
+          description: PlaylistFile
+          schema:
+            $ref: '#/definitions/PlaylistFile'
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Get playlist file.
+  /v1/writemarker/lock/{allocation}:
+    post:
+      description: LockWriteMarker try to lock writemarker for specified allocation id.
+      operationId: PostLockWriteMarker
+      parameters:
+        - description: allocation id
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: The ID of the connection associated with the write marker.
+          in: query
+          name: connection_id
+          required: true
+          type: string
+      responses:
+        "200":
+          description: WriteMarkerLockResult
+          schema:
+            $ref: '#/definitions/WriteMarkerLockResult'
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Lock a write marker.
+  /v1/writemarker/lock/{allocation}/{connection}:
+    delete:
+      description: UnlockWriteMarker release WriteMarkerMutex locked by the Write Marker Lock endpoint.
+      operationId: DeleteLockWriteMarker
+      parameters:
+        - description: allocation id
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: connection id associae with the write marker
+          in: path
+          name: connection
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+      responses:
+        "200":
+          description: ""
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Unlock a write marker.
+schemes:
+  - https
+swagger: "2.0"
