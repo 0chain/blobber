@@ -100,7 +100,7 @@ func (change *AllocationChange) Save(ctx context.Context) error {
 
 func (change *AllocationChange) Update(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	return db.Table(change.TableName()).Where("lookup_hash = ?", change.LookupHash).Updates(map[string]interface{}{
+	return db.Table(change.TableName()).Where("connection_id = ? AND lookup_hash = ?", change.ConnectionID, change.LookupHash).Updates(map[string]interface{}{
 		"size":       change.Size,
 		"updated_at": time.Now(),
 		"input":      change.Input,
