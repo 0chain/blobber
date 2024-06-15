@@ -210,7 +210,7 @@ func setupHandlers(r *mux.Router) {
 	// r.HandleFunc("/_stats", common.AuthenticateAdmin(StatsHandler))
 	r.HandleFunc("/_stats", RateLimitByCommmitRL(StatsHandler))
 
-	r.HandleFunc("_client_details", common.ToJSONResponse(GetBlobberInfo))
+	r.HandleFunc("_blobber_info", common.ToJSONResponse(GetBlobberInfo))
 
 	r.HandleFunc("/_logs", RateLimitByCommmitRL(common.ToJSONResponse(GetLogs)))
 
