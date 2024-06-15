@@ -31,8 +31,8 @@ func registerOnChain() error {
 		return err
 	}
 
-	// setup blobber (add or update) on the blockchain (multiple attempts)
-	for i := 1; i <= 10; i++ {
+	// setup blobber (add) on the blockchain (multiple attempts)
+	for i := 1; i <= 120; i++ {
 		if i == 1 {
 			fmt.Printf("\r	+ connect to sharders:")
 		} else {
