@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
@@ -134,9 +133,7 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 		}
 		mutex.Lock()
 		defer mutex.Unlock()
-		ctx = GetMetaDataStore().CreateTransaction(ctx, &sql.TxOptions{
-			Isolation: sql.LevelRepeatableRead,
-		})
+		ctx = GetMetaDataStore().CreateTransaction(ctx)
 		tx := GetMetaDataStore().GetTransaction(ctx)
 		resp, statusCode, err = handler(ctx, r)
 
