@@ -44,10 +44,11 @@ Documentation of the blobber API.
 | GET | /v1/file/list/{allocation} | [get list files](#get-list-files) | List files. |
 | GET | /v1/marketplace/shareinfo/{allocation} | [get list share info](#get-list-share-info) | List shared files. |
 | GET | /v1/file/objecttree/{allocation} | [get object tree](#get-object-tree) | Get path object tree. |
-| GET | /v1/file/playlist/{allocation} | [get playlist](#get-playlist) | Get playlist. |
+| GET | /v1/playlist/latest/{allocation} | [get playlist](#get-playlist) | Get playlist. |
 | GET | /v1/playlist/file/{allocation} | [get playlist file](#get-playlist-file) | Get playlist file. |
-| GET | /v1/file/refs/{allocation} | [get recent refs](#get-recent-refs) | Get recent references. |
+| GET | /v1/file/refs/recent/{allocation} | [get recent refs](#get-recent-refs) | Get recent references. |
 | GET | /v1/file/referencepath/{allocation} | [get reference path](#get-reference-path) | Get reference path. |
+| GET | /v1/file/refs/{allocation} | [get refs](#get-refs) | Get references. |
 | POST | /v1/connection/commit/{allocation} | [post commit](#post-commit) | Commit operation. |
 | POST | /v1/connection/create/{allocation} | [post connection](#post-connection) | Store connection in DB. |
 | POST | /v1/file/copy/{allocation} | [post copy](#post-copy) | Copy a file. |
@@ -353,7 +354,8 @@ Status: OK
 GET /v1/file/download/{allocation}
 ```
 
-Download Handler (downloadFile).
+Download Handler (downloadFile). The response is either a byte stream or a FileDownloadResponse, which contains the file data or the thumbnail data, and the merkle proof if the download is verified.
+This depends on the "X-Verify-Download" header. If the header is set to "true", the response is a FileDownloadResponse, otherwise it is a byte stream.
 
 #### Parameters
 
@@ -379,13 +381,13 @@ Download Handler (downloadFile).
 #### All responses
 | Code | Status | Description | Has headers | Schema |
 |------|--------|-------------|:-----------:|--------|
-| [200](#get-download-file-200) | OK | | []byte |  | [schema](#get-download-file-200-schema) |
+| [200](#get-download-file-200) | OK | FileDownloadResponse |  | [schema](#get-download-file-200-schema) |
 | [400](#get-download-file-400) | Bad Request |  |  | [schema](#get-download-file-400-schema) |
 
 #### Responses
 
 
-##### <span id="get-download-file-200"></span> 200 - | []byte
+##### <span id="get-download-file-200"></span> 200 - FileDownloadResponse
 Status: OK
 
 ###### <span id="get-download-file-200-schema"></span> Schema
@@ -405,7 +407,7 @@ Status: Bad Request
 GET /v1/file/meta/{allocation}
 ```
 
-Retrieve file meta data from the blobber.
+Retrieve file meta data from the blobber. Retrieves a generic map of string keys and values.
 
 #### Parameters
 
@@ -698,7 +700,7 @@ Status: Internal Server Error
 ### <span id="get-playlist"></span> Get playlist. (*GetPlaylist*)
 
 ```
-GET /v1/file/playlist/{allocation}
+GET /v1/playlist/latest/{allocation}
 ```
 
 Loads playlist from a given path in an allocation.
@@ -800,7 +802,7 @@ Status: Internal Server Error
 ### <span id="get-recent-refs"></span> Get recent references. (*GetRecentRefs*)
 
 ```
-GET /v1/file/refs/{allocation}
+GET /v1/file/refs/recent/{allocation}
 ```
 
 Retrieve recent references added to an allocation, starting at a specific date, organized in a paginated table.
@@ -898,6 +900,64 @@ Status: Bad Request
 Status: Internal Server Error
 
 ###### <span id="get-reference-path-500-schema"></span> Schema
+
+### <span id="get-refs"></span> Get references. (*GetRefs*)
+
+```
+GET /v1/file/refs/{allocation}
+```
+
+Retrieve references of all the decendents of a given path including itself, organized in a paginated table.
+
+#### Parameters
+
+| Name | Source | Type | Go type | Separator | Required | Default | Description |
+|------|--------|------|---------|-----------| :------: |---------|-------------|
+| allocation | `path` | string | `string` |  | ✓ |  | allocation ID |
+| ALLOCATION-ID | `header` | string | `string` |  | ✓ |  | The ID of the allocation in question. |
+| X-App-Client-ID | `header` | string | `string` |  | ✓ |  | The ID/Wallet address of the client sending the request. |
+| X-App-Client-Key | `header` | string | `string` |  | ✓ |  | The key of the client sending the request. |
+| X-App-Client-Signature | `header` | string | `string` |  |  |  | Digital signature of the client used to verify the request if the X-Version is not "v2" |
+| X-App-Client-Signature-V2 | `header` | string | `string` |  |  |  | Digital signature of the client used to verify the request if the X-Version is "v2" |
+| auth_token | `query` | string | `string` |  |  |  | The auth ticket for the file to show meta data of if the client does not own it. Check File Sharing docs for more info. |
+| fileType | `query` | string | `string` |  |  |  | Type of the references to list. Can be "f" for file or "d" for directory. Both will be retrieved if not provided. |
+| level | `query` | integer | `int64` |  |  |  | Level of the references to list (number of parents of the reference). Can be "0" for root level or "1" for first level and so on. All levels will be retrieved if not provided. |
+| offsetDate | `query` | string | `string` |  |  |  | Date of the file to start the listing from.  Used in case the user needs to list refs updated at some period of time. |
+| offsetPath | `query` | string | `string` |  |  |  | Path of the file to start the listing from. Used for pagination. |
+| pageLimit | `query` | integer | `int64` |  |  |  | Number of records to show per page. Default is 20. |
+| path | `query` | string | `string` |  |  |  | Path of the file needed to get reference path of. Required only if no "paths" are provided. |
+| path_hash | `query` | string | `string` |  |  |  | Hash of the path of the file to be copied. Required only if `path` is not provided. |
+| refType | `query` | string | `string` |  | ✓ |  | Can be "updated" (along with providing `updateDate` and `offsetDate`) to retrieve refs with updated_at date later than the provided date in both fields, or "regular" otherwise. |
+| updateDate | `query` | string | `string` |  |  |  | Same as offsetDate but both should be provided. |
+
+#### All responses
+| Code | Status | Description | Has headers | Schema |
+|------|--------|-------------|:-----------:|--------|
+| [200](#get-refs-200) | OK | RefResult |  | [schema](#get-refs-200-schema) |
+| [400](#get-refs-400) | Bad Request |  |  | [schema](#get-refs-400-schema) |
+| [500](#get-refs-500) | Internal Server Error |  |  | [schema](#get-refs-500-schema) |
+
+#### Responses
+
+
+##### <span id="get-refs-200"></span> 200 - RefResult
+Status: OK
+
+###### <span id="get-refs-200-schema"></span> Schema
+   
+  
+
+[RefResult](#ref-result)
+
+##### <span id="get-refs-400"></span> 400
+Status: Bad Request
+
+###### <span id="get-refs-400-schema"></span> Schema
+
+##### <span id="get-refs-500"></span> 500
+Status: Internal Server Error
+
+###### <span id="get-refs-500-schema"></span> Schema
 
 ### <span id="post-commit"></span> Commit operation. (*PostCommit*)
 
@@ -1359,7 +1419,7 @@ Status: Internal Server Error
 POST /v1/marketplace/shareinfo/{allocation}
 ```
 
-Handle share file requests from clients.
+Handle share file requests from clients. Returns generic mapping. 
 
 #### Parameters
 
@@ -2051,7 +2111,6 @@ it can be used as a scan destination, similar to [NullString].
 |------|------|---------|:--------:| ------- |-------------|---------|
 | List | [][ReferencePath](#reference-path)| `[]*ReferencePath` |  | |  |  |
 | Meta | map of any | `map[string]interface{}` |  | |  |  |
-| Ref | [Ref](#ref)| `Ref` |  | |  |  |
 
 
 
@@ -2068,7 +2127,6 @@ it can be used as a scan destination, similar to [NullString].
 |------|------|---------|:--------:| ------- |-------------|---------|
 | List | [][ReferencePath](#reference-path)| `[]*ReferencePath` |  | |  |  |
 | Meta | map of any | `map[string]interface{}` |  | |  |  |
-| Ref | [Ref](#ref)| `Ref` |  | |  |  |
 | Version | string| `string` |  | |  |  |
 | latest_write_marker | [WriteMarker](#write-marker)| `WriteMarker` |  | |  |  |
 
