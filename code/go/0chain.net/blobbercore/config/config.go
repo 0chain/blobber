@@ -52,7 +52,7 @@ func SetupDefaultConfig() {
 	viper.SetDefault("finalize_allocations_interval", time.Duration(-1))
 
 	viper.SetDefault("max_dirs_files", 50000)
-	viper.SetDefault("max_objects_dir", 1000)
+	viper.SetDefault("max_objects_dir", 10000)
 }
 
 /*SetupConfig - setup the configuration system */
