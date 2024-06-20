@@ -53,7 +53,7 @@ func SendPostRequest(postURL string, data []byte, wg *sync.WaitGroup) (body []by
 
 		req, ctx, cncl, err = NewHTTPRequest(http.MethodPost, u.String(), data)
 		defer cncl()
-		req.Header.Set("Content-Encoding", "lz4")
+		req.Header.Set("Content-Encoding", "gzip")
 		resp, err = http.DefaultClient.Do(req.WithContext(ctx))
 		if err == nil {
 			if resp.StatusCode >= 200 && resp.StatusCode <= 299 {

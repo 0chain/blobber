@@ -180,7 +180,7 @@ func ToGzipJSONResponse(handler JSONResponderF) ReqRespHandlerf {
 		}
 		ctx := r.Context()
 		data, err := handler(ctx, r)
-		RespondLz4(w, data, err)
+		RespondGzip(w, data, err)
 	}
 }
 
