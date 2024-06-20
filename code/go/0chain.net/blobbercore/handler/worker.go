@@ -101,6 +101,7 @@ func cleanupTempFiles(ctx context.Context) {
 				ndb.Unscoped().Delete(c)
 			}
 			ndb.Unscoped().Delete(connection)
+			allocation.DeleteConnectionObjEntry(connection.ID)
 		}
 
 		ndb.Commit()

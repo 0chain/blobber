@@ -15,7 +15,7 @@ import (
 
 var (
 	// ConnectionObjCleanInterval start to clean the connectionObjMap
-	ConnectionObjCleanInterval = 10 * time.Minute
+	ConnectionObjCleanInterval = 45 * time.Minute
 	// ConnectionObjTimout after which connectionObj entry should be invalid
 	ConnectionObjTimeout = 30 * time.Minute
 )
@@ -182,7 +182,11 @@ func SaveFileChange(ctx context.Context, connectionID, pathHash, fileName string
 		change.lock.Lock()
 		defer change.lock.Unlock()
 		connectionObj.lock.Unlock()
-		err := cmd.AddChange(ctx)
+		_, err := GetConnectionObj(ctx, connectionID, connectionObj.AllocationID, connectionObj.ClientID)
+		if err != nil {
+			return saveChange, err
+		}
+		err = cmd.AddChange(ctx)
 		if err != nil {
 			return saveChange, err
 		}

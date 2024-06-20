@@ -189,7 +189,7 @@ func GetConnectionObj(ctx context.Context, connectionID, allocationID, clientID 
 		cc.AllocationID = allocationID
 		cc.ClientID = clientID
 		cc.Status = NewConnection
-		err = cc.Create(ctx)
+		err = cc.Save(ctx)
 		if err != nil {
 			return nil, err
 		}
