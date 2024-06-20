@@ -174,10 +174,11 @@ func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clien
 func GetConnectionObj(ctx context.Context, connectionID, allocationID, clientID string) (*AllocationChangeCollector, error) {
 	cc := &AllocationChangeCollector{}
 	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Where("id = ? and allocation_id = ? and client_id = ?",
+	err := db.Where("id = ? and allocation_id = ? and client_id = ? AND status <> ?",
 		connectionID,
 		allocationID,
 		clientID,
+		DeletedConnection,
 	).Take(cc).Error
 
 	if err == nil {
