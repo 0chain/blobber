@@ -847,6 +847,12 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 						sqlmock.NewRows([]string{"found"}).
 							AddRow(false),
 					)
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocation_connections" WHERE`)).
+					WithArgs(connectionID, alloc.ID, alloc.OwnerID, allocation.DeletedConnection).
+					WillReturnRows(
+						sqlmock.NewRows([]string{"id", "allocation_id", "client_id"}).
+							AddRow("connection_id", alloc.ID, alloc.OwnerID),
+					)
 				mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "allocation_changes"`)).
 					WithArgs(aa, aa, aa, aa, aa, aa, aa).
 					WillReturnRows(
