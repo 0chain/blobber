@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -126,7 +127,7 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths, 
 	var refs []Ref
 	t := datastore.GetStore().GetTransaction(ctx)
 	db := t.DB
-
+	now := time.Now()
 	pathsAdded := make(map[string]bool)
 	var shouldOr bool
 	for _, path := range paths {
@@ -178,7 +179,7 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths, 
 		refMap[refs[i].Path] = &refs[i]
 
 	}
-
+	elapsedRef := time.Since(now)
 	for _, path := range objTreePath {
 		ref, err := GetObjectTree(ctx, allocationID, path)
 		if err != nil {
@@ -196,6 +197,8 @@ func GetReferencePathFromPaths(ctx context.Context, allocationID string, paths, 
 			refMap[ref.Path].childrenLoaded = true
 		}
 	}
+	elapsedObjectTree := time.Since(now) - elapsedRef
+	logging.Logger.Info("getReferencePathFromPaths", zap.Duration("total_time", time.Since(now)), zap.Duration("elapsed_ref", elapsedRef), zap.Duration("elapsed_obj_tree", elapsedObjectTree))
 
 	return &refs[0], nil
 }
