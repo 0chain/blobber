@@ -2,7 +2,6 @@ package challenge
 
 import (
 	"bytes"
-	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -23,6 +22,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/blobber/code/go/0chain.net/core/util"
 	sdkUtil "github.com/0chain/gosdk/core/util"
+	"github.com/pierrec/lz4/v4"
 	"github.com/remeh/sizedwaitgroup"
 	"gorm.io/gorm"
 
@@ -224,13 +224,14 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	}
 	allocMu.RUnlock()
 	validationTicketPayload := new(bytes.Buffer)
-	gw := gzip.NewWriter(validationTicketPayload)
-	err = json.NewEncoder(gw).Encode(postData)
+	lw := lz4.NewWriter(validationTicketPayload)
+	err = json.NewEncoder(lw).Encode(postData)
 	if err != nil {
 		logging.Logger.Error("json encoding failed: " + err.Error())
 		cr.CancelChallenge(ctx, err)
 		return err
 	}
+	lw.Close() //nolint:errcheck
 	logging.Logger.Info("[challenge]post: ", zap.Any("challenge_id", cr.ChallengeID), zap.Any("post_data_len", validationTicketPayload.Len()/(1024*1024)))
 
 	responses := make(map[string]ValidationTicket)

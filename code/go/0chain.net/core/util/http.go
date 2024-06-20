@@ -32,16 +32,6 @@ func NewHTTPRequest(method, url string, data []byte) (*http.Request, context.Con
 	return req, ctx, cncl, err
 }
 
-func SendMultiPostRequest(urls []string, data []byte) {
-	wg := sync.WaitGroup{}
-	wg.Add(len(urls))
-
-	for _, url := range urls {
-		go SendPostRequest(url, data, &wg) //nolint:errcheck // goroutines
-	}
-	wg.Wait()
-}
-
 func SendPostRequest(postURL string, data []byte, wg *sync.WaitGroup) (body []byte, err error) {
 	if wg != nil {
 		defer wg.Done()
@@ -63,7 +53,7 @@ func SendPostRequest(postURL string, data []byte, wg *sync.WaitGroup) (body []by
 
 		req, ctx, cncl, err = NewHTTPRequest(http.MethodPost, u.String(), data)
 		defer cncl()
-
+		req.Header.Set("Content-Encoding", "lz4")
 		resp, err = http.DefaultClient.Do(req.WithContext(ctx))
 		if err == nil {
 			if resp.StatusCode >= 200 && resp.StatusCode <= 299 {

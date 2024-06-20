@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+
+	"github.com/pierrec/lz4/v4"
 )
 
 const (
@@ -80,6 +82,28 @@ func RespondGzip(w http.ResponseWriter, data any, err error) {
 		gw := gzip.NewWriter(w)
 		defer gw.Close()
 		json.NewEncoder(gw).Encode(data) //nolint:errcheck // checked in previous step
+	}
+}
+
+func RespondLz4(w http.ResponseWriter, data any, err error) {
+	w.Header().Set("Access-Control-Allow-Origin", "*") // CORS for all.
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	if err != nil {
+		data := make(map[string]interface{}, 2)
+		data["error"] = err.Error()
+		if cerr, ok := err.(*Error); ok {
+			data["code"] = cerr.Code
+		}
+		buf := bytes.NewBuffer(nil)
+		json.NewEncoder(buf).Encode(data) //nolint:errcheck // checked in previous step
+		w.WriteHeader(400)
+		fmt.Fprintln(w, buf.String())
+	} else if data != nil {
+		w.Header().Set("Content-Encoding", "lz4")
+		lw := lz4.NewWriter(w)
+		defer lw.Close()
+		json.NewEncoder(lw).Encode(data) //nolint:errcheck // checked in previous step
 	}
 }
 
@@ -156,7 +180,7 @@ func ToGzipJSONResponse(handler JSONResponderF) ReqRespHandlerf {
 		}
 		ctx := r.Context()
 		data, err := handler(ctx, r)
-		RespondGzip(w, data, err)
+		RespondLz4(w, data, err)
 	}
 }
 

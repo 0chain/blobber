@@ -13,6 +13,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+	"github.com/pierrec/lz4/v4"
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/sha3"
@@ -66,8 +67,9 @@ func NewChallengeRequest(r *http.Request) (*ChallengeRequest, string, error) {
 	requestHash := r.Header.Get("X-App-Request-Hash")
 	h := sha3.New256()
 	tReader := io.TeeReader(r.Body, h)
+	lr := lz4.NewReader(tReader)
 	var challengeRequest ChallengeRequest
-	decoder := json.NewDecoder(tReader)
+	decoder := json.NewDecoder(lr)
 	err := decoder.Decode(&challengeRequest)
 	if err != nil {
 		logging.Logger.Error("Error decoding the input to validator")
