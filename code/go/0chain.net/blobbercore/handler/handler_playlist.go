@@ -8,7 +8,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
-// swagger:route GET /v1/file/playlist/{allocation} GetPlaylist
+// swagger:route GET /v1/playlist/latest/{allocation} GetPlaylist
 // Get playlist.
 // Loads playlist from a given path in an allocation.
 //

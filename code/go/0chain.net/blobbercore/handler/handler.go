@@ -389,7 +389,7 @@ func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error
 
 // swagger:route GET /v1/file/meta/{allocation} GetFileMeta
 // Get file meta data.
-// Retrieve file meta data from the blobber.
+// Retrieve file meta data from the blobber. Retrieves a generic map of string keys and values.
 //
 // parameters:
 //
@@ -1011,7 +1011,7 @@ func RefsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
-// swagger:route GET /v1/file/refs/{allocation} GetRecentRefs
+// swagger:route GET /v1/file/refs/recent/{allocation} GetRecentRefs
 // Get recent references.
 // Retrieve recent references added to an allocation, starting at a specific date, organized in a paginated table.
 //
@@ -1736,7 +1736,7 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 // swagger:route POST /v1/marketplace/shareinfo/{allocation} PostShareInfo
 // Share a file.
-// Handle share file requests from clients.
+// Handle share file requests from clients. Returns generic mapping. 
 //
 // parameters:
 //   +name: allocation
@@ -1785,9 +1785,6 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 // responses:
 //
 //	200:
-//		description: "Generic map response `map[string]interface{}`"
-// 		examples:
-//			{"message": "Share info added successfully"}
 //	400:
 
 func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {

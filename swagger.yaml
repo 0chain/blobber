@@ -736,8 +736,6 @@ definitions:
     x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp
   ReferencePath:
     properties:
-      Ref:
-        $ref: '#/definitions/Ref'
       list:
         items:
           $ref: '#/definitions/ReferencePath'
@@ -751,8 +749,6 @@ definitions:
     x-go-package: github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference
   ReferencePathResult:
     properties:
-      Ref:
-        $ref: '#/definitions/Ref'
       latest_write_marker:
         $ref: '#/definitions/WriteMarker'
       list:
@@ -1491,7 +1487,9 @@ paths:
       summary: Copy a file.
   /v1/file/download/{allocation}:
     get:
-      description: Download Handler (downloadFile).
+      description: |-
+        Download Handler (downloadFile). The response is either a byte stream or a FileDownloadResponse, which contains the file data or the thumbnail data, and the merkle proof if the download is verified.
+        This depends on the "X-Verify-Download" header. If the header is set to "true", the response is a FileDownloadResponse, otherwise it is a byte stream.
       operationId: GetDownloadFile
       parameters:
         - description: TxHash of the allocation in question.
@@ -1567,7 +1565,7 @@ paths:
           type: string
       responses:
         "200":
-          description: '| []byte'
+          description: FileDownloadResponse
           schema:
             $ref: '#/definitions/FileDownloadResponse'
         "400":
@@ -1686,7 +1684,7 @@ paths:
       summary: List files.
   /v1/file/meta/{allocation}:
     get:
-      description: Retrieve file meta data from the blobber.
+      description: Retrieve file meta data from the blobber. Retrieves a generic map of string keys and values.
       operationId: GetFileMeta
       parameters:
         - description: the allocation ID
@@ -1851,67 +1849,6 @@ paths:
         "500":
           description: ""
       summary: Get path object tree.
-  /v1/file/playlist/{allocation}:
-    get:
-      description: Loads playlist from a given path in an allocation.
-      operationId: GetPlaylist
-      parameters:
-        - description: allocation id
-          in: path
-          name: allocation
-          required: true
-          type: string
-        - description: The ID/Wallet address of the client sending the request.
-          in: header
-          name: X-App-Client-ID
-          required: true
-          type: string
-        - description: The key of the client sending the request.
-          in: header
-          name: X-App-Client-Key
-          required: true
-          type: string
-        - description: The ID of the allocation in question.
-          in: header
-          name: ALLOCATION-ID
-          required: true
-          type: string
-        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
-          in: header
-          name: X-App-Client-Signature
-          type: string
-        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
-          in: header
-          name: X-App-Client-Signature-V2
-          type: string
-        - description: The lookup hash of the file from which to start the playlist. The retrieved playlist will start from the id associated with this lookup hash and going forward.
-          in: query
-          name: since
-          type: string
-        - description: The auth token to access the playlist. This is required when the playlist is accessed by a non-owner of the allocation.
-          in: query
-          name: auth_token
-          type: string
-        - description: The lookup hash of the file for which the playlist is to be retrieved. This is required when the playlist is accessed by a non-owner of the allocation.
-          in: query
-          name: lookup_hash
-          type: string
-        - description: The path of the file for which the playlist is to be retrieved. This is required when the playlist is accessed by the owner of the allocation.
-          in: query
-          name: path
-          type: string
-      responses:
-        "200":
-          description: PlaylistFile
-          schema:
-            items:
-              $ref: '#/definitions/PlaylistFile'
-            type: array
-        "400":
-          description: ""
-        "500":
-          description: ""
-      summary: Get playlist.
   /v1/file/referencepath/{allocation}:
     get:
       description: |-
@@ -1966,6 +1903,90 @@ paths:
           description: ""
       summary: Get reference path.
   /v1/file/refs/{allocation}:
+    get:
+      description: Retrieve references of all the decendents of a given path including itself, organized in a paginated table.
+      operationId: GetRefs
+      parameters:
+        - description: allocation ID
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: Path of the file needed to get reference path of. Required only if no "paths" are provided.
+          in: query
+          name: path
+          type: string
+        - description: The auth ticket for the file to show meta data of if the client does not own it. Check File Sharing docs for more info.
+          in: query
+          name: auth_token
+          type: string
+        - description: Hash of the path of the file to be copied. Required only if `path` is not provided.
+          in: query
+          name: path_hash
+          type: string
+        - description: Can be "updated" (along with providing `updateDate` and `offsetDate`) to retrieve refs with updated_at date later than the provided date in both fields, or "regular" otherwise.
+          in: query
+          name: refType
+          required: true
+          type: string
+        - description: Number of records to show per page. Default is 20.
+          in: query
+          name: pageLimit
+          type: integer
+        - description: Path of the file to start the listing from. Used for pagination.
+          in: query
+          name: offsetPath
+          type: string
+        - description: Date of the file to start the listing from.  Used in case the user needs to list refs updated at some period of time.
+          in: query
+          name: offsetDate
+          type: string
+        - description: Same as offsetDate but both should be provided.
+          in: query
+          name: updateDate
+          type: string
+        - description: Type of the references to list. Can be "f" for file or "d" for directory. Both will be retrieved if not provided.
+          in: query
+          name: fileType
+          type: string
+        - description: Level of the references to list (number of parents of the reference). Can be "0" for root level or "1" for first level and so on. All levels will be retrieved if not provided.
+          in: query
+          name: level
+          type: integer
+      responses:
+        "200":
+          description: RefResult
+          schema:
+            $ref: '#/definitions/RefResult'
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Get references.
+  /v1/file/refs/recent/{allocation}:
     get:
       description: Retrieve recent references added to an allocation, starting at a specific date, organized in a paginated table.
       operationId: GetRecentRefs
@@ -2415,7 +2436,7 @@ paths:
           description: ""
       summary: List shared files.
     post:
-      description: Handle share file requests from clients.
+      description: 'Handle share file requests from clients. Returns generic mapping. '
       operationId: PostShareInfo
       parameters:
         - description: TxHash of the allocation in question.
@@ -2517,6 +2538,67 @@ paths:
         "500":
           description: ""
       summary: Get playlist file.
+  /v1/playlist/latest/{allocation}:
+    get:
+      description: Loads playlist from a given path in an allocation.
+      operationId: GetPlaylist
+      parameters:
+        - description: allocation id
+          in: path
+          name: allocation
+          required: true
+          type: string
+        - description: The ID/Wallet address of the client sending the request.
+          in: header
+          name: X-App-Client-ID
+          required: true
+          type: string
+        - description: The key of the client sending the request.
+          in: header
+          name: X-App-Client-Key
+          required: true
+          type: string
+        - description: The ID of the allocation in question.
+          in: header
+          name: ALLOCATION-ID
+          required: true
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+          in: header
+          name: X-App-Client-Signature
+          type: string
+        - description: Digital signature of the client used to verify the request if the X-Version is "v2"
+          in: header
+          name: X-App-Client-Signature-V2
+          type: string
+        - description: The lookup hash of the file from which to start the playlist. The retrieved playlist will start from the id associated with this lookup hash and going forward.
+          in: query
+          name: since
+          type: string
+        - description: The auth token to access the playlist. This is required when the playlist is accessed by a non-owner of the allocation.
+          in: query
+          name: auth_token
+          type: string
+        - description: The lookup hash of the file for which the playlist is to be retrieved. This is required when the playlist is accessed by a non-owner of the allocation.
+          in: query
+          name: lookup_hash
+          type: string
+        - description: The path of the file for which the playlist is to be retrieved. This is required when the playlist is accessed by the owner of the allocation.
+          in: query
+          name: path
+          type: string
+      responses:
+        "200":
+          description: PlaylistFile
+          schema:
+            items:
+              $ref: '#/definitions/PlaylistFile'
+            type: array
+        "400":
+          description: ""
+        "500":
+          description: ""
+      summary: Get playlist.
   /v1/writemarker/lock/{allocation}:
     post:
       description: LockWriteMarker try to lock writemarker for specified allocation id.
