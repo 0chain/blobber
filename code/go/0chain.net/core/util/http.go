@@ -23,7 +23,8 @@ const SLEEP_BETWEEN_RETRIES = 5
 func NewHTTPRequest(method, url string, data []byte) (*http.Request, context.Context, context.CancelFunc, error) {
 	requestHash := encryption.Hash(data)
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(data))
-	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Encoding", "gzip")
 	req.Header.Set("Access-Control-Allow-Origin", "*")
 	req.Header.Set("X-App-Client-ID", node.Self.ID)
 	req.Header.Set("X-App-Client-Key", node.Self.PublicKey)
@@ -53,7 +54,6 @@ func SendPostRequest(postURL string, data []byte, wg *sync.WaitGroup) (body []by
 
 		req, ctx, cncl, err = NewHTTPRequest(http.MethodPost, u.String(), data)
 		defer cncl()
-		req.Header.Set("Content-Encoding", "gzip")
 		resp, err = http.DefaultClient.Do(req.WithContext(ctx))
 		if err == nil {
 			if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
