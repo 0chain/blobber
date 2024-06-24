@@ -49,6 +49,7 @@ func main() {
 			logging.Logger.Error("Error register on blockchain" + err.Error())
 			panic(err)
 		}
+		logging.Logger.Info("Blobber registered")
 		handler.BlobberRegistered = true
 	}()
 
