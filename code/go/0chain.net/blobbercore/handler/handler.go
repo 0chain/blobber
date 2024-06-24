@@ -210,8 +210,6 @@ func setupHandlers(r *mux.Router) {
 	// r.HandleFunc("/_stats", common.AuthenticateAdmin(StatsHandler))
 	r.HandleFunc("/_stats", RateLimitByCommmitRL(StatsHandler))
 
-	r.HandleFunc("/_blobber_info", common.ToJSONResponse(GetBlobberInfo))
-
 	r.HandleFunc("/_logs", RateLimitByCommmitRL(common.ToJSONResponse(GetLogs)))
 
 	// r.HandleFunc("/_cleanupdisk", common.AuthenticateAdmin(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))
@@ -1736,7 +1734,7 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 // swagger:route POST /v1/marketplace/shareinfo/{allocation} PostShareInfo
 // Share a file.
-// Handle share file requests from clients. Returns generic mapping. 
+// Handle share file requests from clients. Returns generic mapping.
 //
 // parameters:
 //   +name: allocation

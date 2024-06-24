@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/handler"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 )
@@ -43,10 +44,15 @@ func main() {
 	// when enabled "// +build integration_tests", this sets blobber for conductor tests.
 	prepareBlobber(node.Self.ID)
 
-	if err := registerOnChain(); err != nil {
-		logging.Logger.Error("Error register on blockchain" + err.Error())
-		panic(err)
-	}
+	go func() {
+		handler.BlobberRegisterMutex.Lock()
+		if err := registerOnChain(); err != nil {
+			logging.Logger.Error("Error register on blockchain" + err.Error())
+			panic(err)
+		}
+		handler.BlobberRegisterMutex.Unlock()
+		handler.BlobberRegisterCond.Broadcast()
+	}()
 
 	if err := setStorageScConfigFromChain(); err != nil {
 		logging.Logger.Error("Error setStorageScConfigFromChain" + err.Error())
