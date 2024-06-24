@@ -135,6 +135,16 @@ func SetupSwagger() {
 	http.Handle("/docs1", sh1)
 }
 
+func WithBlobberRegisteredCondition(handler common.ReqRespHandlerf) common.ReqRespHandlerf {
+	if !BlobberRegistered {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			w.Write([]byte("Blobber not registered yet"))
+		}
+	}
+	return handler
+}
+
 /*setupHandlers sets up the necessary API end points */
 func setupHandlers(r *mux.Router) {
 	ConfigRateLimits()
@@ -211,6 +221,8 @@ func setupHandlers(r *mux.Router) {
 	r.HandleFunc("/_stats", RateLimitByCommmitRL(StatsHandler))
 
 	r.HandleFunc("/_logs", RateLimitByCommmitRL(common.ToJSONResponse(GetLogs)))
+
+	r.HandleFunc("/_blobber_info", common.ToJSONResponse(GetBlobberInfo))
 
 	// r.HandleFunc("/_cleanupdisk", common.AuthenticateAdmin(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))
 	// r.HandleFunc("/_cleanupdisk", RateLimitByCommmitRL(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))

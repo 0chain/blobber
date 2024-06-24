@@ -45,13 +45,11 @@ func main() {
 	prepareBlobber(node.Self.ID)
 
 	go func() {
-		handler.BlobberRegisterMutex.Lock()
 		if err := registerOnChain(); err != nil {
 			logging.Logger.Error("Error register on blockchain" + err.Error())
 			panic(err)
 		}
-		handler.BlobberRegisterMutex.Unlock()
-		handler.BlobberRegisterCond.Broadcast()
+		handler.BlobberRegistered = true
 	}()
 
 	if err := setStorageScConfigFromChain(); err != nil {
