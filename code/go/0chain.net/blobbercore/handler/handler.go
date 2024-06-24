@@ -200,7 +200,7 @@ func setupHandlers(r *mux.Router) {
 		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler)))) // TODO: add swagger
 
 	r.HandleFunc("/v1/file/referencepath/{allocation}",
-		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler)))) // TODO: add handler
+		RateLimitByObjectRL(common.ToGzipJSONResponse(WithReadOnlyConnection(ReferencePathHandler)))) // TODO: add handler
 
 	r.HandleFunc("/v1/file/latestwritemarker/{allocation}",
 		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(WriteMarkerHandler))))

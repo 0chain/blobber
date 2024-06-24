@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -66,9 +67,14 @@ func NewChallengeRequest(r *http.Request) (*ChallengeRequest, string, error) {
 	requestHash := r.Header.Get("X-App-Request-Hash")
 	h := sha3.New256()
 	tReader := io.TeeReader(r.Body, h)
+	var requestBody io.Reader
+	if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
+		requestBody, _ = gzip.NewReader(tReader)
+	} else {
+		requestBody = tReader
+	}
 	var challengeRequest ChallengeRequest
-	decoder := json.NewDecoder(tReader)
-	err := decoder.Decode(&challengeRequest)
+	err := json.NewDecoder(requestBody).Decode(&challengeRequest)
 	if err != nil {
 		logging.Logger.Error("Error decoding the input to validator")
 		return nil, "", common.NewError("input_decode_error", "Error in decoding the input."+err.Error())

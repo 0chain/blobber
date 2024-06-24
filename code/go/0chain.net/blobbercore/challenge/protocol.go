@@ -1,6 +1,8 @@
 package challenge
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -221,14 +223,17 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		return err
 	}
 	allocMu.RUnlock()
-
-	postDataBytes, err := json.Marshal(postData)
-	logging.Logger.Info("[challenge]post: ", zap.Any("challenge_id", cr.ChallengeID), zap.Any("post_data_len", len(postDataBytes)/(1024*1024)))
+	validationTicketPayload := new(bytes.Buffer)
+	gw := gzip.NewWriter(validationTicketPayload)
+	err = json.NewEncoder(gw).Encode(postData)
 	if err != nil {
-		logging.Logger.Error("[db]form: " + err.Error())
+		logging.Logger.Error("json encoding failed: " + err.Error())
 		cr.CancelChallenge(ctx, err)
 		return err
 	}
+	gw.Close() //nolint:errcheck
+	logging.Logger.Info("[challenge]post: ", zap.Any("challenge_id", cr.ChallengeID), zap.Any("post_data_len", validationTicketPayload.Len()/(1024*1024)))
+
 	responses := make(map[string]ValidationTicket)
 	if cr.ValidationTickets == nil {
 		cr.ValidationTickets = make([]*ValidationTicket, len(cr.Validators))
@@ -264,7 +269,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 		go func(url, validatorID string, i int) {
 			defer swg.Done()
 
-			resp, err := util.SendPostRequest(url, postDataBytes, nil)
+			resp, err := util.SendPostRequest(url, validationTicketPayload.Bytes(), nil)
 			if err != nil {
 				numFailed++
 				logging.Logger.Error("[challenge]post: ", zap.Any("error", err.Error()))
