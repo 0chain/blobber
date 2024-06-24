@@ -152,61 +152,61 @@ func setupHandlers(r *mux.Router) {
 
 	//object operations
 	r.HandleFunc("/v1/connection/create/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(CreateConnectionHandler)))).
+		RateLimitByGeneralRL(WithBlobberRegisteredCondition(common.ToJSONResponse(WithConnection(CreateConnectionHandler))))).
 		Methods(http.MethodPost)
 
 	r.HandleFunc("/v1/connection/redeem/{allocation}",
-		RateLimitByGeneralRL(common.ToByteStream(WithConnection(RedeemHandler)))).
+		RateLimitByGeneralRL(WithBlobberRegisteredCondition(common.ToByteStream(WithConnection(RedeemHandler))))).
 		Methods(http.MethodPost, http.MethodOptions)
 
 	r.HandleFunc("/v1/file/rename/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(RenameHandler)))).
+		RateLimitByGeneralRL(WithBlobberRegisteredCondition(common.ToJSONResponse(WithConnection(RenameHandler))))).
 		Methods(http.MethodPost, http.MethodOptions)
 
 	r.HandleFunc("/v1/file/copy/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(CopyHandler)))).
+		RateLimitByGeneralRL(WithBlobberRegisteredCondition(common.ToJSONResponse(WithConnection(CopyHandler))))).
 		Methods(http.MethodPost, http.MethodOptions)
 
 	r.HandleFunc("/v1/file/move/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(MoveHandler)))).
+		RateLimitByGeneralRL(WithBlobberRegisteredCondition(common.ToJSONResponse(WithConnection(MoveHandler))))).
 		Methods(http.MethodPost, http.MethodOptions)
 
 	r.HandleFunc("/v1/dir/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(CreateDirHandler)))).
+		RateLimitByGeneralRL(WithBlobberRegisteredCondition(common.ToJSONResponse(WithConnection(CreateDirHandler))))).
 		Methods(http.MethodPost, http.MethodDelete, http.MethodOptions)
 
 	r.HandleFunc("/v1/connection/commit/{allocation}",
-		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnectionForWM(CommitHandler))))
+		RateLimitByCommmitRL(WithBlobberRegisteredCondition(common.ToStatusCode(WithStatusConnectionForWM(CommitHandler)))))
 
 	r.HandleFunc("/v1/connection/rollback/{allocation}",
-		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnectionForWM(RollbackHandler))))
+		RateLimitByCommmitRL(WithBlobberRegisteredCondition(common.ToStatusCode(WithStatusConnectionForWM(RollbackHandler)))))
 
 	//object info related apis
 	r.HandleFunc("/allocation",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(AllocationHandler))))
+		RateLimitByGeneralRL(WithBlobberRegisteredCondition(common.ToJSONResponse(WithConnection(AllocationHandler)))))
 
 	r.HandleFunc("/v1/file/meta/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler))))
+		RateLimitByGeneralRL(WithBlobberRegisteredCondition(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler)))))
 
 	r.HandleFunc("/v1/file/stats/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler))))
+		RateLimitByGeneralRL(WithBlobberRegisteredCondition(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler)))))
 
 	r.HandleFunc("/v1/file/referencepath/{allocation}",
-		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler))))
+		RateLimitByObjectRL(WithBlobberRegisteredCondition(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler)))))
 
 	r.HandleFunc("/v1/file/latestwritemarker/{allocation}",
-		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(WriteMarkerHandler))))
+		RateLimitByObjectRL(WithBlobberRegisteredCondition(common.ToJSONResponse(WithReadOnlyConnection(WriteMarkerHandler)))))
 
 	r.HandleFunc("/v1/file/objecttree/{allocation}",
-		RateLimitByObjectRL(common.ToStatusCode(WithStatusReadOnlyConnection(ObjectTreeHandler)))).
+		RateLimitByObjectRL(WithBlobberRegisteredCondition(common.ToStatusCode(WithStatusReadOnlyConnection(ObjectTreeHandler))))).
 		Methods(http.MethodGet, http.MethodOptions)
 
 	r.HandleFunc("/v1/file/refs/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(RefsHandler)))).
+		RateLimitByGeneralRL(WithBlobberRegisteredCondition(common.ToJSONResponse(WithReadOnlyConnection(RefsHandler))))).
 		Methods(http.MethodGet, http.MethodOptions)
 
 	r.HandleFunc("/v1/file/refs/recent/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(RecentRefsRequestHandler)))).
+		RateLimitByGeneralRL(WithBlobberRegisteredCondition(common.ToJSONResponse(WithReadOnlyConnection(RecentRefsRequestHandler))))).
 		Methods(http.MethodGet, http.MethodOptions)
 
 	// admin related
@@ -214,37 +214,37 @@ func setupHandlers(r *mux.Router) {
 	// uncommented and line below it should be deleted
 
 	r.HandleFunc("/_debug", common.AuthenticateAdmin(common.ToJSONResponse(DumpGoRoutines)))
-	// r.HandleFunc("/_debug", RateLimitByCommmitRL(common.ToJSONResponse(DumpGoRoutines)))
+	// r.HandleFunc("/_debug", RateLimitByCommmitRL(WithBlobberRegisteredCondition(common.ToJSONResponse(DumpGoRoutines)))
 	r.HandleFunc("/_config", common.AuthenticateAdmin(common.ToJSONResponse(GetConfig)))
-	// r.HandleFunc("/_config", RateLimitByCommmitRL(common.ToJSONResponse(GetConfig)))
-	// r.HandleFunc("/_stats", common.AuthenticateAdmin(StatsHandler))
-	r.HandleFunc("/_stats", RateLimitByCommmitRL(StatsHandler))
+	// r.HandleFunc("/_config", RateLimitByCommmitRL(WithBlobberRegisteredCondition(common.ToJSONResponse(GetConfig)))
+	// r.HandleFunc("/_stats", common.AuthenticateAdmin(StatsHandler)))
+	r.HandleFunc("/_stats", RateLimitByCommmitRL(WithBlobberRegisteredCondition(StatsHandler)))
 
 	r.HandleFunc("/_logs", RateLimitByCommmitRL(common.ToJSONResponse(GetLogs)))
 
-	r.HandleFunc("/_blobber_info", common.ToJSONResponse(GetBlobberInfo))
+	r.HandleFunc("/_blobber_info", RateLimitByCommmitRL(common.ToJSONResponse(GetBlobberInfo)))
 
-	// r.HandleFunc("/_cleanupdisk", common.AuthenticateAdmin(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))
-	// r.HandleFunc("/_cleanupdisk", RateLimitByCommmitRL(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))
-	r.HandleFunc("/challengetimings", common.AuthenticateAdmin(common.ToJSONResponse(GetChallengeTimings)))
-	// r.HandleFunc("/challengetimings", RateLimitByCommmitRL(common.ToJSONResponse(GetChallengeTimings)))
-	r.HandleFunc("/challenge-timings-by-challengeId", RateLimitByCommmitRL(common.ToJSONResponse(GetChallengeTiming)))
+	// r.HandleFunc("/_cleanupdisk", common.AuthenticateAdmin(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler)))))
+	// r.HandleFunc("/_cleanupdisk", RateLimitByCommmitRL(WithBlobberRegisteredCondition(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler)))))
+	r.HandleFunc("/challengetimings", WithBlobberRegisteredCondition(common.AuthenticateAdmin(common.ToJSONResponse(GetChallengeTimings))))
+	// r.HandleFunc("/challengetimings", RateLimitByCommmitRL(WithBlobberRegisteredCondition(common.ToJSONResponse(GetChallengeTimings)))
+	r.HandleFunc("/challenge-timings-by-challengeId", RateLimitByCommmitRL(WithBlobberRegisteredCondition(common.ToJSONResponse(GetChallengeTiming))))
 
 	// Generate auth ticket
 	r.HandleFunc("/v1/auth/generate", Authenticate0Box(common.ToJSONResponse(GenerateAuthTicket)))
 
 	//marketplace related
 	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(InsertShare)))).
+		RateLimitByGeneralRL(WithBlobberRegisteredCondition(common.ToJSONResponse(WithConnection(InsertShare))))).
 		Methods(http.MethodOptions, http.MethodPost)
 
 	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(RevokeShare)))).
+		RateLimitByGeneralRL(WithBlobberRegisteredCondition(common.ToJSONResponse(WithConnection(RevokeShare))))).
 		Methods(http.MethodOptions, http.MethodDelete)
 
 	// list files shared in this allocation
 	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(ListShare)))).
+		RateLimitByGeneralRL(WithBlobberRegisteredCondition(common.ToJSONResponse(WithConnection(ListShare))))).
 		Methods(http.MethodOptions, http.MethodGet)
 
 	// lightweight http handler without heavy postgres transaction to improve performance

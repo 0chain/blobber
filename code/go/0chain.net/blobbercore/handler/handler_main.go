@@ -19,10 +19,10 @@ func SetupHandlers(r *mux.Router) {
 	setupHandlers(r)
 
 	r.HandleFunc("/v1/file/list/{allocation}",
-		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ListHandler)))).
+		RateLimitByObjectRL(WithBlobberRegisteredCondition(common.ToJSONResponse(WithReadOnlyConnection(ListHandler))))).
 		Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/v1/file/upload/{allocation}", RateLimitByFileRL(common.ToJSONResponse(WithConnection(UploadHandler))))
-	r.HandleFunc("/v1/file/download/{allocation}", RateLimitByFileRL(common.ToByteStream(WithConnection(DownloadHandler)))).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/v1/file/upload/{allocation}", RateLimitByFileRL(WithBlobberRegisteredCondition(common.ToJSONResponse(WithConnection(UploadHandler)))))
+	r.HandleFunc("/v1/file/download/{allocation}", RateLimitByFileRL(WithBlobberRegisteredCondition(common.ToByteStream(WithConnection(DownloadHandler))))).Methods(http.MethodGet, http.MethodOptions)
 }
 
 func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {

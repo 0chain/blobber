@@ -22,12 +22,12 @@ func SetupHandlers(r *mux.Router) {
 	setupHandlers(r)
 
 	r.HandleFunc("/v1/file/list/{allocation}",
-		RateLimitByObjectRL(common.ToJSONOrNotResponse(WithConnectionNotRespond(ListHandler)))).
+		RateLimitByObjectRL(WithBlobberRegisteredCondition(common.ToJSONOrNotResponse(WithConnectionNotRespond(ListHandler))))).
 		Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/v1/file/upload/{allocation}",
-		RateLimitByFileRL(common.ToJSONOrNotResponse(WithConnectionNotRespond(UploadHandler))))
+		RateLimitByFileRL(WithBlobberRegisteredCondition(common.ToJSONOrNotResponse(WithConnectionNotRespond(UploadHandler)))))
 	r.HandleFunc("/v1/file/download/{allocation}",
-		RateLimitByFileRL(ToByteStreamOrNot(WithConnectionNotRespond(DownloadHandler)))).
+		RateLimitByFileRL(ToByteStreamOrNot(WithBlobberRegisteredCondition(WithConnectionNotRespond(DownloadHandler))))).
 		Methods(http.MethodGet, http.MethodOptions)
 }
 
