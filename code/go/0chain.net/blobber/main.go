@@ -46,13 +46,18 @@ func main() {
 	prepareBlobber(node.Self.ID)
 
 	go func() {
+		logging.Logger.Info("Jayash registering on chain")
 		if err := registerOnChain(); err != nil {
 			logging.Logger.Error("Error register on blockchain" + err.Error())
 			panic(err)
 		}
+		logging.Logger.Info("Jayash registered on blockchain", zap.Any("blobber_id", node.Self.ID))
 		handler.BlobberRegisteredMutex.Lock()
+		logging.Logger.Info("Jayash acquired lock on register")
 		handler.BlobberRegistered = true
+		logging.Logger.Info("Jayash set blobber registered to true")
 		handler.BlobberRegisteredMutex.Unlock()
+		logging.Logger.Info("Jayash released lock on register")
 
 		logging.Logger.Info("Blobber registered on blockchain", zap.Any("blobber_id", node.Self.ID), zap.Any("blobberRegistered", handler.BlobberRegistered))
 	}()

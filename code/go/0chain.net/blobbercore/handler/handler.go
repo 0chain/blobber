@@ -136,14 +136,22 @@ func SetupSwagger() {
 }
 
 func WithBlobberRegisteredCondition(handler common.ReqRespHandlerf) common.ReqRespHandlerf {
+	logging.Logger.Info("1Jayash acquired lock on check")
 	BlobberRegisteredMutex.Lock()
+	logging.Logger.Info("2Jayash acquired lock on check")
 	if !BlobberRegistered {
+		logging.Logger.Info("1Jayash condition met")
+		BlobberRegisteredMutex.Unlock()
+		logging.Logger.Info("1Jayash released lock on check")
 		return func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			w.Write([]byte("Blobber not registered yet"))
 		}
 	}
+
+	logging.Logger.Info("Jayash condition failed")
 	BlobberRegisteredMutex.Unlock()
+	logging.Logger.Info("Jayash released lock on check")
 	return handler
 }
 
