@@ -8,10 +8,12 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/gorilla/mux"
 	"net/http"
+	"sync"
 )
 
 var (
-	BlobberRegistered bool
+	BlobberRegisteredMutex sync.Mutex
+	BlobberRegistered      bool
 )
 
 /* SetupHandlers sets up the necessary API end points */

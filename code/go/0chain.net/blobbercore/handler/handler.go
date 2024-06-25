@@ -136,12 +136,14 @@ func SetupSwagger() {
 }
 
 func WithBlobberRegisteredCondition(handler common.ReqRespHandlerf) common.ReqRespHandlerf {
+	BlobberRegisteredMutex.Lock()
 	if !BlobberRegistered {
 		return func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			w.Write([]byte("Blobber not registered yet"))
 		}
 	}
+	BlobberRegisteredMutex.Unlock()
 	return handler
 }
 

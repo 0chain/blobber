@@ -4,6 +4,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/handler"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -49,8 +50,11 @@ func main() {
 			logging.Logger.Error("Error register on blockchain" + err.Error())
 			panic(err)
 		}
-		logging.Logger.Info("Blobber registered")
+		handler.BlobberRegisteredMutex.Lock()
 		handler.BlobberRegistered = true
+		handler.BlobberRegisteredMutex.Unlock()
+
+		logging.Logger.Info("Blobber registered on blockchain", zap.Any("blobber_id", node.Self.ID), zap.Any("blobberRegistered", handler.BlobberRegistered))
 	}()
 
 	if err := setStorageScConfigFromChain(); err != nil {
