@@ -33,7 +33,8 @@ func registerOnChain() error {
 	}
 
 	// setup blobber (add) on the blockchain (multiple attempts)
-	for i := 1; i <= 120; i++ {
+	i := 1
+	for {
 		if i == 1 {
 			fmt.Printf("\r	+ connect to sharders:")
 		} else {
@@ -52,7 +53,8 @@ func registerOnChain() error {
 		if err == nil {
 			break
 		} else {
-			logging.Logger.Info("Jayash", zap.Any("Error", err))
+			i++
+			logging.Logger.Error("add_blobber_error", zap.Error(err))
 		}
 	}
 
