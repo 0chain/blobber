@@ -8,23 +8,12 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/gorilla/mux"
 	"net/http"
-	"sync"
-)
-
-var (
-	BlobberRegisteredMutex sync.Mutex
-	BlobberRegistered      bool
 )
 
 /* SetupHandlers sets up the necessary API end points */
 func SetupHandlers(r *mux.Router) {
+	r.HandleFunc("/_blobber_info", RateLimitByCommmitRL(common.ToJSONResponse(GetBlobberInfo)))
 	setupHandlers(r)
-
-	r.HandleFunc("/v1/file/list/{allocation}",
-		RateLimitByObjectRL(WithBlobberRegisteredCondition(common.ToJSONResponse(WithReadOnlyConnection(ListHandler))))).
-		Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/v1/file/upload/{allocation}", RateLimitByFileRL(WithBlobberRegisteredCondition(common.ToJSONResponse(WithConnection(UploadHandler)))))
-	r.HandleFunc("/v1/file/download/{allocation}", RateLimitByFileRL(WithBlobberRegisteredCondition(common.ToByteStream(WithConnection(DownloadHandler))))).Methods(http.MethodGet, http.MethodOptions)
 }
 
 func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
