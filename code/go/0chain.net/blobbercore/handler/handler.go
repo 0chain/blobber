@@ -139,7 +139,7 @@ func WithBlobberRegistered(h http.Handler) http.Handler {
 	if !common.IsBlobberRegistered() {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte("Blobber not registered yet"))
+			_, _ = w.Write([]byte("Blobber not registered yet"))
 		})
 	}
 
