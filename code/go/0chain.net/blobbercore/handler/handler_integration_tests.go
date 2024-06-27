@@ -25,10 +25,13 @@ func SetupHandlers(r *mux.Router) {
 	setupHandlers(s)
 
 	s.HandleFunc("/v1/file/list/{allocation}",
-		RateLimitByObjectRL(common.ToJSONOrNotResponse(WithReadOnlyConnection(ListHandler)))).
+		RateLimitByObjectRL(common.ToJSONOrNotResponse(WithConnectionNotRespond(ListHandler)))).
 		Methods(http.MethodGet, http.MethodOptions)
-	s.HandleFunc("/v1/file/upload/{allocation}", RateLimitByFileRL(common.ToJSONOrNotResponse(WithConnection(UploadHandler))))
-	s.HandleFunc("/v1/file/download/{allocation}", RateLimitByFileRL(ToByteStreamOrNot(WithConnection(DownloadHandler)))).Methods(http.MethodGet, http.MethodOptions)
+	s.HandleFunc("/v1/file/upload/{allocation}",
+		RateLimitByFileRL(common.ToJSONOrNotResponse(WithConnectionNotRespond(UploadHandler))))
+	s.HandleFunc("/v1/file/download/{allocation}",
+		RateLimitByFileRL(ToByteStreamOrNot(WithConnectionNotRespond(DownloadHandler)))).
+		Methods(http.MethodGet, http.MethodOptions)
 }
 
 func WithReadOnlyConnectionNotRespond(handler common.JSONResponderOrNotF) common.JSONResponderOrNotF {
