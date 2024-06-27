@@ -147,10 +147,9 @@ func WithBlobberRegistered(h http.Handler) http.Handler {
 }
 
 /*setupHandlers sets up the necessary API end points */
-func setupHandlers(r *mux.Router) {
+func setupHandlers(s *mux.Router) {
 	ConfigRateLimits()
 
-	s := r.NewRoute().Subrouter()
 	s.Use(UseRecovery, UseCors, WithBlobberRegistered)
 
 	s.HandleFunc("/_stats", RateLimitByCommmitRL(StatsHandler))
@@ -273,11 +272,6 @@ func setupHandlers(r *mux.Router) {
 		RateLimitByGeneralRL(WithTxHandler(LoadPlaylistFile))).
 		Methods(http.MethodGet, http.MethodOptions)
 
-	s.HandleFunc("/v1/file/list/{allocation}",
-		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ListHandler)))).
-		Methods(http.MethodGet, http.MethodOptions)
-	s.HandleFunc("/v1/file/upload/{allocation}", RateLimitByFileRL(common.ToJSONResponse(WithConnection(UploadHandler))))
-	s.HandleFunc("/v1/file/download/{allocation}", RateLimitByFileRL(common.ToByteStream(WithConnection(DownloadHandler)))).Methods(http.MethodGet, http.MethodOptions)
 }
 
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {

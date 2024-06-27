@@ -20,7 +20,15 @@ import (
 /* SetupHandlers sets up the necessary API end points */
 func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/_blobber_info", RateLimitByCommmitRL(common.ToJSONResponse(GetBlobberInfo)))
-	setupHandlers(r)
+
+	s := r.NewRoute().Subrouter()
+	setupHandlers(s)
+
+	s.HandleFunc("/v1/file/list/{allocation}",
+		RateLimitByObjectRL(common.ToJSONOrNotResponse(WithReadOnlyConnection(ListHandler)))).
+		Methods(http.MethodGet, http.MethodOptions)
+	s.HandleFunc("/v1/file/upload/{allocation}", RateLimitByFileRL(common.ToJSONOrNotResponse(WithConnection(UploadHandler))))
+	s.HandleFunc("/v1/file/download/{allocation}", RateLimitByFileRL(ToByteStreamOrNot(WithConnection(DownloadHandler)))).Methods(http.MethodGet, http.MethodOptions)
 }
 
 func WithReadOnlyConnectionNotRespond(handler common.JSONResponderOrNotF) common.JSONResponderOrNotF {
