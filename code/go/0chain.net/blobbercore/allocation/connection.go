@@ -186,10 +186,6 @@ func SaveFileChange(ctx context.Context, connectionID, pathHash, fileName string
 		if err != nil {
 			return saveChange, err
 		}
-		hasher := filestore.GetNewCommitHasher(contentSize)
-		change.hasher = hasher
-		change.seqPQ = seqpriorityqueue.NewSeqPriorityQueue(contentSize)
-		go hasher.Start(connectionObj.ctx, connectionID, connectionObj.AllocationID, fileName, pathHash, change.seqPQ)
 		saveChange = true
 	} else {
 		change.lock.Lock()

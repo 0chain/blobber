@@ -540,12 +540,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	elapsedGetLock := time.Since(startTime) - elapsedAllocation
 
-	err = checkPendingMarkers(ctx, allocationObj.ID)
-	if err != nil {
-		Logger.Error("Error checking pending markers", zap.Error(err))
-		return nil, common.NewError("pending_markers", "previous marker is still pending to be redeemed")
-	}
-
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
 		// might be good to check if blobber already has stored writemarker

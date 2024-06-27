@@ -54,8 +54,8 @@ const batchSize = 5
 
 // SetupWorkers start challenge workers
 func SetupWorkers(ctx context.Context) {
-	go startPullWorker(ctx)
-	go startWorkers(ctx)
+	// go startPullWorker(ctx)
+	// go startWorkers(ctx)
 }
 
 func startPullWorker(ctx context.Context) {

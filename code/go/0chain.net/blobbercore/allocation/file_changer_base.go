@@ -8,7 +8,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 )
 
 // BaseFileChanger base file change processor
@@ -140,10 +139,6 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context, mut *sync.Mute
 	fileInputData.FixedMerkleRoot = fc.FixedMerkleRoot
 	fileInputData.ChunkSize = fc.ChunkSize
 	fileInputData.Size = fc.Size
-	fileInputData.Hasher = GetHasher(fc.ConnectionID, encryption.Hash(fc.Path))
-	if fileInputData.Hasher == nil {
-		return common.NewError("invalid_parameters", "Invalid parameters. Error getting hasher for commit.")
-	}
 	_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fc.ConnectionID, fileInputData)
 	if err != nil {
 		return common.NewError("file_store_error", "Error committing to file store. "+err.Error())

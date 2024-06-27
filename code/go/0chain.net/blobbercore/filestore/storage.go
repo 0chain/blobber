@@ -264,40 +264,6 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 
 	fileSize := rStat.Size()
 	now := time.Now()
-	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
-	defer cancel()
-	err = fileData.Hasher.Wait(ctx, conID, allocID, fileData.Name, filePathHash)
-	if err != nil {
-		return false, common.NewError("hasher_wait_error", err.Error())
-	}
-	elapsedWait := time.Since(now)
-	_, err = r.Seek(fileSize, io.SeekStart)
-	if err != nil {
-		return false, common.NewError("seek_error", err.Error())
-	}
-	fmtRootBytes, err := fileData.Hasher.fmt.CalculateRootAndStoreNodes(r)
-	if err != nil {
-		return false, common.NewError("fmt_hash_calculation_error", err.Error())
-	}
-
-	validationRootBytes, err := fileData.Hasher.vt.CalculateRootAndStoreNodes(r, fileSize)
-	if err != nil {
-		return false, common.NewError("validation_hash_calculation_error", err.Error())
-	}
-	fmtRoot := hex.EncodeToString(fmtRootBytes)
-	validationRoot := hex.EncodeToString(validationRootBytes)
-	elapsedRoot := time.Since(now) - elapsedWait
-	if fmtRoot != fileData.FixedMerkleRoot {
-		err = common.NewError("fixed_merkle_root_mismatch",
-			fmt.Sprintf("Expected %s got %s", fileData.FixedMerkleRoot, fmtRoot))
-		return false, err
-	}
-	if validationRoot != fileData.ValidationRoot {
-		err = common.NewError("validation_root_mismatch",
-			"calculated validation root does not match with client's validation root")
-		return false, err
-	}
-
 	err = os.Rename(tempFilePath, preCommitPath)
 	if err != nil {
 		return false, common.NewError("write_error", err.Error())
@@ -314,7 +280,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	// 5. Move: It is Copy + Delete. Delete will not delete file if ref exists in database. i.e. copy would create
 	// ref that refers to this file therefore it will be skipped
 	fs.incrDecrAllocFileSizeAndNumber(allocID, fileSize, 1)
-	logging.Logger.Info("Committing write done", zap.String("file_path", fileData.Path), zap.Duration("elapsed_wait", elapsedWait), zap.Duration("elapsed_root", elapsedRoot), zap.Duration("elapsed_total", time.Since(now)))
+	logging.Logger.Info("Committing write done", zap.String("file_path", fileData.Path), zap.Duration("elapsed_total", time.Since(now)))
 	return true, nil
 }
 
@@ -508,7 +474,6 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 	}
 
 	startBlock := readBlockIn.StartBlockNum
-	endBlock := readBlockIn.StartBlockNum + readBlockIn.NumBlocks - 1
 
 	if startBlock < 0 {
 		return nil, common.NewError("invalid_block_number", "Invalid block number. Start block number cannot be negative")
@@ -551,26 +516,6 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 	nodesSize := getNodesSize(filesize, util.MaxMerkleLeavesSize)
 	vmp := &FileDownloadResponse{}
 
-	if readBlockIn.VerifyDownload {
-		vpOffset := int64(FMTSize)
-		if readBlockIn.FilestoreVersion == 1 {
-			vpOffset += readBlockIn.FileSize
-		}
-		vp := validationTreeProof{
-			dataSize: readBlockIn.FileSize,
-			offset:   vpOffset,
-		}
-
-		logging.Logger.Debug("calling GetMerkleProofOfMultipleIndexes", zap.Any("readBlockIn", readBlockIn), zap.Any("vmp", vmp))
-		nodes, indexes, err := vp.GetMerkleProofOfMultipleIndexes(file, nodesSize, startBlock, endBlock)
-		if err != nil {
-			return nil, common.NewError("get_merkle_proof_error", err.Error())
-		}
-
-		vmp.Nodes = nodes
-		vmp.Indexes = indexes
-	}
-	logging.Logger.Info("filestore_version", zap.Int("version", readBlockIn.FilestoreVersion))
 	fileOffset := int64(startBlock) * ChunkSize
 	if readBlockIn.FilestoreVersion == 1 {
 		_, err = file.Seek(fileOffset, io.SeekStart)
