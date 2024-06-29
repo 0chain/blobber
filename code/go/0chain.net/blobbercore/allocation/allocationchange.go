@@ -100,7 +100,7 @@ func (change *AllocationChange) Save(ctx context.Context) error {
 
 func (change *AllocationChange) Update(ctx context.Context) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	return db.Table(change.TableName()).Where("lookup_hash = ?", change.LookupHash).Updates(map[string]interface{}{
+	return db.Table(change.TableName()).Where("connection_id = ? AND lookup_hash = ?", change.ConnectionID, change.LookupHash).Updates(map[string]interface{}{
 		"size":       change.Size,
 		"updated_at": time.Now(),
 		"input":      change.Input,
@@ -174,10 +174,11 @@ func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clien
 func GetConnectionObj(ctx context.Context, connectionID, allocationID, clientID string) (*AllocationChangeCollector, error) {
 	cc := &AllocationChangeCollector{}
 	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Where("id = ? and allocation_id = ? and client_id = ?",
+	err := db.Where("id = ? and allocation_id = ? and client_id = ? AND status <> ?",
 		connectionID,
 		allocationID,
 		clientID,
+		DeletedConnection,
 	).Take(cc).Error
 
 	if err == nil {
@@ -189,7 +190,7 @@ func GetConnectionObj(ctx context.Context, connectionID, allocationID, clientID 
 		cc.AllocationID = allocationID
 		cc.ClientID = clientID
 		cc.Status = NewConnection
-		err = cc.Create(ctx)
+		err = cc.Save(ctx)
 		if err != nil {
 			return nil, err
 		}

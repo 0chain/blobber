@@ -29,9 +29,9 @@ const (
 	OffsetDateLayout     = "2006-01-02T15:04:05.99999Z07:00"
 	DownloadContentFull  = "full"
 	DownloadContentThumb = "thumbnail"
-	MaxPageLimit         = 100 //100 rows will make up to 100 KB
-	DefaultPageLimit     = 20
-	DefaultListPageLimit = 50
+	MaxPageLimit         = 1000 //1000 rows will make up to 1000 KB
+	DefaultPageLimit     = 100
+	DefaultListPageLimit = 100
 )
 
 type StorageHandler struct{}

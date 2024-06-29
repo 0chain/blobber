@@ -2,6 +2,7 @@ package datastore
 
 import (
 	"context"
+	"database/sql"
 
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/DATA-DOG/go-sqlmock"
@@ -66,7 +67,7 @@ func (store *Sqlmock) Close() {
 	}
 }
 
-func (store *Sqlmock) CreateTransaction(ctx context.Context) context.Context {
+func (store *Sqlmock) CreateTransaction(ctx context.Context, opts ...*sql.TxOptions) context.Context {
 	db := store.db.Begin()
 	return context.WithValue(ctx, ContextKeyTransaction, db)
 }

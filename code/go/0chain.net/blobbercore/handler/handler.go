@@ -2,17 +2,19 @@ package handler
 
 import (
 	"context"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/0chain/gosdk/core/zcncrypto"
 	"net/http"
 	"os"
 	"runtime/pprof"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/0chain/gosdk/core/zcncrypto"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 
@@ -276,7 +278,9 @@ func setupHandlers(s *mux.Router) {
 
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {
 	return func(ctx context.Context, r *http.Request) (interface{}, error) {
-		ctx = GetMetaDataStore().CreateTransaction(ctx)
+		ctx = GetMetaDataStore().CreateTransaction(ctx, &sql.TxOptions{
+			ReadOnly: true,
+		})
 		tx := GetMetaDataStore().GetTransaction(ctx)
 		defer func() {
 			tx.Rollback()
