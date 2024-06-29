@@ -1200,9 +1200,6 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*all
 	newDir.AllocationID = allocationID
 
 	connectionObj.AddChange(allocationChange, &newDir)
-	if err != nil {
-		return nil, err
-	}
 
 	err = connectionObj.Save(ctx)
 	if err != nil {
