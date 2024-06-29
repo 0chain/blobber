@@ -1,19 +1,3 @@
-//	0chain Blobber API:
-//	 version: 0.0.1
-//	 title: 0chain Blobber API
-//	Schemes: http, https
-//	BasePath: /
-//	Produces:
-//	  - application/json
-//
-// securityDefinitions:
-//
-//	apiKey:
-//	  type: apiKey
-//	  in: header
-//	  name: authorization
-//
-// swagger:meta
 package handler
 
 import (
@@ -153,67 +137,81 @@ func SetupSwagger() {
 	http.Handle("/docs1", sh1)
 }
 
+func WithBlobberRegistered(h http.Handler) http.Handler {
+	if !common.IsBlobberRegistered() {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte("Blobber not registered yet"))
+		})
+	}
+
+	return h
+}
+
 /*setupHandlers sets up the necessary API end points */
-func setupHandlers(r *mux.Router) {
+func setupHandlers(s *mux.Router) {
 	ConfigRateLimits()
-	r.Use(UseRecovery, UseCors)
+
+	s.Use(UseRecovery, UseCors, WithBlobberRegistered)
+
+	s.HandleFunc("/_stats", RateLimitByCommmitRL(StatsHandler))
 
 	//object operations
-	r.HandleFunc("/v1/connection/create/{allocation}",
+	s.HandleFunc("/v1/connection/create/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(CreateConnectionHandler)))).
 		Methods(http.MethodPost)
 
-	r.HandleFunc("/v1/connection/redeem/{allocation}",
+	s.HandleFunc("/v1/connection/redeem/{allocation}",
 		RateLimitByGeneralRL(common.ToByteStream(WithConnection(RedeemHandler)))).
 		Methods(http.MethodPost, http.MethodOptions)
 
-	r.HandleFunc("/v1/file/rename/{allocation}",
+	s.HandleFunc("/v1/file/rename/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(RenameHandler)))).
 		Methods(http.MethodPost, http.MethodOptions)
 
-	r.HandleFunc("/v1/file/copy/{allocation}",
+	s.HandleFunc("/v1/file/copy/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(CopyHandler)))).
 		Methods(http.MethodPost, http.MethodOptions)
 
-	r.HandleFunc("/v1/file/move/{allocation}",
+	s.HandleFunc("/v1/file/move/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(MoveHandler)))).
 		Methods(http.MethodPost, http.MethodOptions)
 
-	r.HandleFunc("/v1/dir/{allocation}",
+	s.HandleFunc("/v1/dir/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(CreateDirHandler)))).
 		Methods(http.MethodPost, http.MethodDelete, http.MethodOptions)
 
-	r.HandleFunc("/v1/connection/commit/{allocation}",
+	s.HandleFunc("/v1/connection/commit/{allocation}",
 		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnectionForWM(CommitHandler))))
 
-	r.HandleFunc("/v1/connection/rollback/{allocation}",
+	s.HandleFunc("/v1/connection/rollback/{allocation}",
 		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnectionForWM(RollbackHandler))))
 
 	//object info related apis
-	r.HandleFunc("/allocation",
+	s.HandleFunc("/allocation",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(AllocationHandler))))
 
-	r.HandleFunc("/v1/file/meta/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler)))) // TODO: add swagger
+	s.HandleFunc("/v1/file/meta/{allocation}",
+		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(FileMetaHandler))))
 
-	r.HandleFunc("/v1/file/stats/{allocation}",
-		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler)))) // TODO: add swagger
+	s.HandleFunc("/v1/file/stats/{allocation}",
+		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(FileStatsHandler))))
 
-	r.HandleFunc("/v1/file/referencepath/{allocation}",
-		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler)))) // TODO: add handler
+	s.HandleFunc("/v1/file/referencepath/{allocation}",
+		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler))))
 
-	r.HandleFunc("/v1/file/latestwritemarker/{allocation}",
+	s.HandleFunc("/v1/file/latestwritemarker/{allocation}",
 		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(WriteMarkerHandler))))
 
-	r.HandleFunc("/v1/file/objecttree/{allocation}",
+	s.HandleFunc("/v1/file/objecttree/{allocation}",
 		RateLimitByObjectRL(common.ToStatusCode(WithStatusReadOnlyConnection(ObjectTreeHandler)))).
 		Methods(http.MethodGet, http.MethodOptions)
 
-	r.HandleFunc("/v1/file/refs/{allocation}",
+	s.HandleFunc("/v1/file/refs/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(RefsHandler)))).
 		Methods(http.MethodGet, http.MethodOptions)
 
-	r.HandleFunc("/v1/file/refs/recent/{allocation}",
+	s.HandleFunc("/v1/file/refs/recent/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithReadOnlyConnection(RecentRefsRequestHandler)))).
 		Methods(http.MethodGet, http.MethodOptions)
 
@@ -221,59 +219,61 @@ func setupHandlers(r *mux.Router) {
 	// Allowing admin api for debugging purpose only. Later on commented out line should be
 	// uncommented and line below it should be deleted
 
-	r.HandleFunc("/_debug", common.AuthenticateAdmin(common.ToJSONResponse(DumpGoRoutines)))
-	// r.HandleFunc("/_debug", RateLimitByCommmitRL(common.ToJSONResponse(DumpGoRoutines)))
-	r.HandleFunc("/_config", common.AuthenticateAdmin(common.ToJSONResponse(GetConfig)))
-	// r.HandleFunc("/_config", RateLimitByCommmitRL(common.ToJSONResponse(GetConfig)))
-	// r.HandleFunc("/_stats", common.AuthenticateAdmin(StatsHandler))
-	r.HandleFunc("/_stats", RateLimitByCommmitRL(StatsHandler))
+	s.HandleFunc("/_debug", common.AuthenticateAdmin(common.ToJSONResponse(DumpGoRoutines)))
+	// s.HandleFunc("/_debug", RateLimitByCommmitRL(common.ToJSONResponse(DumpGoRoutines)))
+	s.HandleFunc("/_config", common.AuthenticateAdmin(common.ToJSONResponse(GetConfig)))
+	// s.HandleFunc("/_config", RateLimitByCommmitRL(common.ToJSONResponse(GetConfig)))
+	// s.HandleFunc("/_stats", common.AuthenticateAdmin(StatsHandler)))
+	s.HandleFunc("/_stats", RateLimitByCommmitRL(StatsHandler))
 
-	r.HandleFunc("/_logs", RateLimitByCommmitRL(common.ToJSONResponse(GetLogs)))
+	s.HandleFunc("/_logs", RateLimitByCommmitRL(common.ToJSONResponse(GetLogs)))
 
-	// r.HandleFunc("/_cleanupdisk", common.AuthenticateAdmin(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))
-	// r.HandleFunc("/_cleanupdisk", RateLimitByCommmitRL(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler))))
-	r.HandleFunc("/challengetimings", common.AuthenticateAdmin(common.ToJSONResponse(GetChallengeTimings)))
-	// r.HandleFunc("/challengetimings", RateLimitByCommmitRL(common.ToJSONResponse(GetChallengeTimings)))
-	r.HandleFunc("/challenge-timings-by-challengeId", RateLimitByCommmitRL(common.ToJSONResponse(GetChallengeTiming)))
+	// s.HandleFunc("/_cleanupdisk", common.AuthenticateAdmin(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler)))))
+	// s.HandleFunc("/_cleanupdisk", RateLimitByCommmitRL(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler)))))
+	s.HandleFunc("/challengetimings", common.AuthenticateAdmin(common.ToJSONResponse(GetChallengeTimings)))
+	// s.HandleFunc("/challengetimings", RateLimitByCommmitRL(common.ToJSONResponse(GetChallengeTimings)))
+	s.HandleFunc("/challenge-timings-by-challengeId", RateLimitByCommmitRL(common.ToJSONResponse(GetChallengeTiming)))
 
 	// Generate auth ticket
-	r.HandleFunc("/v1/auth/generate", Authenticate0Box(common.ToJSONResponse(GenerateAuthTicket)))
+	s.HandleFunc("/v1/auth/generate", Authenticate0Box(common.ToJSONResponse(GenerateAuthTicket)))
 
 	//marketplace related
-	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}",
+	s.HandleFunc("/v1/marketplace/shareinfo/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(InsertShare)))).
 		Methods(http.MethodOptions, http.MethodPost)
 
-	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}",
+	s.HandleFunc("/v1/marketplace/shareinfo/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(RevokeShare)))).
 		Methods(http.MethodOptions, http.MethodDelete)
 
 	// list files shared in this allocation
-	r.HandleFunc("/v1/marketplace/shareinfo/{allocation}",
+	s.HandleFunc("/v1/marketplace/shareinfo/{allocation}",
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(ListShare)))).
 		Methods(http.MethodOptions, http.MethodGet)
 
 	// lightweight http handler without heavy postgres transaction to improve performance
 
-	r.HandleFunc("/v1/writemarker/lock/{allocation}",
+	s.HandleFunc("/v1/writemarker/lock/{allocation}",
 		RateLimitByGeneralRL(WithTxHandler(LockWriteMarker))).
 		Methods(http.MethodPost, http.MethodOptions)
 
-	r.HandleFunc("/v1/writemarker/lock/{allocation}/{connection}",
+	s.HandleFunc("/v1/writemarker/lock/{allocation}/{connection}",
 		RateLimitByGeneralRL(WithTxHandler(UnlockWriteMarker))).
 		Methods(http.MethodDelete, http.MethodOptions)
 
-	r.HandleFunc("/v1/hashnode/root/{allocation}",
+	// TODO: Deprecated, remove in future
+	s.HandleFunc("/v1/hashnode/root/{allocation}",
 		RateLimitByObjectRL(WithTxHandler(LoadRootHashnode))).
 		Methods(http.MethodGet, http.MethodOptions)
 
-	r.HandleFunc("/v1/playlist/latest/{allocation}",
+	s.HandleFunc("/v1/playlist/latest/{allocation}",
 		RateLimitByGeneralRL(WithTxHandler(LoadPlaylist))).
 		Methods(http.MethodGet, http.MethodOptions)
 
-	r.HandleFunc("/v1/playlist/file/{allocation}",
+	s.HandleFunc("/v1/playlist/file/{allocation}",
 		RateLimitByGeneralRL(WithTxHandler(LoadPlaylistFile))).
 		Methods(http.MethodGet, http.MethodOptions)
+
 }
 
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {
@@ -353,20 +353,43 @@ func setupHandlerContext(ctx context.Context, r *http.Request) context.Context {
 	return ctx
 }
 
-// swagger:route GET /allocation allocation
-// get allocation details
+// swagger:route GET /allocation GetAllocation
+// Get allocation details.
+// Retrieve allocation details as stored in the blobber.
 //
 // parameters:
-//
-//	+name: id
-//	 description: allocation ID
-//	 required: true
-//	 in: query
-//	 type: string
+//	 +name: id
+//	   description: allocation ID
+//	   required: true
+//	   in: query
+//	   type: string
+//	 +name: X-App-Client-ID
+//     description: The ID/Wallet address of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: X-App-Client-Key
+// 	   description: The key of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: ALLOCATION-ID
+//	   description: The ID of the allocation in question.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature
+//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//     in: header
+//     type: string
+//  +name: X-App-Client-Signature-V2
+//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//     in: header
+//     type: string
 //
 // responses:
 //
-//	200: CommitResult
+//	200: Allocation
 //	400:
 //	500:
 
@@ -381,6 +404,64 @@ func AllocationHandler(ctx context.Context, r *http.Request) (interface{}, error
 	return response, nil
 }
 
+// swagger:route GET /v1/file/meta/{allocation} GetFileMeta
+// Get file meta data.
+// Retrieve file meta data from the blobber. Retrieves a generic map of string keys and values.
+//
+// parameters:
+//
+//		 +name: allocation
+//		   description: the allocation ID
+//		   required: true
+//		   in: path
+//		   type: string
+//		 +name: X-App-Client-ID
+//	    description: The ID/Wallet address of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		 +name: X-App-Client-Key
+//		   description: The key of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		 +name: ALLOCATION-ID
+//		   description: The ID of the allocation in question.
+//	    in: header
+//	    type: string
+//	    required: true
+//	 +name: X-App-Client-Signature
+//	    description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//	    in: header
+//	    type: string
+//	 +name: X-App-Client-Signature-V2
+//	    description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//	    in: header
+//	    type: string
+//	 +name: name
+//	    description: the name of the file
+//	    required: false
+//	    in: query
+//	    type: string
+//	 +name: path
+//	    description: Path of the file to be copied. Required only if `path_hash` is not provided.
+//	    in: query
+//	    type: string
+//	 +name: path_hash
+//	    description: Hash of the path of the file to be copied. Required only if `path` is not provided.
+//	    in: query
+//	    type: string
+//	 +name: auth_token
+//	    description: The auth ticket for the file to show meta data of if the client does not own it. Check File Sharing docs for more info.
+//	    in: query
+//	    type: string
+//	    required: false
+//
+// responses:
+//
+//	200:
+//	400:
+//	500:
 func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
@@ -400,30 +481,55 @@ func FileMetaHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 	return response, nil
 }
 
-// swagger:route POST /v1/file/commitmetatxn/{allocation} commitmetatxn
-// CommitHandler is the handler to respond to upload requests from clients
+// swagger:route GET /v1/file/stats/{allocation} GetFileStats
+// Get file stats.
+// Retrieve file stats from the blobber.
 //
 // parameters:
 //
-//	+name: auth_token
-//	 description: auth token
-//	 required: true
-//	 in: body
-//	 type: string
-//
-//	+name: txn_id
-//	 description: transaction id
-//	 required: true
-//	 in: body
-//	 type: string
+//  +name: allocation
+//     description: the allocation ID
+//     required: true
+//     in: path
+//     type: string
+//	 +name: X-App-Client-ID
+//     description: The ID/Wallet address of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: X-App-Client-Key
+// 	   description: The key of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: ALLOCATION-ID
+//	   description: The ID of the allocation in question.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature
+//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//     in: header
+//     type: string
+//  +name: X-App-Client-Signature-V2
+//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//     in: header
+//     type: string
+//  +name: path
+//     description: Path of the file to be copied. Required only if `path_hash` is not provided.
+//     in: query
+//     type: string
+//  +name: path_hash
+//     description: Hash of the path of the file to be copied. Required only if `path` is not provided.
+//     in: query
+//     type: string
 //
 // responses:
 //
-//	200:
+//	200: FileStats
 //	400:
 //	500:
 
-// TODO: add swagger
 func FileStatsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
@@ -441,6 +547,46 @@ func downloadHandler(ctx context.Context, r *http.Request) (interface{}, error) 
 	return storageHandler.DownloadFile(ctx, r)
 }
 
+// swagger:route POST /v1/connection/redeem/{allocation} PostRedeem
+// Redeem conncetion.
+// Submit the connection ID to redeem the storage cost from the network.
+//
+// parameters:
+//
+//		+name: allocation
+//		   description: the allocation ID
+//		   required: true
+//		   in: path
+//		   type: string
+//		+name: X-App-Client-ID
+//	    description: The ID/Wallet address of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		+name: X-App-Client-Key
+//		   description: The key of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		+name: ALLOCATION-ID
+//		   description: The ID of the allocation in question.
+//	    in: header
+//	    type: string
+//	    required: true
+//	 +name: X-App-Client-Signature
+//	    description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//	    in: header
+//	    type: string
+//	 +name: X-App-Client-Signature-V2
+//	    description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//	    in: header
+//	    type: string
+//
+// responses:
+//
+//	200: DownloadResponse
+//	400:
+//	500:
 func redeemHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
@@ -461,20 +607,49 @@ func listHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
-// swagger:route GET /v1/connection/create/{allocation} connectionHandler
-// connectionHandler is the handler to respond to create connection requests from clients
+// swagger:route POST /v1/connection/create/{allocation} PostConnection
+// Store connection in DB.
+// Connections are used to distinguish between different storage operations, also to claim reward from the chain using write markers.
 //
 // parameters:
 //
-//	+name: allocation
-//	 description: the allocation ID
-//	 required: true
-//	 in: path
-//	 type: string
+//		 +name: allocation
+//		   description: the allocation ID
+//		   required: true
+//		   in: path
+//		   type: string
+//		 +name: X-App-Client-ID
+//	    description: The ID/Wallet address of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		 +name: X-App-Client-Key
+//		   description: The key of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		 +name: ALLOCATION-ID
+//		   description: The ID of the allocation in question.
+//	    in: header
+//	    type: string
+//	    required: true
+//	 +name: X-App-Client-Signature
+//	    description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//	    in: header
+//	    type: string
+//	 +name: X-App-Client-Signature-V2
+//	    description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//	    in: header
+//	    type: string
+//		+name: connection_id
+//		   description: the ID of the connection to submit.
+//		   required: true
+//		   in: query
+//		   type: string
 //
 // responses:
 //
-//	200:
+//	200: ConnectionResult
 //	400:
 //	500:
 func CreateConnectionHandler(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -486,16 +661,50 @@ func CreateConnectionHandler(ctx context.Context, r *http.Request) (interface{},
 	return res, nil
 }
 
-// swagger:route GET /v1/connection/commit/{allocation} commithandler
-// CommitHandler is the handler to respond to upload requests from clients
+// swagger:route POST /v1/connection/commit/{allocation} PostCommit
+// Commit operation.
+// Used to commit the storage operation provided its connection id.
 //
 // parameters:
 //
 //	+name: allocation
-//	 description: the allocation ID
-//	 required: true
-//	 in: path
-//	 type: string
+//	   description: the allocation ID
+//	   required: true
+//	   in: path
+//	   type: string
+//	 +name: X-App-Client-ID
+//     description: The ID/Wallet address of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: X-App-Client-Key
+// 	   description: The key of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: ALLOCATION-ID
+//	   description: The ID of the allocation in question.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature
+//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//     in: header
+//     type: string
+//  +name: X-App-Client-Signature-V2
+//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//     in: header
+//     type: string
+//	+name: connection_id
+//	   description: the connection ID of the storage operation to commit
+//	   required: true
+//	   in: query
+//	   type: string
+//	+name: write_marker
+//	   description: The write marker corresponding to the operation. Write price is used to redeem storage cost from the network. It follows the format of the [Write Marker](#write-marker)
+//	   required: true
+//	   in: query
+//	   type: string
 //
 // responses:
 //
@@ -507,10 +716,110 @@ func CommitHandler(ctx context.Context, r *http.Request) (interface{}, int, erro
 	return commitHandler(ctx, r)
 }
 
+// swagger:route POST/v1/connection/rollback/{allocation} PostRollback
+// Rollback operation.
+// RollbackHandler used to commit the storage operation provided its connection id.
+//
+// parameters:
+//
+//	+name: allocation
+//	   description: the allocation ID
+//	   required: true
+//	   in: path
+//	   type: string
+//	+name: X-App-Client-ID
+//     description: The ID/Wallet address of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	+name: X-App-Client-Key
+// 	   description: The key of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	+name: ALLOCATION-ID
+//	   description: The ID of the allocation in question.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature
+//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//     in: header
+//     type: string
+//  +name: X-App-Client-Signature-V2
+//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//     in: header
+//     type: string
+//	+name: connection_id
+//	   description: the connection ID of the storage operation to rollback
+//	   required: true
+//	   in: query
+//	   type: string
+//	+name: write_marker
+//	   description: The write marker corresponding to the operation. Write price is used to redeem storage cost from the network. It follows the format of the [Write Marker](#write-marker)
+//	   required: true
+//	   in: query
+//	   type: string
+//
+// responses:
+//
+//	200: CommitResult
+//	400:
+//	500:
+
 func RollbackHandler(ctx context.Context, r *http.Request) (interface{}, int, error) {
 	return rollbackHandler(ctx, r)
 }
 
+// swagger:route GET /v1/file/referencepath/{allocation} GetReferencePath
+// Get reference path.
+// Retrieve references of all the decendents of a given path including itself, known as reference path. Reference (shorted as Ref) is the representation of a certain path in the DB including its metadata.
+// It also returns the latest write marker associated with the allocation.
+//
+// parameters:
+//
+//		+name: allocation
+//		   description: the allocation ID
+//		   required: true
+//		   in: path
+//		   type: string
+//		+name: X-App-Client-ID
+//	    description: The ID/Wallet address of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		+name: X-App-Client-Key
+//		   description: The key of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		+name: ALLOCATION-ID
+//		   description: The ID of the allocation in question.
+//	    in: header
+//	    type: string
+//	    required: true
+//	 +name: X-App-Client-Signature
+//	    description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//	    in: header
+//	    type: string
+//	 +name: X-App-Client-Signature-V2
+//	    description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//	    in: header
+//	    type: string
+//	 +name: path
+//	   description: Path of the file needed to get reference path of. Required only if no "paths" are provided.
+//	   in: query
+//	   type: string
+//	 +name: paths
+//	   description: Paths of the files needed to get reference path of. Required only if no "path" is provided. Should be provided as valid JSON array.
+//	   in: query
+//	   type: string
+//
+// responses:
+//
+//	200: ReferencePathResult
+//	400:
+//	500:
 func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx, canceler := context.WithTimeout(ctx, time.Second*10)
@@ -525,6 +834,46 @@ func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, er
 	return response, nil
 }
 
+// swagger:route GET /v1/file/latestwritemarker/{allocation} GetLatestWriteMarker
+// Get latest write marker.
+// Retrieve the latest write marker associated with the allocation
+//
+// parameters:
+//
+//		+name: allocation
+//		   description: the allocation ID
+//		   required: true
+//		   in: path
+//		   type: string
+//		+name: X-App-Client-ID
+//	    description: The ID/Wallet address of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		+name: X-App-Client-Key
+//		   description: The key of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		+name: ALLOCATION-ID
+//		   description: The ID of the allocation in question.
+//	    in: header
+//	    type: string
+//	    required: true
+//	 +name: X-App-Client-Signature
+//	    description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//	    in: header
+//	    type: string
+//	 +name: X-App-Client-Signature-V2
+//	    description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//	    in: header
+//	    type: string
+//
+// responses:
+//
+//	200: LatestWriteMarkerResult
+//	400:
+//	500:
 func WriteMarkerHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
@@ -536,16 +885,44 @@ func WriteMarkerHandler(ctx context.Context, r *http.Request) (interface{}, erro
 	return response, nil
 }
 
-// swagger:route GET /v1/file/objecttree/{allocation} referencepath
-// get object tree reference path
+// swagger:route GET /v1/file/objecttree/{allocation} GetObjectTree
+// Get path object tree.
+// Retrieve object tree reference path. Similar to reference path.
 //
 // parameters:
 //
 //	+name: allocation
-//	 description: allocation ID
-//	 required: true
-//	 in: path
-//	 type: string
+//	   description: allocation ID
+//	   required: true
+//	   in: path
+//	   type: string
+//	+name: X-App-Client-ID
+//     description: The ID/Wallet address of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	+name: X-App-Client-Key
+// 	   description: The key of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	+name: ALLOCATION-ID
+//	   description: The ID of the allocation in question.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature
+//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//     in: header
+//     type: string
+//  +name: X-App-Client-Signature-V2
+//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//     in: header
+//     type: string
+//  +name: path
+//    description: Path of the file needed to get reference path of. Required only if no "paths" are provided.
+//    in: query
+//    type: string
 //
 // responses:
 //
@@ -557,16 +934,82 @@ func ObjectTreeHandler(ctx context.Context, r *http.Request) (interface{}, int, 
 	return objectTreeHandler(ctx, r)
 }
 
-// swagger:route GET /v1/file/refs/{allocation} refshandler
-// get object tree reference path
+// swagger:route GET /v1/file/refs/{allocation} GetRefs
+// Get references.
+// Retrieve references of all the decendents of a given path including itself, organized in a paginated table.
 //
 // parameters:
 //
 //	+name: allocation
-//	 description: allocation ID
-//	 required: true
-//	 in: path
-//	 type: string
+//	   description: allocation ID
+//	   required: true
+//	   in: path
+//	   type: string
+//	+name: X-App-Client-ID
+//     description: The ID/Wallet address of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	+name: X-App-Client-Key
+// 	   description: The key of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	+name: ALLOCATION-ID
+//	   description: The ID of the allocation in question.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature
+//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//     in: header
+//     type: string
+//  +name: X-App-Client-Signature-V2
+//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//     in: header
+//     type: string
+//  +name: path
+//    description: Path of the file needed to get reference path of. Required only if no "paths" are provided.
+//    in: query
+//    type: string
+//  +name: auth_token
+//    description: The auth ticket for the file to show meta data of if the client does not own it. Check File Sharing docs for more info.
+//    in: query
+//    type: string
+//    required: false
+//  +name: path_hash
+//    description: Hash of the path of the file to be copied. Required only if `path` is not provided.
+//    in: query
+//    type: string
+//  +name: refType
+//    description: Can be "updated" (along with providing `updateDate` and `offsetDate`) to retrieve refs with updated_at date later than the provided date in both fields, or "regular" otherwise.
+//    in: query
+//    type: string
+//    required: true
+//  +name: pageLimit
+//    description: Number of records to show per page. Default is 20.
+//    in: query
+//    type: integer
+//  +name: offsetPath
+//    description: Path of the file to start the listing from. Used for pagination.
+//    in: query
+//    type: string
+//  +name: offsetDate
+//    description: Date of the file to start the listing from.  Used in case the user needs to list refs updated at some period of time.
+//    in: query
+//    type: string
+//  +name: updateDate
+//    description: Same as offsetDate but both should be provided.
+//    in: query
+//    type: string
+//  +name: fileType
+//    description: Type of the references to list. Can be "f" for file or "d" for directory. Both will be retrieved if not provided.
+//    in: query
+//    type: string
+//  +name: level
+//    description: Level of the references to list (number of parents of the reference). Can be "0" for root level or "1" for first level and so on. All levels will be retrieved if not provided.
+//    in: query
+//    type: integer
 //
 // responses:
 //
@@ -585,16 +1028,52 @@ func RefsHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
-// swagger:route GET /v1/file/refs/recent/{allocation} recentalloc
-// get recent allocation
+// swagger:route GET /v1/file/refs/recent/{allocation} GetRecentRefs
+// Get recent references.
+// Retrieve recent references added to an allocation, starting at a specific date, organized in a paginated table.
 //
 // parameters:
 //
 //	+name: allocation
-//	 description: allocation ID
-//	 required: true
-//	 in: path
-//	 type: string
+//	   description: allocation ID
+//	   required: true
+//	   in: path
+//	   type: string
+//	+name: X-App-Client-ID
+//     description: The ID/Wallet address of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	+name: X-App-Client-Key
+// 	   description: The key of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	+name: ALLOCATION-ID
+//	   description: The ID of the allocation in question.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature
+//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//     in: header
+//     type: string
+//  +name: X-App-Client-Signature-V2
+//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//     in: header
+//     type: string
+//  +name: limit
+//    description: Number of records to show per page. If provided more than 100, it will be set to 100. Default is 20.
+//    in: query
+//    type: integer
+//  +name: offset
+//    description: Pagination offset. Default is 0.
+//    in: query
+//    type: string
+//  +name: from-date
+//    description: Timestamp to start listing from. Ignored if not provided.
+//    in: query
+//    type: integer
 //
 // responses:
 //
@@ -611,16 +1090,59 @@ func RecentRefsRequestHandler(ctx context.Context, r *http.Request) (interface{}
 	return response, nil
 }
 
-// swagger:route GET /v1/file/rename/{allocation} renameallocation
-// rename an allocation
+// swagger:route POST /v1/file/rename/{allocation} PostRename
+// Rename file.
+// Rename a file in an allocation. Can only be run by the owner of the allocation.
+// The allocation should permit rename for this operation to succeed. Check System Features > Storage > File Operations > File Permissions for more info.
 //
 // parameters:
 //
 //	+name: allocation
-//	 description: the allocation ID
-//	 required: true
-//	 in: path
-//	 type: string
+//	   description: the allocation ID
+//	   required: true
+//	   in: path
+//	   type: string
+//	 +name: X-App-Client-ID
+//     description: The ID/Wallet address of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: X-App-Client-Key
+// 	   description: The key of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: ALLOCATION-ID
+//	   description: The ID of the allocation in question.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature
+//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//     in: header
+//     type: string
+//  +name: X-App-Client-Signature-V2
+//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//     in: header
+//     type: string
+//  +name: path
+//     description: Path of the file to be renamed. Required only if `path_hash` is not provided.
+//     in: query
+//     type: string
+//  +name: path_hash
+//     description: Hash of the path of the file to be renamed. Required only if `path` is not provided.
+//     in: query
+//     type: string
+//  +name: new_name
+//     description: Name to be set to the file/directory.
+//     in: query
+//     type: string
+//     required: true
+//  +name: connection_id
+//     description: Connection ID related to this process. Blobber uses the connection id to redeem rewards for storage and distinguish the operation. Connection should be using the create connection endpoint.
+//     in: query
+//     type: string
+//     required: true
 //
 // responses:
 //
@@ -639,16 +1161,59 @@ func RenameHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
-// swagger:route GET /v1/file/copy/{allocation} copyallocation
-// copy an allocation
+// swagger:route POST /v1/file/copy/{allocation} PostCopy
+// Copy a file.
+// Copy a file in an allocation. Can only be run by the owner of the allocation.
+// The allocation should permit copy for this operation to succeed. Check System Features > Storage > File Operations > File Permissions for more info.
 //
 // parameters:
 //
 //	+name: allocation
-//	 description: the allocation ID
-//	 required: true
-//	 in: path
-//	 type: string
+//	   description: the allocation ID
+//	   required: true
+//	   in: path
+//	   type: string
+//	 +name: X-App-Client-ID
+//     description: The ID/Wallet address of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: X-App-Client-Key
+// 	   description: The key of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: ALLOCATION-ID
+//	   description: The ID of the allocation in question.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature
+//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//     in: header
+//     type: string
+//  +name: X-App-Client-Signature-V2
+//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//     in: header
+//     type: string
+//  +name: path
+//     description: Path of the file to be copied. Required only if `path_hash` is not provided.
+//     in: query
+//     type: string
+//  +name: path_hash
+//     description: Hash of the path of the file to be copied. Required only if `path` is not provided.
+//     in: query
+//     type: string
+//  +name: dest
+//     description: Destination path of the file to be copied.
+//     in: query
+//     type: string
+//     required: true
+//  +name: connection_id
+//     description: Connection ID related to this process. Blobber uses the connection id to redeem rewards for storage operations and distinguish the operation. Connection should be using the create connection endpoint.
+//     in: query
+//     type: string
+//     required: true
 //
 // responses:
 //
@@ -667,16 +1232,59 @@ func CopyHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
-// swagger:route GET /v1/file/move/{allocation} moveallocation
-// move an allocation
+// swagger:route POST /v1/file/move/{allocation} PostMove
+// Move a file.
+// Mova a file from a path to another in an allocation. Can only be run by the owner of the allocation.
+// The allocation should permit move for this operation to succeed. Check System Features > Storage > File Operations > File Permissions for more info.
 //
 // parameters:
 //
 //	+name: allocation
-//	 description: the allocation ID
-//	 required: true
-//	 in: path
-//	 type: string
+//	   description: the allocation ID
+//	   required: true
+//	   in: path
+//	   type: string
+//	 +name: X-App-Client-ID
+//     description: The ID/Wallet address of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: X-App-Client-Key
+// 	   description: The key of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: ALLOCATION-ID
+//	   description: The ID of the allocation in question.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature
+//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//     in: header
+//     type: string
+//  +name: X-App-Client-Signature-V2
+//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//     in: header
+//     type: string
+//  +name: path
+//     description: Path of the file to be moved. Required only if `path_hash` is not provided.
+//     in: query
+//     type: string
+//  +name: path_hash
+//     description: Hash of the path of the file to be moved. Required only if `path` is not provided.
+//     in: query
+//     type: string
+//  +name: dest
+//     description: Destination path of the file to be moved.
+//     in: query
+//     type: string
+//     required: true
+//  +name: connection_id
+//     description: Connection ID related to this process. Blobber uses the connection id to redeem rewards for storage operations and distinguish the operation. Connection should be using the create connection endpoint.
+//     in: query
+//     type: string
+//     required: true
 //
 // responses:
 //
@@ -695,16 +1303,45 @@ func MoveHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return response, nil
 }
 
-// swagger:route GET /v1/dir/{allocation} createdirhandler
-// CreateDirHandler is the handler to respond to create dir for allocation
+// swagger:route POST /v1/dir/{allocation} PostCreateDir
+// Create a directory.
+// Creates a directory in an allocation. Can only be run by the owner of the allocation.
 //
 // parameters:
 //
 //	+name: allocation
-//	 description: the allocation ID
-//	 required: true
-//	 in: path
-//	 type: string
+//	   description: the allocation ID
+//	   required: true
+//	   in: path
+//	   type: string
+//	 +name: X-App-Client-ID
+//     description: The ID/Wallet address of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: X-App-Client-Key
+// 	   description: The key of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: ALLOCATION-ID
+//	   description: The ID of the allocation in question.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature
+//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//     in: header
+//     type: string
+//  +name: X-App-Client-Signature-V2
+//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//     in: header
+//     type: string
+//  +name: dir_path
+//     description: Path of the directory to be created.
+//     in: query
+//     type: string
+//     required: true
 //
 // responses:
 //
@@ -723,7 +1360,176 @@ func CreateDirHandler(ctx context.Context, r *http.Request) (interface{}, error)
 	return response, nil
 }
 
-/*uploadHandler is the handler to respond to upload requests fro clients*/
+// swagger:route PUT /v1/file/upload/{allocation} PutUpdateFile
+// Update/Replace a file.
+// UpdateHandler is the handler to respond to update requests from clients. The allocation should permit update for this operation to succeed. Check System Features > Storage > File Operations > File Permissions for more info.
+//
+// parameters:
+//
+//	+name: allocation
+//	   description: the allocation ID
+//	   required: true
+//	   in: path
+//	   type: string
+//	 +name: X-App-Client-ID
+//     description: The ID/Wallet address of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: X-App-Client-Key
+// 	   description: The key of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: ALLOCATION-ID
+//	   description: The ID of the allocation in question.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature
+//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//     in: header
+//     type: string
+//  +name: X-App-Client-Signature-V2
+//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//     in: header
+//     type: string
+//	+name: connection_id
+//	   description: ID of the connection related to this process. Check 2-PC documentation.
+//	   required: true
+//	   in: query
+//	   type: string
+//  +name: uploadMeta
+//     description: Metadata of the file to be replaced with the current file. It should be a valid JSON object following the UploadFileChanger schema.
+//     in: form
+//     type: string
+//     required: true
+//  +name: uploadThumbnailFile
+//    description: Thumbnail file to be replaced. It should be a valid image file.
+//    in: form
+//    type: file
+//  +name: uploadFile
+//    description: File to replace the existing one.
+//    in: form
+//    type: file
+//    required: true
+//
+// responses:
+//
+//	200: UploadResult
+//	400:
+//	500:
+
+// swagger:route DELETE /v1/file/upload/{allocation} DeleteFile
+// Delete a file.
+// DeleteHandler is the handler to respond to delete requests from clients. The allocation should permit delete for this operation to succeed. Check System Features > Storage > File Operations > File Permissions for more info.
+//
+// parameters:
+//
+//	+name: allocation
+//	   description: the allocation ID
+//	   required: true
+//	   in: path
+//	   type: string
+//	 +name: X-App-Client-ID
+//     description: The ID/Wallet address of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: X-App-Client-Key
+// 	   description: The key of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: ALLOCATION-ID
+//	   description: The ID of the allocation in question.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature
+//     description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//     in: header
+//     type: string
+//  +name: X-App-Client-Signature-V2
+//     description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//     in: header
+//     type: string
+//	+name: connection_id
+//	   description: ID of the connection related to this process. Check 2-PC documentation.
+//	   required: true
+//	   in: query
+//	   type: string
+//  +name: path
+//     description: Path of the file to be deleted.
+//     in: query
+//     type: string
+//     required: true
+//
+// responses:
+//
+//	200: UploadResult
+//	400:
+//	500:
+
+// swagger:route POST /v1/file/upload/{allocation} PostUploadFile
+// Upload a file.
+// uploadHandler is the handler to respond to upload requests from clients. The allocation should permit upload for this operation to succeed. Check System Features > Storage > File Operations > File Permissions for more info.
+//
+// parameters:
+//
+//		+name: allocation
+//		   description: the allocation ID
+//		   required: true
+//		   in: path
+//		   type: string
+//		 +name: X-App-Client-ID
+//	    description: The ID/Wallet address of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		 +name: X-App-Client-Key
+//		   description: The key of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		 +name: ALLOCATION-ID
+//		   description: The ID of the allocation in question.
+//	    in: header
+//	    type: string
+//	    required: true
+//	 +name: X-App-Client-Signature
+//	    description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//	    in: header
+//	    type: string
+//	 +name: X-App-Client-Signature-V2
+//	    description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//	    in: header
+//	    type: string
+//		+name: connection_id
+//		   description: ID of the connection related to this process. Check 2-PC documentation.
+//		   required: true
+//		   in: query
+//		   type: string
+//	 +name: uploadMeta
+//	    description: Metadata of the file to be uploaded. It should be a valid JSON object following the UploadFileChanger schema.
+//	    in: form
+//	    type: string
+//	    required: true
+//	 +name: uploadThumbnailFile
+//	   description: Thumbnail file to be uploaded. It should be a valid image file.
+//	   in: form
+//	   type: file
+//	 +name: uploadFile
+//	   description: File to be uploaded.
+//	   in: form
+//	   type: file
+//	   required: true
+//
+// responses:
+//
+//	200: UploadResult
+//	400:
+//	500:
 func uploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
@@ -745,6 +1551,11 @@ func writeResponse(w http.ResponseWriter, resp []byte) {
 	if err != nil {
 		Logger.Error("Error sending StatsHandler response", zap.Error(err))
 	}
+}
+
+func GetBlobberInfo(ctx context.Context, r *http.Request) (interface{}, error) {
+	blobberInfo := GetBlobberInfoJson()
+	return blobberInfo, nil
 }
 
 // todo wrap with connection
@@ -833,6 +1644,55 @@ func CleanupDiskHandler(ctx context.Context, r *http.Request) (interface{}, erro
 	return "cleanup", err
 }
 
+// swagger:route DELETE /v1/marketplace/shareinfo/{allocation} DeleteShare
+// Revokes access to a shared file.
+// Handle revoke share requests from clients.
+//
+// parameters:
+//   +name: allocation
+//     description: TxHash of the allocation in question.
+//     in: path
+//     required: true
+//     type: string
+//	 +name: X-App-Client-ID
+//     description: The ID/Wallet address of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: X-App-Client-Key
+// 	   description: The key of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: ALLOCATION-ID
+//	   description: The ID of the allocation in question.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature
+//     description: Digital signature of the client used to verify the request.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature-V2
+//     description: Digital signature of the client used to verify the request. Overrides X-App-Client-Signature if provided.
+//     in: header
+//     type: string
+// +name: path
+//     description: Path of the file to be shared.
+//     in: query
+//     type: string
+//     required: true
+// +name: refereeClientID
+//     description: The ID of the client to revoke access to the file (in case of private sharing).
+//     in: query
+//     type: string
+//
+// responses:
+//
+//	200:
+//  400:
+
 func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)
@@ -890,6 +1750,59 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	}
 	return resp, nil
 }
+
+// swagger:route POST /v1/marketplace/shareinfo/{allocation} PostShareInfo
+// Share a file.
+// Handle share file requests from clients. Returns generic mapping.
+//
+// parameters:
+//   +name: allocation
+//     description: TxHash of the allocation in question.
+//     in: path
+//     required: true
+//     type: string
+//	 +name: X-App-Client-ID
+//     description: The ID/Wallet address of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: X-App-Client-Key
+// 	   description: The key of the client sending the request.
+//     in: header
+//     type: string
+//     required: true
+//	 +name: ALLOCATION-ID
+//	   description: The ID of the allocation in question.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature
+//     description: Digital signature of the client used to verify the request.
+//     in: header
+//     type: string
+//     required: true
+//  +name: X-App-Client-Signature-V2
+//     description: Digital signature of the client used to verify the request. Overrides X-App-Client-Signature if provided.
+//     in: header
+//     type: string
+//  +name: encryption_public_key
+//     description: Public key of the referee client in case of private sharing. Used for proxy re-encryption.
+//     in: form
+//     type: string
+//  +name: available_after
+//     description: Time after which the file will be accessible for sharing.
+//     in: form
+//     type: string
+//  +name: auth_ticket
+//     description: Body of the auth ticket used to verify the file access. Follows the structure of [`AuthTicket`](#auth-ticket)
+//     in: form
+//     type: string
+//     required: true
+//
+// responses:
+//
+//	200:
+//	400:
 
 func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
@@ -977,7 +1890,61 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	return map[string]interface{}{"message": "Share info added successfully"}, nil
 }
 
-// ListShare a list of files that clientID has shared
+// swagger:route GET /v1/marketplace/shareinfo/{allocation} GetListShareInfo
+// List shared files.
+// Retrieve shared files in an allocation by its owner.
+//
+// parameters:
+//
+//		+name: allocation
+//		   description: the allocation ID
+//		   required: true
+//		   in: path
+//		   type: string
+//		 +name: X-App-Client-ID
+//	    description: The ID/Wallet address of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		 +name: X-App-Client-Key
+//		   description: The key of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		 +name: ALLOCATION-ID
+//		   description: The ID of the allocation in question.
+//	    in: header
+//	    type: string
+//	    required: true
+//	 +name: X-App-Client-Signature
+//	    description: Digital signature of the client used to verify the request if the X-Version is not "v2"
+//	    in: header
+//	    type: string
+//	 +name: X-App-Client-Signature-V2
+//	    description: Digital signature of the client used to verify the request if the X-Version is "v2"
+//	    in: header
+//	    type: string
+//	  +name: offset
+//	    in: query
+//	    type: integer
+//	    required: false
+//	    description: Pagination offset, start of the page to retrieve. Default is 0.
+//	  +name: limit
+//	    in: query
+//	    type: integer
+//	    required: false
+//	    description: Pagination limit, number of entries in the page to retrieve. Default is 20.
+//	  +name: sort
+//	    in: query
+//	    type: string
+//	    required: false
+//	    description: Direction of sorting based on challenge closure time, either "asc" or "desc". Default is "asc"
+//
+// responses:
+//
+//	200: []ShareInfo
+//	400:
+//	500:
 func ListShare(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	ctx = setupHandlerContext(ctx, r)

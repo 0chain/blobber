@@ -13,6 +13,7 @@ const (
 	NinetyDays = common.Timestamp(90 * 24 * time.Hour)
 )
 
+// swagger:model AuthTicket
 type AuthTicket struct {
 	ClientID        string           `json:"client_id"`
 	OwnerID         string           `json:"owner_id"`

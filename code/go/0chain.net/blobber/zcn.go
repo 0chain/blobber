@@ -2,17 +2,18 @@ package main
 
 import (
 	"fmt"
-	"time"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/handler"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	handleCommon "github.com/0chain/blobber/code/go/0chain.net/core/common/handler"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/gosdk/zboxcore/sdk"
 	"github.com/0chain/gosdk/zcncore"
+	"go.uber.org/zap"
+	"time"
 )
 
 func registerOnChain() error {
@@ -31,8 +32,9 @@ func registerOnChain() error {
 		return err
 	}
 
-	// setup blobber (add or update) on the blockchain (multiple attempts)
-	for i := 1; i <= 10; i++ {
+	// setup blobber (add) on the blockchain (multiple attempts)
+	i := 1
+	for {
 		if i == 1 {
 			fmt.Printf("\r	+ connect to sharders:")
 		} else {
@@ -50,6 +52,9 @@ func registerOnChain() error {
 		err = handler.RegisterBlobber(common.GetRootContext())
 		if err == nil {
 			break
+		} else {
+			i++
+			logging.Logger.Error("add_blobber_error", zap.Error(err))
 		}
 	}
 

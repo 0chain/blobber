@@ -148,9 +148,11 @@ func main() {
 
 	chain.SetServerChain(serverChain)
 
-	if err := SetupValidatorOnBC(*logDir); err != nil {
-		Logger.Info("error setting up validator on blockchain", zap.Any("err", err))
-	}
+	go func() {
+		if err := SetupValidatorOnBC(*logDir); err != nil {
+			Logger.Info("error setting up validator on blockchain", zap.Any("err", err))
+		}
+	}()
 
 	fmt.Printf("[+] %-24s    %s\n", "register on chain", "[OK]")
 
@@ -191,9 +193,6 @@ func main() {
 }
 
 func RegisterValidator() {
-	registrationRetries := 0
-	//ctx := badgerdbstore.GetStorageProvider().WithConnection(common.GetRootContext())
-
 	_, err := sdk.GetValidator(node.Self.ID)
 
 	if err == nil {
@@ -202,11 +201,10 @@ func RegisterValidator() {
 		return
 	}
 
-	for registrationRetries < 10 {
+	for {
 		txn, err := storage.GetProtocolImpl().RegisterValidator(common.GetRootContext())
 		if err != nil {
 			Logger.Error("Error registering validator", zap.Any("err", err))
-			registrationRetries++
 			continue
 		}
 		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
@@ -226,7 +224,6 @@ func RegisterValidator() {
 		if !txnVerified {
 			Logger.Error("Add validator transaction could not be verified", zap.Any("err", err), zap.String("txn.Hash", txn.Hash))
 		}
-		registrationRetries++
 	}
 
 }

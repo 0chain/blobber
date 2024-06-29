@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// swagger:model FileStats
 type FileStats struct {
 	ID                       int64          `gorm:"column:id;primaryKey" json:"-"`
 	RefID                    int64          `gorm:"column:ref_id;unique" json:"-"`

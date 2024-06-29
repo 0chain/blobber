@@ -27,6 +27,7 @@ import (
 // Only when blobber is not in sync with blockchain, SaveLatestReadMarker will be called.
 var ReadmarkerMapLock = common.GetNewLocker()
 
+// swagger:model ReadMarker
 type ReadMarker struct {
 	ClientID        string           `gorm:"column:client_id;size:64;primaryKey" json:"client_id"`
 	AllocationID    string           `gorm:"column:allocation_id;size:64;primaryKey" json:"allocation_id"`
