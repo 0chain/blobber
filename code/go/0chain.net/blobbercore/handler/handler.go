@@ -6,13 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/0chain/gosdk/core/zcncrypto"
 	"net/http"
 	"os"
 	"runtime/pprof"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/0chain/gosdk/core/zcncrypto"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 
@@ -222,7 +223,7 @@ func setupHandlers(s *mux.Router) {
 	s.HandleFunc("/_config", common.AuthenticateAdmin(common.ToJSONResponse(GetConfig)))
 	// s.HandleFunc("/_config", RateLimitByCommmitRL(common.ToJSONResponse(GetConfig)))
 	// s.HandleFunc("/_stats", common.AuthenticateAdmin(StatsHandler)))
-	s.HandleFunc("/_stats", RateLimitByCommmitRL(StatsHandler))
+	s.HandleFunc("/objectlimit", RateLimitByCommmitRL(common.ToJSONResponse(GetObjectLimit)))
 
 	s.HandleFunc("/_logs", RateLimitByCommmitRL(common.ToJSONResponse(GetLogs)))
 
@@ -1628,6 +1629,16 @@ func DumpGoRoutines(ctx context.Context, r *http.Request) (interface{}, error) {
 func GetConfig(ctx context.Context, r *http.Request) (interface{}, error) {
 
 	return config.Configuration, nil
+}
+
+func GetObjectLimit(ctx context.Context, r *http.Request) (interface{}, error) {
+	var objLimit struct {
+		MaxAllocationDirFiles int
+		MaxObjectsInDir       int
+	}
+	objLimit.MaxAllocationDirFiles = config.Configuration.MaxAllocationDirFiles
+	objLimit.MaxObjectsInDir = config.Configuration.MaxObjectsInDir
+	return objLimit, nil
 }
 
 func GetLogs(ctx context.Context, r *http.Request) (interface{}, error) {
