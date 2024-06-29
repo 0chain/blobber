@@ -52,16 +52,18 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 	}
 
 	if err == nil {
-		// load related terms
-		var terms []*Terms
-		err = tx.Model(terms).
-			Where("allocation_id = ?", a.ID).
-			Find(&terms).Error
-		if err != nil {
-			return nil, common.NewError("bad_db_operation", err.Error()) // unexpected DB error
+		if len(a.Terms) == 0 {
+			// load related terms
+			var terms []*Terms
+			err = tx.Model(terms).
+				Where("allocation_id = ?", a.ID).
+				Find(&terms).Error
+			if err != nil {
+				return nil, common.NewError("bad_db_operation", err.Error()) // unexpected DB error
+			}
+			a.Terms = terms // set field
 		}
-		a.Terms = terms // set field
-		return          // found in DB
+		return // found in DB
 	}
 
 	sa, err := requestAllocation(allocationID)
