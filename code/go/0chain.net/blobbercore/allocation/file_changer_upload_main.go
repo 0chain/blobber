@@ -10,7 +10,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
-func (nf *UploadFileChanger) ApplyChange(ctx context.Context, change *AllocationChange,
-	ts common.Timestamp, fileIDMeta map[string]string, collector reference.QueryCollector) (*reference.Ref, error) {
-	return nf.applyChange(ctx, change, ts, fileIDMeta, collector)
+func (nf *UploadFileChanger) ApplyChange(ctx context.Context,
+	ts common.Timestamp, fileIDMeta map[string]string, collector reference.QueryCollector) error {
+	return nf.applyChange(ctx, ts, fileIDMeta, collector)
 }

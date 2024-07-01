@@ -32,7 +32,7 @@ const (
 type AllocationChangeProcessor interface {
 	CommitToFileStore(ctx context.Context, mut *sync.Mutex) error
 	DeleteTempFile() error
-	ApplyChange(ctx context.Context, change *AllocationChange,
+	ApplyChange(ctx context.Context,
 		ts common.Timestamp, fileIDMeta map[string]string, collector reference.QueryCollector) error
 	GetPath() []string
 	Marshal() (string, error)
@@ -231,18 +231,18 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 		switch change.Operation {
 		case constants.FileOperationInsert:
 			acp = new(UploadFileChanger)
-		case constants.FileOperationUpdate:
-			acp = new(UpdateFileChanger)
+		// case constants.FileOperationUpdate:
+		// 	acp = new(UpdateFileChanger)
 		case constants.FileOperationDelete:
 			acp = new(DeleteFileChange)
-		case constants.FileOperationRename:
-			acp = new(RenameFileChange)
-		case constants.FileOperationCopy:
-			acp = new(CopyFileChange)
+		// case constants.FileOperationRename:
+		// 	acp = new(RenameFileChange)
+		// case constants.FileOperationCopy:
+		// 	acp = new(CopyFileChange)
 		case constants.FileOperationCreateDir:
 			acp = new(NewDir)
-		case constants.FileOperationMove:
-			acp = new(MoveFileChange)
+			// case constants.FileOperationMove:
+			// 	acp = new(MoveFileChange)
 		}
 
 		if acp == nil {
@@ -255,13 +255,13 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 	}
 }
 
-func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocationRoot, prevAllocationRoot string,
+func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context,
 	ts common.Timestamp, fileIDMeta map[string]string) error {
 	collector := reference.NewCollector(len(cc.Changes))
 	for idx, change := range cc.Changes {
 		change.AllocationID = cc.AllocationID
 		changeProcessor := cc.AllocationChanges[idx]
-		err := changeProcessor.ApplyChange(ctx, change, ts, fileIDMeta, collector)
+		err := changeProcessor.ApplyChange(ctx, ts, fileIDMeta, collector)
 		if err != nil {
 			return err
 		}
@@ -294,12 +294,9 @@ func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context) {
 }
 
 type Result struct {
-	Id                 string
-	ValidationRoot     string
-	PrevValidationRoot string
-	ThumbnailHash      string
-	PrevThumbnailHash  string
-	FilestoreVersion   int
+	Id               string
+	LookupHash       string
+	FilestoreVersion int
 }
 
 // TODO: Need to speed up this function
@@ -316,17 +313,10 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 
 	err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		tx := datastore.GetStore().GetTransaction(ctx)
-		err := tx.Model(&reference.Ref{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Select("id", "validation_root", "thumbnail_hash", "prev_validation_root", "prev_thumbnail_hash", "filestore_version").Where("allocation_id=? AND is_precommit=? AND type=?", a.AllocationID, true, reference.FILE).
+		err := tx.Model(&reference.Ref{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Select("id", "filestore_version").Where("allocation_id=? AND is_precommit=? AND type=?", a.AllocationID, true, reference.FILE).
 			FindInBatches(&refs, 50, func(tx *gorm.DB, batch int) error {
 
 				for _, ref := range refs {
-
-					var count int64
-					if ref.PrevValidationRoot != "" {
-						tx.Model(&reference.Ref{}).
-							Where("allocation_id=? AND validation_root=?", a.AllocationID, ref.PrevValidationRoot).
-							Count(&count)
-					}
 
 					limitCh <- struct{}{}
 					wg.Add(1)
@@ -337,32 +327,9 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 							wg.Done()
 						}()
 
-						if count == 0 && ref.PrevValidationRoot != "" {
-							err := filestore.GetFileStore().DeleteFromFilestore(a.AllocationID, ref.PrevValidationRoot, ref.FilestoreVersion)
-							if err != nil {
-								logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
-									zap.String("validation_root", ref.ValidationRoot))
-							}
-						}
-						err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.ValidationRoot, ref.FilestoreVersion)
+						err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.LookupHash, ref.FilestoreVersion)
 						if err != nil {
-							logging.Logger.Error(fmt.Sprintf("Error while moving file: %s", err.Error()),
-								zap.String("validation_root", ref.ValidationRoot))
-						}
-
-						if ref.ThumbnailHash != "" && ref.ThumbnailHash != ref.PrevThumbnailHash {
-							if ref.PrevThumbnailHash != "" {
-								err := filestore.GetFileStore().DeleteFromFilestore(a.AllocationID, ref.PrevThumbnailHash, ref.FilestoreVersion)
-								if err != nil {
-									logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail file: %s", err.Error()),
-										zap.String("thumbnail_hash", ref.ThumbnailHash))
-								}
-							}
-							err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.ThumbnailHash, ref.FilestoreVersion)
-							if err != nil {
-								logging.Logger.Error(fmt.Sprintf("Error while moving thumbnail file: %s", err.Error()),
-									zap.String("thumbnail_hash", ref.ThumbnailHash))
-							}
+							logging.Logger.Error(fmt.Sprintf("Error while moving file: %s", err.Error()))
 						}
 
 					}(ref)
@@ -378,7 +345,7 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 			return err
 		}
 
-		return tx.Exec("UPDATE reference_objects SET is_precommit=?, prev_validation_root=validation_root, prev_thumbnail_hash=thumbnail_hash WHERE allocation_id=? AND is_precommit=? AND deleted_at is NULL", false, a.AllocationID, true).Error
+		return tx.Exec("UPDATE reference_objects SET is_precommit=? WHERE allocation_id=? AND is_precommit=? AND deleted_at is NULL", false, a.AllocationID, true).Error
 	})
 	return err
 }
@@ -391,47 +358,27 @@ func deleteFromFileStore(ctx context.Context, allocationID string) error {
 	return datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		db := datastore.GetStore().GetTransaction(ctx)
 
-		err := db.Model(&reference.Ref{}).Unscoped().Select("id", "validation_root", "thumbnail_hash").
+		err := db.Model(&reference.Ref{}).Unscoped().Select("id", "lookup_hash", "filestore_version").
 			Where("allocation_id=? AND is_precommit=? AND type=? AND deleted_at is not NULL", allocationID, true, reference.FILE).
 			FindInBatches(&results, 100, func(tx *gorm.DB, batch int) error {
 
 				for _, res := range results {
-					var count int64
-					tx.Model(&reference.Ref{}).
-						Where("allocation_id=? AND validation_root=?", allocationID, res.ValidationRoot).
-						Count(&count)
-
-					if count != 0 && res.ThumbnailHash == "" {
-						continue
-					}
-
 					limitCh <- struct{}{}
 					wg.Add(1)
 
-					go func(res Result, count int64) {
+					go func(res Result) {
 						defer func() {
 							<-limitCh
 							wg.Done()
 						}()
 
-						if count == 0 {
-							err := filestore.GetFileStore().DeleteFromFilestore(allocationID, res.ValidationRoot,
-								res.FilestoreVersion)
-							if err != nil {
-								logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
-									zap.String("validation_root", res.ValidationRoot))
-							}
+						err := filestore.GetFileStore().DeleteFromFilestore(allocationID, res.LookupHash,
+							res.FilestoreVersion)
+						if err != nil {
+							logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
+								zap.String("validation_root", res.LookupHash))
 						}
-
-						if res.ThumbnailHash != "" {
-							err := filestore.GetFileStore().DeleteFromFilestore(allocationID, res.ThumbnailHash, res.FilestoreVersion)
-							if err != nil {
-								logging.Logger.Error(fmt.Sprintf("Error while deleting thumbnail: %s", err.Error()),
-									zap.String("thumbnail", res.ThumbnailHash))
-							}
-						}
-
-					}(res, count)
+					}(res)
 
 				}
 				return nil

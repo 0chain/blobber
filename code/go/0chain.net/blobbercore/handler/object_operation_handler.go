@@ -499,7 +499,6 @@ func (fsh *StorageHandler) CreateConnection(ctx context.Context, r *http.Request
 }
 
 func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {
-	var prevChainHash string
 	startTime := time.Now()
 	if r.Method == "GET" {
 		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use POST instead")
@@ -566,74 +565,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			"Max size reached for the allocation with this blobber")
 	}
 
-	writeMarkerString := r.FormValue("write_marker")
-	if writeMarkerString == "" {
-		return nil, common.NewError("invalid_parameters", "Invalid write marker passed")
-	}
-	writeMarker := writemarker.WriteMarker{}
-	err = json.Unmarshal([]byte(writeMarkerString), &writeMarker)
-	if err != nil {
-		return nil, common.NewErrorf("invalid_parameters",
-			"Invalid parameters. Error parsing the writemarker for commit: %v",
-			err)
-	}
-
 	var result blobberhttp.CommitResult
-	var latestWriteMarkerEntity *writemarker.WriteMarkerEntity
-	if allocationObj.AllocationRoot == "" {
-		latestWriteMarkerEntity = nil
-	} else {
-		latestWriteMarkerEntity, err = writemarker.GetWriteMarkerEntity(ctx,
-			allocationObj.AllocationRoot)
-		if err != nil {
-			return nil, common.NewErrorf("latest_write_marker_read_error",
-				"Error reading the latest write marker for allocation: %v", err)
-		}
-		if latestWriteMarkerEntity.Status == writemarker.Failed {
-			return nil, common.NewError("latest_write_marker_failed",
-				"Latest write marker is in failed state")
-		}
-
-		if latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size != writeMarker.ChainSize {
-			return nil, common.NewErrorf("invalid_chain_size",
-				"Invalid chain size. expected:%v got %v", latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size, writeMarker.ChainSize)
-		}
-
-		if latestWriteMarkerEntity.Status != writemarker.Committed {
-			writeMarker.ChainLength = latestWriteMarkerEntity.WM.ChainLength
-		}
-		prevChainHash = latestWriteMarkerEntity.WM.ChainHash
-	}
-
-	writemarkerEntity := &writemarker.WriteMarkerEntity{}
-	writemarkerEntity.WM = writeMarker
-	writemarkerEntity.WM.ChainLength += 1
-	if writemarkerEntity.WM.ChainLength > config.Configuration.MaxChainLength {
-		return nil, common.NewError("chain_length_exceeded", "Chain length exceeded")
-	}
-
-	err = writemarkerEntity.VerifyMarker(ctx, allocationObj, connectionObj, latestWriteMarkerEntity)
-	if err != nil {
-		result.AllocationRoot = allocationObj.AllocationRoot
-		result.ErrorMessage = "Verification of write marker failed: " + err.Error()
-		result.Success = false
-		if latestWriteMarkerEntity != nil {
-			result.WriteMarker = latestWriteMarkerEntity
-		}
-		Logger.Error("verify_writemarker_failed", zap.Error(err))
-		return &result, common.NewError("write_marker_verification_failed", result.ErrorMessage)
-	}
-
-	elapsedVerifyWM := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj
-
-	var clientIDForWriteRedeem = writeMarker.ClientID
-
-	if err := writePreRedeem(ctx, allocationObj, &writeMarker, clientIDForWriteRedeem); err != nil {
-		return nil, err
-	}
-
-	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
-		elapsedGetConnObj - elapsedVerifyWM
 
 	fileIDMetaStr := r.FormValue("file_id_meta")
 	if fileIDMetaStr == "" {
@@ -652,74 +584,28 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("move_to_filestore_error", fmt.Sprintf("Error while moving to filestore: %s", err.Error()))
 	}
 
-	elapsedMoveToFilestore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
+	elapsedMoveToFilestore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj
 
-	rootRef, err := connectionObj.ApplyChanges(
-		ctx, writeMarker.AllocationRoot, writeMarker.PreviousAllocationRoot, writeMarker.Timestamp, fileIDMeta)
+	err = connectionObj.ApplyChanges(
+		ctx, common.Now(), fileIDMeta)
 	if err != nil {
 		Logger.Error("Error applying changes", zap.Error(err))
 		return nil, err
 	}
-	if !rootRef.IsPrecommit {
-		return nil, common.NewError("no_root_change", "No change in root ref")
-	}
 
 	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
-		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
-
-	allocationRoot := rootRef.Hash
-	fileMetaRoot := rootRef.FileMetaHash
-	if allocationRoot != writeMarker.AllocationRoot {
-		result.AllocationRoot = allocationObj.AllocationRoot
-		if latestWriteMarkerEntity != nil {
-			result.WriteMarker = latestWriteMarkerEntity
-		}
-		result.Success = false
-		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root." +
-			" Expected hash: " + allocationRoot
-		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
-	}
-
-	chainHash := writemarker.CalculateChainHash(prevChainHash, allocationRoot)
-	if chainHash != writeMarker.ChainHash {
-		return nil, common.NewError("chain_hash_mismatch", "Chain hash in the write marker does not match the calculated chain hash")
-	}
-
-	if fileMetaRoot != writeMarker.FileMetaRoot {
-		// result.AllocationRoot = allocationObj.AllocationRoot
-		if latestWriteMarkerEntity != nil {
-			result.WriteMarker = latestWriteMarkerEntity
-		}
-		result.Success = false
-		result.ErrorMessage = "File meta root in the write marker does not match the calculated file meta root." +
-			" Expected hash: " + fileMetaRoot + "; Got: " + writeMarker.FileMetaRoot
-		return &result, common.NewError("file_meta_root_mismatch", result.ErrorMessage)
-	}
-
-	writemarkerEntity.ConnectionID = connectionObj.ID
-	writemarkerEntity.ClientPublicKey = clientKey
+		elapsedGetConnObj
 
 	db := datastore.GetStore().GetTransaction(ctx)
-	writemarkerEntity.Latest = true
-	if err = db.Create(writemarkerEntity).Error; err != nil {
-		return nil, common.NewError("write_marker_error", "Error persisting the write marker")
-	}
-	allocationObj.AllocationRoot = allocationRoot
-	allocationObj.FileMetaRoot = fileMetaRoot
-	allocationObj.IsRedeemRequired = true
 	allocationObj.BlobberSizeUsed += connectionObj.Size
 	allocationObj.UsedSize += connectionObj.Size
 
 	updateMap := map[string]interface{}{
-		"allocation_root":    allocationRoot,
-		"file_meta_root":     fileMetaRoot,
 		"used_size":          allocationObj.UsedSize,
 		"blobber_size_used":  allocationObj.BlobberSizeUsed,
 		"is_redeem_required": true,
 	}
 	updateOption := func(a *allocation.Allocation) {
-		a.AllocationRoot = allocationRoot
-		a.FileMetaRoot = fileMetaRoot
 		a.IsRedeemRequired = true
 		a.BlobberSizeUsed = allocationObj.BlobberSizeUsed
 		a.UsedSize = allocationObj.UsedSize
@@ -730,7 +616,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	elapsedSaveAllocation := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
-		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem - elapsedApplyChanges
+		elapsedGetConnObj - elapsedApplyChanges
 
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
@@ -738,13 +624,12 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 		}
 	}
-	elapsedCommitStore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem - elapsedApplyChanges - elapsedSaveAllocation
-	logging.Logger.Info("commit_filestore", zap.String("allocation_id", allocationId), zap.String("allocation_root", allocationRoot))
+	elapsedCommitStore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedApplyChanges - elapsedSaveAllocation
+	logging.Logger.Info("commit_filestore", zap.String("allocation_id", allocationId))
 	connectionObj.DeleteChanges(ctx)
 
 	db.Model(connectionObj).Updates(allocation.AllocationChangeCollector{Status: allocation.CommittedConnection})
 	result.AllocationRoot = allocationObj.AllocationRoot
-	result.WriteMarker = writemarkerEntity
 	result.Success = true
 	result.ErrorMessage = ""
 	commitOperation := connectionObj.Changes[0].Operation
@@ -758,13 +643,10 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	Logger.Info("[commit]"+commitOperation,
 		zap.String("alloc_id", allocationID),
-		zap.String("allocation_root", writeMarker.AllocationRoot),
 		zap.String("input", input),
 		zap.Duration("get_alloc", elapsedAllocation),
 		zap.Duration("get-lock", elapsedGetLock),
 		zap.Duration("get-conn-obj", elapsedGetConnObj),
-		zap.Duration("verify-wm", elapsedVerifyWM),
-		zap.Duration("write-pre-redeem", elapsedWritePreRedeem),
 		zap.Duration("move-to-filestore", elapsedMoveToFilestore),
 		zap.Duration("apply-changes", elapsedApplyChanges),
 		zap.Duration("save-allocation", elapsedSaveAllocation),
@@ -775,313 +657,313 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 }
 
 func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (interface{}, error) {
-	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
-	}
+	// allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	// allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
+	// allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
+	// if err != nil {
+	// 	return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	// }
 
-	if !allocationObj.CanRename() {
-		return nil, common.NewError("prohibited_allocation_file_options", "Cannot rename data in this allocation.")
-	}
+	// if !allocationObj.CanRename() {
+	// 	return nil, common.NewError("prohibited_allocation_file_options", "Cannot rename data in this allocation.")
+	// }
 
-	allocationID := allocationObj.ID
+	// allocationID := allocationObj.ID
 
-	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	_ = ctx.Value(constants.ContextKeyClientKey).(string)
-	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), r.Header.Get(common.ClientSignatureHeaderV2), allocationObj.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
+	// clientID := ctx.Value(constants.ContextKeyClient).(string)
+	// _ = ctx.Value(constants.ContextKeyClientKey).(string)
+	// valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), r.Header.Get(common.ClientSignatureHeaderV2), allocationObj.OwnerPublicKey)
+	// if !valid || err != nil {
+	// 	return nil, common.NewError("invalid_signature", "Invalid signature")
+	// }
 
-	if clientID == "" {
-		return nil, common.NewError("invalid_operation", "Invalid client")
-	}
+	// if clientID == "" {
+	// 	return nil, common.NewError("invalid_operation", "Invalid client")
+	// }
 
-	new_name := r.FormValue("new_name")
-	if new_name == "" {
-		return nil, common.NewError("invalid_parameters", "Invalid name")
-	}
+	// new_name := r.FormValue("new_name")
+	// if new_name == "" {
+	// 	return nil, common.NewError("invalid_parameters", "Invalid name")
+	// }
 
-	pathHash, err := pathHashFromReq(r, allocationID)
-	if err != nil {
-		return nil, err
-	}
+	// pathHash, err := pathHashFromReq(r, allocationID)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	if clientID == "" || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
+	// if clientID == "" || allocationObj.OwnerID != clientID {
+	// 	return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	// }
 
-	connectionID := r.FormValue("connection_id")
-	if connectionID == "" {
-		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
-	}
+	// connectionID := r.FormValue("connection_id")
+	// if connectionID == "" {
+	// 	return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
+	// }
 
-	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
-	if err != nil {
-		return nil, common.NewError("meta_error", "Error reading metadata for connection")
-	}
+	// connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+	// if err != nil {
+	// 	return nil, common.NewError("meta_error", "Error reading metadata for connection")
+	// }
 
-	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root", "type"})
+	// objectRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root", "type"})
 
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
-	}
+	// if err != nil {
+	// 	return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+	// }
 
-	if objectRef.Path == "/" {
-		return nil, common.NewError("invalid_operation", "cannot rename root path")
-	}
+	// if objectRef.Path == "/" {
+	// 	return nil, common.NewError("invalid_operation", "cannot rename root path")
+	// }
 
-	allocationChange := &allocation.AllocationChange{}
-	allocationChange.ConnectionID = connectionObj.ID
-	allocationChange.Size = 0
-	allocationChange.LookupHash = pathHash
-	allocationChange.Operation = constants.FileOperationRename
-	dfc := &allocation.RenameFileChange{ConnectionID: connectionObj.ID,
-		AllocationID: connectionObj.AllocationID, Path: objectRef.Path, Type: objectRef.Type}
-	dfc.NewName = new_name
-	connectionObj.AddChange(allocationChange, dfc)
+	// allocationChange := &allocation.AllocationChange{}
+	// allocationChange.ConnectionID = connectionObj.ID
+	// allocationChange.Size = 0
+	// allocationChange.LookupHash = pathHash
+	// allocationChange.Operation = constants.FileOperationRename
+	// dfc := &allocation.RenameFileChange{ConnectionID: connectionObj.ID,
+	// 	AllocationID: connectionObj.AllocationID, Path: objectRef.Path, Type: objectRef.Type}
+	// dfc.NewName = new_name
+	// connectionObj.AddChange(allocationChange, dfc)
 
-	err = connectionObj.Save(ctx)
-	if err != nil {
-		Logger.Error("Error in writing the connection meta data", zap.Error(err))
-		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
-	}
+	// err = connectionObj.Save(ctx)
+	// if err != nil {
+	// 	Logger.Error("Error in writing the connection meta data", zap.Error(err))
+	// 	return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
+	// }
 
-	result := &allocation.UploadResult{}
-	result.Filename = new_name
-	result.Hash = objectRef.Hash
-	result.ValidationRoot = objectRef.ValidationRoot
-	result.FixedMerkleRoot = objectRef.FixedMerkleRoot
-	result.Size = objectRef.Size
+	// result := &allocation.UploadResult{}
+	// result.Filename = new_name
+	// result.Hash = objectRef.Hash
+	// result.ValidationRoot = objectRef.ValidationRoot
+	// result.FixedMerkleRoot = objectRef.FixedMerkleRoot
+	// result.Size = objectRef.Size
 
-	return result, nil
+	return nil, errors.New("not implemented")
 }
 
 func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (interface{}, error) {
 
-	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
-	}
+	// allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	// allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
+	// allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
+	// if err != nil {
+	// 	return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	// }
 
-	if !allocationObj.CanCopy() {
-		return nil, common.NewError("prohibited_allocation_file_options", "Cannot copy data from this allocation.")
-	}
+	// if !allocationObj.CanCopy() {
+	// 	return nil, common.NewError("prohibited_allocation_file_options", "Cannot copy data from this allocation.")
+	// }
 
-	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), r.Header.Get(common.ClientSignatureHeaderV2), allocationObj.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
+	// valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), r.Header.Get(common.ClientSignatureHeaderV2), allocationObj.OwnerPublicKey)
+	// if !valid || err != nil {
+	// 	return nil, common.NewError("invalid_signature", "Invalid signature")
+	// }
 
-	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	_ = ctx.Value(constants.ContextKeyClientKey).(string)
+	// clientID := ctx.Value(constants.ContextKeyClient).(string)
+	// _ = ctx.Value(constants.ContextKeyClientKey).(string)
 
-	allocationID := allocationObj.ID
+	// allocationID := allocationObj.ID
 
-	if clientID == "" {
-		return nil, common.NewError("invalid_operation", "Invalid client")
-	}
+	// if clientID == "" {
+	// 	return nil, common.NewError("invalid_operation", "Invalid client")
+	// }
 
-	destPath := r.FormValue("dest")
-	if destPath == "" {
-		return nil, common.NewError("invalid_parameters", "Invalid destination for operation")
-	}
+	// destPath := r.FormValue("dest")
+	// if destPath == "" {
+	// 	return nil, common.NewError("invalid_parameters", "Invalid destination for operation")
+	// }
 
-	pathHash, err := pathHashFromReq(r, allocationID)
-	if err != nil {
-		return nil, err
-	}
+	// pathHash, err := pathHashFromReq(r, allocationID)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	if clientID == "" || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
+	// if clientID == "" || allocationObj.OwnerID != clientID {
+	// 	return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	// }
 
-	connectionID := r.FormValue("connection_id")
-	if connectionID == "" {
-		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
-	}
+	// connectionID := r.FormValue("connection_id")
+	// if connectionID == "" {
+	// 	return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
+	// }
 
-	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
-	if err != nil {
-		return nil, common.NewError("meta_error", "Error reading metadata for connection")
-	}
+	// connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+	// if err != nil {
+	// 	return nil, common.NewError("meta_error", "Error reading metadata for connection")
+	// }
 
-	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root"})
+	// objectRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root"})
 
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
-	}
-	if objectRef.ParentPath == destPath || objectRef.Path == destPath {
-		return nil, common.NewError("invalid_parameters", "Invalid destination path. Cannot copy to the same parent directory.")
-	}
-	newPath := filepath.Join(destPath, objectRef.Name)
-	paths, err := common.GetParentPaths(newPath)
-	if err != nil {
-		return nil, err
-	}
+	// if err != nil {
+	// 	return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+	// }
+	// if objectRef.ParentPath == destPath || objectRef.Path == destPath {
+	// 	return nil, common.NewError("invalid_parameters", "Invalid destination path. Cannot copy to the same parent directory.")
+	// }
+	// newPath := filepath.Join(destPath, objectRef.Name)
+	// paths, err := common.GetParentPaths(newPath)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	paths = append(paths, newPath)
+	// paths = append(paths, newPath)
 
-	refs, err := reference.GetRefsTypeFromPaths(ctx, allocationID, paths)
-	if err != nil {
-		Logger.Error("Database error", zap.Error(err))
-		return nil, common.NewError("database_error", fmt.Sprintf("Got db error while getting refs for %v", paths))
-	}
+	// refs, err := reference.GetRefsTypeFromPaths(ctx, allocationID, paths)
+	// if err != nil {
+	// 	Logger.Error("Database error", zap.Error(err))
+	// 	return nil, common.NewError("database_error", fmt.Sprintf("Got db error while getting refs for %v", paths))
+	// }
 
-	for _, ref := range refs {
-		switch ref.Path {
-		case newPath:
-			return nil, common.NewError("invalid_parameters", "Invalid destination path. Object Already exists.")
-		default:
-			if ref.Type == reference.FILE {
-				return nil, common.NewError("invalid_path", fmt.Sprintf("%v is of file type", ref.Path))
-			}
-		}
-	}
+	// for _, ref := range refs {
+	// 	switch ref.Path {
+	// 	case newPath:
+	// 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Object Already exists.")
+	// 	default:
+	// 		if ref.Type == reference.FILE {
+	// 			return nil, common.NewError("invalid_path", fmt.Sprintf("%v is of file type", ref.Path))
+	// 		}
+	// 	}
+	// }
 
-	allocationChange := &allocation.AllocationChange{}
-	allocationChange.ConnectionID = connectionObj.ID
-	allocationChange.Size = objectRef.Size
-	allocationChange.LookupHash = pathHash
-	allocationChange.Operation = constants.FileOperationCopy
-	dfc := &allocation.CopyFileChange{ConnectionID: connectionObj.ID,
-		AllocationID: connectionObj.AllocationID, DestPath: destPath}
-	dfc.SrcPath = objectRef.Path
-	allocation.UpdateConnectionObjSize(connectionID, allocationChange.Size)
-	connectionObj.AddChange(allocationChange, dfc)
+	// allocationChange := &allocation.AllocationChange{}
+	// allocationChange.ConnectionID = connectionObj.ID
+	// allocationChange.Size = objectRef.Size
+	// allocationChange.LookupHash = pathHash
+	// allocationChange.Operation = constants.FileOperationCopy
+	// dfc := &allocation.CopyFileChange{ConnectionID: connectionObj.ID,
+	// 	AllocationID: connectionObj.AllocationID, DestPath: destPath}
+	// dfc.SrcPath = objectRef.Path
+	// allocation.UpdateConnectionObjSize(connectionID, allocationChange.Size)
+	// connectionObj.AddChange(allocationChange, dfc)
 
-	err = connectionObj.Save(ctx)
-	if err != nil {
-		Logger.Error("Error in writing the connection meta data", zap.Error(err))
-		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
-	}
+	// err = connectionObj.Save(ctx)
+	// if err != nil {
+	// 	Logger.Error("Error in writing the connection meta data", zap.Error(err))
+	// 	return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
+	// }
 
-	result := &allocation.UploadResult{}
-	result.Filename = objectRef.Name
-	result.Hash = objectRef.Hash
-	result.ValidationRoot = objectRef.ValidationRoot
-	result.FixedMerkleRoot = objectRef.FixedMerkleRoot
-	result.Size = objectRef.Size
-	return result, nil
+	// result := &allocation.UploadResult{}
+	// result.Filename = objectRef.Name
+	// result.Hash = objectRef.Hash
+	// result.ValidationRoot = objectRef.ValidationRoot
+	// result.FixedMerkleRoot = objectRef.FixedMerkleRoot
+	// result.Size = objectRef.Size
+	return nil, errors.New("not implemented")
 }
 
 func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (interface{}, error) {
 
-	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
-	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
-	}
+	// allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
+	// allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	// allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
+	// if err != nil {
+	// 	return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	// }
 
-	if !allocationObj.CanMove() {
-		return nil, common.NewError("prohibited_allocation_file_options", "Cannot move data in this allocation.")
-	}
+	// if !allocationObj.CanMove() {
+	// 	return nil, common.NewError("prohibited_allocation_file_options", "Cannot move data in this allocation.")
+	// }
 
-	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), r.Header.Get(common.ClientSignatureHeaderV2), allocationObj.OwnerPublicKey)
-	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "Invalid signature")
-	}
+	// valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), r.Header.Get(common.ClientSignatureHeaderV2), allocationObj.OwnerPublicKey)
+	// if !valid || err != nil {
+	// 	return nil, common.NewError("invalid_signature", "Invalid signature")
+	// }
 
-	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	_ = ctx.Value(constants.ContextKeyClientKey).(string)
+	// clientID := ctx.Value(constants.ContextKeyClient).(string)
+	// _ = ctx.Value(constants.ContextKeyClientKey).(string)
 
-	allocationID := allocationObj.ID
+	// allocationID := allocationObj.ID
 
-	if clientID == "" {
-		return nil, common.NewError("invalid_operation", "Invalid client")
-	}
+	// if clientID == "" {
+	// 	return nil, common.NewError("invalid_operation", "Invalid client")
+	// }
 
-	destPath := r.FormValue("dest")
-	if destPath == "" {
-		return nil, common.NewError("invalid_parameters", "Invalid destination for operation")
-	}
+	// destPath := r.FormValue("dest")
+	// if destPath == "" {
+	// 	return nil, common.NewError("invalid_parameters", "Invalid destination for operation")
+	// }
 
-	pathHash, err := pathHashFromReq(r, allocationID)
-	if err != nil {
-		return nil, err
-	}
+	// pathHash, err := pathHashFromReq(r, allocationID)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	if clientID == "" || allocationObj.OwnerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
-	}
+	// if clientID == "" || allocationObj.OwnerID != clientID {
+	// 	return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	// }
 
-	connectionID := r.FormValue("connection_id")
-	if connectionID == "" {
-		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
-	}
+	// connectionID := r.FormValue("connection_id")
+	// if connectionID == "" {
+	// 	return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
+	// }
 
-	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
-	if err != nil {
-		return nil, common.NewError("meta_error", "Error reading metadata for connection")
-	}
+	// connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+	// if err != nil {
+	// 	return nil, common.NewError("meta_error", "Error reading metadata for connection")
+	// }
 
-	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(
-		ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root"})
+	// objectRef, err := reference.GetLimitedRefFieldsByLookupHash(
+	// 	ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "validation_root", "fixed_merkle_root"})
 
-	if err != nil {
-		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
-	}
+	// if err != nil {
+	// 	return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+	// }
 
-	if objectRef.ParentPath == destPath {
-		return nil, common.NewError("invalid_parameters", "Invalid destination path. Cannot move to the same parent directory.")
-	}
-	newPath := filepath.Join(destPath, objectRef.Name)
-	paths, err := common.GetParentPaths(newPath)
-	if err != nil {
-		return nil, err
-	}
+	// if objectRef.ParentPath == destPath {
+	// 	return nil, common.NewError("invalid_parameters", "Invalid destination path. Cannot move to the same parent directory.")
+	// }
+	// newPath := filepath.Join(destPath, objectRef.Name)
+	// paths, err := common.GetParentPaths(newPath)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	paths = append(paths, newPath)
+	// paths = append(paths, newPath)
 
-	refs, err := reference.GetRefsTypeFromPaths(ctx, allocationID, paths)
-	if err != nil {
-		Logger.Error("Database error", zap.Error(err))
-		return nil, common.NewError("database_error", fmt.Sprintf("Got db error while getting refs for %v", paths))
-	}
+	// refs, err := reference.GetRefsTypeFromPaths(ctx, allocationID, paths)
+	// if err != nil {
+	// 	Logger.Error("Database error", zap.Error(err))
+	// 	return nil, common.NewError("database_error", fmt.Sprintf("Got db error while getting refs for %v", paths))
+	// }
 
-	for _, ref := range refs {
-		switch ref.Path {
-		case newPath:
-			return nil, common.NewError("invalid_parameters", "Invalid destination path. Object Already exists.")
-		default:
-			if ref.Type == reference.FILE {
-				return nil, common.NewError("invalid_path", fmt.Sprintf("%v is of file type", ref.Path))
-			}
-		}
-	}
+	// for _, ref := range refs {
+	// 	switch ref.Path {
+	// 	case newPath:
+	// 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Object Already exists.")
+	// 	default:
+	// 		if ref.Type == reference.FILE {
+	// 			return nil, common.NewError("invalid_path", fmt.Sprintf("%v is of file type", ref.Path))
+	// 		}
+	// 	}
+	// }
 
-	allocationChange := &allocation.AllocationChange{}
-	allocationChange.ConnectionID = connectionObj.ID
-	allocationChange.Size = 0
-	allocationChange.LookupHash = pathHash
-	allocationChange.Operation = constants.FileOperationMove
-	dfc := &allocation.MoveFileChange{
-		ConnectionID: connectionObj.ID,
-		AllocationID: connectionObj.AllocationID,
-		SrcPath:      objectRef.Path,
-		DestPath:     destPath,
-	}
-	dfc.SrcPath = objectRef.Path
-	connectionObj.AddChange(allocationChange, dfc)
+	// allocationChange := &allocation.AllocationChange{}
+	// allocationChange.ConnectionID = connectionObj.ID
+	// allocationChange.Size = 0
+	// allocationChange.LookupHash = pathHash
+	// allocationChange.Operation = constants.FileOperationMove
+	// dfc := &allocation.MoveFileChange{
+	// 	ConnectionID: connectionObj.ID,
+	// 	AllocationID: connectionObj.AllocationID,
+	// 	SrcPath:      objectRef.Path,
+	// 	DestPath:     destPath,
+	// }
+	// dfc.SrcPath = objectRef.Path
+	// connectionObj.AddChange(allocationChange, dfc)
 
-	err = connectionObj.Save(ctx)
-	if err != nil {
-		Logger.Error("Error in writing the connection meta data", zap.Error(err))
-		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
-	}
+	// err = connectionObj.Save(ctx)
+	// if err != nil {
+	// 	Logger.Error("Error in writing the connection meta data", zap.Error(err))
+	// 	return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
+	// }
 
-	result := &allocation.UploadResult{}
-	result.Filename = objectRef.Name
-	result.Hash = objectRef.Hash
-	result.ValidationRoot = objectRef.ValidationRoot
-	result.FixedMerkleRoot = objectRef.FixedMerkleRoot
-	result.Size = objectRef.Size
-	return result, nil
+	// result := &allocation.UploadResult{}
+	// result.Filename = objectRef.Name
+	// result.Hash = objectRef.Hash
+	// result.ValidationRoot = objectRef.ValidationRoot
+	// result.FixedMerkleRoot = objectRef.FixedMerkleRoot
+	// result.Size = objectRef.Size
+	return nil, errors.New("not implemented")
 }
 
 func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, connectionObj *allocation.AllocationChangeCollector) (*allocation.UploadResult, error) {

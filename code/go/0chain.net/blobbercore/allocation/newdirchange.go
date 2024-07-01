@@ -8,8 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -21,69 +20,38 @@ type NewDir struct {
 	AllocationID string `json:"allocation_id"`
 }
 
-func (nf *NewDir) ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
-	allocationRoot string, ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error) {
+func (nf *NewDir) ApplyChange(ctx context.Context,
+	ts common.Timestamp, fileIDMeta map[string]string, collector reference.QueryCollector) error {
 
-	totalRefs, err := reference.CountRefs(ctx, nf.AllocationID)
-	if err != nil {
-		return nil, err
+	newRef := reference.NewDirectoryRef()
+	newRef.AllocationID = nf.AllocationID
+	newRef.Path = nf.Path
+	newRef.LookupHash = reference.GetReferenceLookup(nf.AllocationID, newRef.Path)
+	newRef.PathLevel = len(strings.Split(strings.TrimRight(newRef.Path, "/"), "/"))
+	newRef.ParentPath = filepath.Dir(newRef.Path)
+	newRef.Name = filepath.Base(newRef.Path)
+	newRef.LookupHash = reference.GetReferenceLookup(nf.AllocationID, newRef.Path)
+	newRef.CreatedAt = ts
+	newRef.UpdatedAt = ts
+	newRef.HashToBeComputed = true
+	fileID, ok := fileIDMeta[newRef.Path]
+	if !ok || fileID == "" {
+		return common.NewError("invalid_parameter",
+			fmt.Sprintf("file path %s has no entry in fileID meta", newRef.Path))
 	}
-
-	if int64(config.Configuration.MaxAllocationDirFiles) <= totalRefs {
-		return nil, common.NewErrorf("max_alloc_dir_files_reached",
-			"maximum files and directories already reached: %v", err)
-	}
-
-	err = nf.Unmarshal(change.Input)
-	if err != nil {
-		return nil, err
-	}
-
-	if rootRef.CreatedAt == 0 {
-		rootRef.CreatedAt = ts
-	}
-	rootRef.UpdatedAt = ts
-	rootRef.HashToBeComputed = true
-	fields, err := common.GetPathFields(nf.Path)
-	if err != nil {
-		return nil, err
-	}
-
-	dirRef := rootRef
-	for i := 0; i < len(fields); i++ {
-		found := false
-		for _, child := range dirRef.Children {
-			if child.Name == fields[i] {
-				dirRef = child
-				dirRef.HashToBeComputed = true
-				dirRef.UpdatedAt = ts
-				found = true
-				break
-			}
+	newRef.FileID = fileID
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		//check if ref exists
+		exists, err := reference.IsRefExist(ctx, nf.AllocationID, newRef.Path)
+		if err != nil {
+			return err
 		}
-
-		if !found {
-			newRef := reference.NewDirectoryRef()
-			newRef.AllocationID = nf.AllocationID
-			newRef.Path = filepath.Join("/", strings.Join(fields[:i+1], "/"))
-			newRef.PathLevel = len(fields) + 1
-			newRef.ParentPath = filepath.Dir(newRef.Path)
-			newRef.Name = fields[i]
-			newRef.LookupHash = reference.GetReferenceLookup(nf.AllocationID, newRef.Path)
-			newRef.CreatedAt = ts
-			newRef.UpdatedAt = ts
-			newRef.HashToBeComputed = true
-			fileID, ok := fileIDMeta[newRef.Path]
-			if !ok || fileID == "" {
-				return nil, common.NewError("invalid_parameter",
-					fmt.Sprintf("file path %s has no entry in fileID meta", newRef.Path))
-			}
-			newRef.FileID = fileID
-			dirRef.AddChild(newRef)
-			dirRef = newRef
+		if !exists {
+			collector.CreateRefRecord(newRef)
 		}
-	}
-	return rootRef, nil
+		return nil
+	})
+	return err
 }
 
 func (nd *NewDir) Marshal() (string, error) {

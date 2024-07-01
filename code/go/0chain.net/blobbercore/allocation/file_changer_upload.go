@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"strings"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
@@ -22,6 +25,10 @@ type UploadFileChanger struct {
 // ApplyChange update references, and create a new FileRef
 func (nf *UploadFileChanger) applyChange(ctx context.Context,
 	ts common.Timestamp, fileIDMeta map[string]string, collector reference.QueryCollector) error {
+
+	if nf.AllocationID == "" {
+		return common.NewError("invalid_parameter", "allocation_id is required")
+	}
 
 	parentPath, _ := filepath.Split(nf.Path)
 	nf.LookupHash = reference.GetReferenceLookup(nf.AllocationID, nf.Path)
@@ -51,6 +58,7 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 		LookupHash:              nf.LookupHash,
 		DataHash:                nf.DataHash,
 		DataHashSignature:       nf.DataHashSignature,
+		PathLevel:               len(strings.Split(strings.TrimRight(nf.Path, "/"), "/")),
 		FilestoreVersion:        filestore.VERSION,
 	}
 
@@ -61,7 +69,26 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 	}
 	newFile.FileID = fileID
 
-	return nil
+	// find if ref exists
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		var refResult struct {
+			ID int64
+		}
+		db := datastore.GetStore().GetTransaction(ctx)
+		err := db.Model(&reference.Ref{}).Select("id").Where("lookup_hash = ?", newFile.LookupHash).Take(&refResult).Error
+		if err == gorm.ErrRecordNotFound {
+			collector.CreateRefRecord(newFile)
+		} else if err != nil {
+			return err
+		}
+		deleteRecord := &reference.Ref{
+			ID: refResult.ID,
+		}
+		collector.DeleteRefRecord(deleteRecord)
+		return nil
+	})
+
+	return err
 }
 
 // Marshal marshal and change to persistent to postgres

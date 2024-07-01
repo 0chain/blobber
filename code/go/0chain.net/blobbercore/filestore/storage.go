@@ -191,6 +191,14 @@ func (fs *FileStore) DeleteFromFilestore(allocID, hash string, version int) erro
 	}
 	fs.incrDecrAllocFileSizeAndNumber(allocID, -stat.Size(), -1)
 
+	thumbPath, err := fs.GetPathForFile(allocID, hash+ThumbnailSuffix, version)
+	if err != nil {
+		return common.NewError("get_file_path_error", err.Error())
+	}
+	if _, err := os.Stat(thumbPath); err == nil {
+		os.Remove(thumbPath) //nolint:errcheck
+	}
+
 	return nil
 }
 

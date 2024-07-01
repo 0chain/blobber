@@ -23,15 +23,9 @@ type DeleteFileChange struct {
 	Hash         string `json:"hash"`
 }
 
-func (nf *DeleteFileChange) ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
-	allocationRoot string, ts common.Timestamp, _ map[string]string) (*reference.Ref, error) {
-
-	err := reference.DeleteObject(ctx, rootRef, nf.AllocationID, filepath.Clean(nf.Path), ts)
-	if err != nil {
-		return nil, err
-	}
-
-	return nil, nil
+func (nf *DeleteFileChange) ApplyChange(ctx context.Context,
+	ts common.Timestamp, _ map[string]string, collector reference.QueryCollector) error {
+	return reference.DeleteObject(ctx, nf.AllocationID, filepath.Clean(nf.Path), ts)
 }
 
 func (nf *DeleteFileChange) Marshal() (string, error) {

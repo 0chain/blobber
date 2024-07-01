@@ -207,6 +207,12 @@ func SaveFileChange(ctx context.Context, connectionID, pathHash, fileName string
 			DataBytes: dataWritten,
 		}, contentSize)
 		if addSize != 0 {
+			//check if reference exists and get the size
+			existingSize, err := reference.GetObjectSizeByLookupHash(ctx, pathHash)
+			if err != nil {
+				return saveChange, err
+			}
+			addSize -= existingSize
 			UpdateConnectionObjSize(connectionID, addSize)
 		}
 	} else {

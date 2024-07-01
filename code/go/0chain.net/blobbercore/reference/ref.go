@@ -308,6 +308,22 @@ func IsRefExist(ctx context.Context, allocationID, path string) (bool, error) {
 	return Found, nil
 }
 
+func GetObjectSizeByLookupHash(ctx context.Context, lookupHash string) (int64, error) {
+	db := datastore.GetStore().GetTransaction(ctx)
+	var size int64
+	err := db.Model(&Ref{}).
+		Select("size").
+		Where("lookup_hash = ?", lookupHash).
+		Take(&size).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return 0, nil
+		}
+		return 0, err
+	}
+	return size, nil
+}
+
 // GetRefsTypeFromPaths Give list of paths it will return refs of respective path with only Type and Path selected in sql query
 func GetRefsTypeFromPaths(ctx context.Context, allocationID string, paths []string) (refs []*Ref, err error) {
 	if len(paths) == 0 {
