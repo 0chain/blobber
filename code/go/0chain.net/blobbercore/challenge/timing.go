@@ -184,7 +184,7 @@ func GetChallengeTiming(challengeID string) (*ChallengeTiming, error) {
 
 	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		tx := datastore.GetStore().GetTransaction(ctx)
-		return tx.Model(&ChallengeTiming{}).Where("challenge_id = ?", challengeID).First(&ch).Error
+		return tx.Model(&ChallengeTiming{}).Where("challenge_id = ?", challengeID).Take(&ch).Error
 	})
 	return ch, err
 }

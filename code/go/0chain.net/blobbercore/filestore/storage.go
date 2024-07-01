@@ -166,11 +166,18 @@ func (fs *FileStore) DeleteFromFilestore(allocID, hash string, version int) erro
 	if err != nil {
 		return common.NewError("get_file_path_error", err.Error())
 	}
+
+	stat, err := os.Stat(fPath)
+	if err != nil {
+		return common.NewError("file_stat_error", err.Error())
+	}
+
 	logging.Logger.Info("Deleting file from filestore", zap.String("path", fPath))
 	err = os.Remove(fPath)
 	if err != nil {
 		return common.NewError("blob_object_dir_creation_error", err.Error())
 	}
+	fs.incrDecrAllocFileSizeAndNumber(allocID, -stat.Size(), -1)
 
 	return nil
 }

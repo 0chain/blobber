@@ -16,7 +16,7 @@ import (
 const (
 	SQLWhereGetById = "allocations.id = ?"
 	SQLWhereGetByTx = "allocations.tx = ?"
-	lruSize         = 100
+	lruSize         = 500
 )
 
 var (
@@ -140,6 +140,11 @@ func (r *Repository) GetByTx(ctx context.Context, allocationID, txHash string) (
 	}
 	cache[allocationID] = AllocationCache{
 		Allocation: alloc,
+	}
+	//get allocation terms
+	err = alloc.LoadTerms(ctx)
+	if err != nil {
+		return alloc, err
 	}
 	r.setAllocToGlobalCache(alloc)
 	return alloc, err

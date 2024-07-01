@@ -89,7 +89,7 @@ func FileUpdated(ctx context.Context, refID, newRefID int64) {
 
 func FileBlockDownloaded(ctx context.Context, ref *Ref, blocks int64) {
 	db := datastore.GetStore().GetTransaction(ctx)
-	db.Model(ref).Update("num_of_block_downloads", gorm.Expr("num_of_block_downloads + ?", blocks))
+	db.Unscoped().Model(ref).Update("num_of_block_downloads", gorm.Expr("num_of_block_downloads + ?", blocks))
 }
 
 func GetFileStats(ctx context.Context, ref *Ref) (*FileStats, error) {
