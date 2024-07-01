@@ -401,7 +401,7 @@ func deleteFromFileStore(ctx context.Context, allocationID string) error {
 	return datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		db := datastore.GetStore().GetTransaction(ctx)
 
-		err := db.Model(&reference.Ref{}).Unscoped().Select("id", "validation_root", "thumbnail_hash").
+		err := db.Model(&reference.Ref{}).Unscoped().Select("id", "validation_root", "thumbnail_hash", "filestore_version").
 			Where("allocation_id=? AND is_precommit=? AND type=? AND deleted_at is not NULL", allocationID, true, reference.FILE).
 			FindInBatches(&results, 100, func(tx *gorm.DB, batch int) error {
 
