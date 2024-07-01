@@ -2,6 +2,7 @@ package datastore
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -84,7 +85,7 @@ func (store *postgresStore) Close() {
 	}
 }
 
-func (store *postgresStore) CreateTransaction(ctx context.Context) context.Context {
+func (store *postgresStore) CreateTransaction(ctx context.Context, opts ...*sql.TxOptions) context.Context {
 	db := store.db.WithContext(ctx).Begin()
 	return context.WithValue(ctx, ContextKeyTransaction, EnhanceDB(db))
 }

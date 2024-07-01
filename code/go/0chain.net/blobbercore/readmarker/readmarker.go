@@ -127,7 +127,7 @@ func (rm *ReadMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.All
 func GetLatestReadMarkerEntity(ctx context.Context, clientID, allocID string) (*ReadMarkerEntity, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	rm := &ReadMarkerEntity{}
-	err := db.First(rm, "client_id = ? AND allocation_id = ?", clientID, allocID).Error
+	err := db.Take(rm, "client_id = ? AND allocation_id = ?", clientID, allocID).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		latestRM, err := GetLatestReadMarkerEntityFromChain(clientID, allocID)
 		if err != nil {

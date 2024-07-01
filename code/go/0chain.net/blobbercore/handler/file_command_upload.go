@@ -147,7 +147,7 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, allocationObj 
 	result.ValidationRoot = fileOutputData.ValidationRoot
 	result.Size = fileOutputData.Size
 
-	allocationSize := allocation.GetConnectionObjSize(connectionID)
+	allocationSize := allocation.GetConnectionObjSize(connectionID) + cmd.fileChanger.Size
 	cmd.fileChanger.AllocationID = allocationObj.ID
 
 	cmd.allocationChange = &allocation.AllocationChange{}

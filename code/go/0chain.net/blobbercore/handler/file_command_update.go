@@ -132,14 +132,14 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, allocationObj 
 	result.FixedMerkleRoot = fileOutputData.FixedMerkleRoot
 	result.Size = fileOutputData.Size
 
-	allocationSize := allocation.GetConnectionObjSize(connID)
-
 	cmd.fileChanger.AllocationID = allocationObj.ID
 
 	cmd.allocationChange = &allocation.AllocationChange{}
 	cmd.allocationChange.ConnectionID = connID
 	cmd.allocationChange.Size = cmd.fileChanger.Size - cmd.existingFileRef.Size
 	cmd.allocationChange.Operation = sdkConst.FileOperationUpdate
+
+	allocationSize := allocation.GetConnectionObjSize(connID) + cmd.allocationChange.Size
 
 	if cmd.fileChanger.IsFinal {
 		result.UpdateChange = true
@@ -170,7 +170,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, allocationObj 
 		}
 	}
 
-	if allocationObj.BlobberSizeUsed+(allocationSize-cmd.existingFileRef.Size) > allocationObj.BlobberSize {
+	if allocationObj.BlobberSizeUsed+allocationSize > allocationObj.BlobberSize {
 		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
 	}
 

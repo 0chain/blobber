@@ -207,13 +207,8 @@ func Mkdir(ctx context.Context, allocationID, destpath string) (*Ref, error) {
 
 // GetReference get FileRef with allcationID and path from postgres
 func GetReference(ctx context.Context, allocationID, path string) (*Ref, error) {
-	ref := &Ref{}
-	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
-	if err != nil {
-		return nil, err
-	}
-	return ref, nil
+	lookupHash := GetReferenceLookup(allocationID, path)
+	return GetReferenceByLookupHash(ctx, allocationID, lookupHash)
 }
 
 // GetLimitedRefFieldsByPath get FileRef selected fields with allocationID and path from postgres
@@ -221,7 +216,7 @@ func GetLimitedRefFieldsByPath(ctx context.Context, allocationID, path string, s
 	ref := &Ref{}
 	t := datastore.GetStore().GetTransaction(ctx)
 	db := t.Select(selectedFields)
-	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).First(ref).Error
+	err := db.Where(&Ref{AllocationID: allocationID, Path: path}).Take(ref).Error
 	if err != nil {
 		return nil, err
 	}
@@ -236,7 +231,7 @@ func GetLimitedRefFieldsByLookupHashWith(ctx context.Context, allocationID, look
 	err := db.
 		Select(selectedFields).
 		Where(&Ref{LookupHash: lookupHash}).
-		First(ref).Error
+		Take(ref).Error
 
 	if err != nil {
 		return nil, err
@@ -249,7 +244,7 @@ func GetLimitedRefFieldsByLookupHash(ctx context.Context, allocationID, lookupHa
 	ref := &Ref{}
 	t := datastore.GetStore().GetTransaction(ctx)
 	db := t.Select(selectedFields)
-	err := db.Where(&Ref{LookupHash: lookupHash}).First(ref).Error
+	err := db.Where(&Ref{LookupHash: lookupHash}).Take(ref).Error
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +254,7 @@ func GetLimitedRefFieldsByLookupHash(ctx context.Context, allocationID, lookupHa
 func GetReferenceByLookupHash(ctx context.Context, allocationID, pathHash string) (*Ref, error) {
 	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Where(&Ref{LookupHash: pathHash}).First(ref).Error
+	err := db.Where(&Ref{LookupHash: pathHash}).Take(ref).Error
 	if err != nil {
 		return nil, err
 	}
@@ -271,7 +266,7 @@ func GetReferenceByLookupHashForDownload(ctx context.Context, allocationID, path
 	db := datastore.GetStore().GetTransaction(ctx)
 
 	err := db.Transaction(func(tx *gorm.DB) error {
-		err := tx.Clauses(clause.Locking{Strength: "SHARE"}).Where(&Ref{LookupHash: pathHash}).First(ref).Error
+		err := tx.Clauses(clause.Locking{Strength: "SHARE"}).Where(&Ref{LookupHash: pathHash}).Take(ref).Error
 		if err != nil {
 			return err
 		}
@@ -403,7 +398,7 @@ func GetRefWithDirListFields(ctx context.Context, pathHash string) (*Ref, error)
 	db := datastore.GetStore().GetTransaction(ctx)
 	err := db.Select(dirListFields).
 		Where(&Ref{LookupHash: pathHash}).
-		First(ref).Error
+		Take(ref).Error
 	if err != nil {
 		return nil, err
 	}

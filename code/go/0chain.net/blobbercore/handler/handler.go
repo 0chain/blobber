@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -277,7 +278,9 @@ func setupHandlers(s *mux.Router) {
 
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {
 	return func(ctx context.Context, r *http.Request) (interface{}, error) {
-		ctx = GetMetaDataStore().CreateTransaction(ctx)
+		ctx = GetMetaDataStore().CreateTransaction(ctx, &sql.TxOptions{
+			ReadOnly: true,
+		})
 		tx := GetMetaDataStore().GetTransaction(ctx)
 		defer func() {
 			tx.Rollback()
