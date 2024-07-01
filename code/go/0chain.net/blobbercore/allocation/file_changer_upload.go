@@ -5,9 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"strings"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -22,93 +20,23 @@ type UploadFileChanger struct {
 }
 
 // ApplyChange update references, and create a new FileRef
-func (nf *UploadFileChanger) applyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
-	allocationRoot string, ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error) {
+func (nf *UploadFileChanger) applyChange(ctx context.Context,
+	ts common.Timestamp, fileIDMeta map[string]string, collector reference.QueryCollector) error {
 
-	totalRefs, err := reference.CountRefs(ctx, nf.AllocationID)
-	if err != nil {
-		return nil, err
-	}
-
-	if int64(config.Configuration.MaxAllocationDirFiles) <= totalRefs {
-		return nil, common.NewErrorf("max_alloc_dir_files_reached",
-			"maximum files and directories already reached: %v", err)
-	}
-
-	fields, err := common.GetPathFields(filepath.Dir(nf.Path))
-	if err != nil {
-		return nil, err
-	}
-	if rootRef.CreatedAt == 0 {
-		rootRef.CreatedAt = ts
-	}
-
-	rootRef.UpdatedAt = ts
-	rootRef.HashToBeComputed = true
-
-	dirRef := rootRef
-	for i := 0; i < len(fields); i++ {
-		found := false
-		for _, child := range dirRef.Children {
-			if child.Name == fields[i] {
-				if child.Type != reference.DIRECTORY {
-					return nil, common.NewError("invalid_reference_path", "Reference path has invalid ref type")
-				}
-				dirRef = child
-				dirRef.UpdatedAt = ts
-				dirRef.HashToBeComputed = true
-				found = true
-			}
-		}
-
-		if len(dirRef.Children) >= config.Configuration.MaxObjectsInDir {
-			return nil, common.NewErrorf("max_objects_in_dir_reached",
-				"maximum objects in directory %s reached: %v", dirRef.Path, config.Configuration.MaxObjectsInDir)
-		}
-
-		if !found {
-			newRef := reference.NewDirectoryRef()
-			newRef.AllocationID = dirRef.AllocationID
-			newRef.Path = "/" + strings.Join(fields[:i+1], "/")
-			fileID, ok := fileIDMeta[newRef.Path]
-			if !ok || fileID == "" {
-				return nil, common.NewError("invalid_parameter",
-					fmt.Sprintf("file path %s has no entry in fileID meta", newRef.Path))
-			}
-			newRef.FileID = fileID
-			newRef.ParentPath = "/" + strings.Join(fields[:i], "/")
-			newRef.Name = fields[i]
-			newRef.CreatedAt = ts
-			newRef.UpdatedAt = ts
-			newRef.HashToBeComputed = true
-
-			dirRef.AddChild(newRef)
-			dirRef = newRef
-		}
-	}
-
-	for _, child := range dirRef.Children {
-		if child.Name == nf.Filename {
-			return nil, common.NewError("duplicate_file", "File already exists")
-		}
-	}
-
+	parentPath, _ := filepath.Split(nf.Path)
+	nf.LookupHash = reference.GetReferenceLookup(nf.AllocationID, nf.Path)
 	newFile := &reference.Ref{
 		ActualFileHash:          nf.ActualHash,
 		ActualFileHashSignature: nf.ActualFileHashSignature,
 		ActualFileSize:          nf.ActualSize,
-		AllocationID:            dirRef.AllocationID,
-		ValidationRoot:          nf.ValidationRoot,
-		ValidationRootSignature: nf.ValidationRootSignature,
+		AllocationID:            nf.AllocationID,
 		CustomMeta:              nf.CustomMeta,
-		FixedMerkleRoot:         nf.FixedMerkleRoot,
 		Name:                    nf.Filename,
 		Path:                    nf.Path,
-		ParentPath:              dirRef.Path,
+		ParentPath:              parentPath,
 		Type:                    reference.FILE,
 		Size:                    nf.Size,
 		MimeType:                nf.MimeType,
-		AllocationRoot:          allocationRoot,
 		ThumbnailHash:           nf.ThumbnailHash,
 		ThumbnailSize:           nf.ThumbnailSize,
 		ActualThumbnailHash:     nf.ActualThumbnailHash,
@@ -120,19 +48,20 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context, rootRef *reference
 		UpdatedAt:               ts,
 		HashToBeComputed:        true,
 		IsPrecommit:             true,
+		LookupHash:              nf.LookupHash,
+		DataHash:                nf.DataHash,
+		DataHashSignature:       nf.DataHashSignature,
 		FilestoreVersion:        filestore.VERSION,
 	}
 
 	fileID, ok := fileIDMeta[newFile.Path]
 	if !ok || fileID == "" {
-		return nil, common.NewError("invalid_parameter",
+		return common.NewError("invalid_parameter",
 			fmt.Sprintf("file path %s has no entry in fileID meta", newFile.Path))
 	}
 	newFile.FileID = fileID
 
-	dirRef.AddChild(newFile)
-
-	return rootRef, nil
+	return nil
 }
 
 // Marshal marshal and change to persistent to postgres

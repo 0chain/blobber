@@ -10,12 +10,11 @@ const (
 )
 
 type FileInputData struct {
-	Name            string
-	Path            string
-	ValidationRoot  string
-	FixedMerkleRoot string
-	ThumbnailHash   string
-
+	Name          string
+	Path          string
+	DataHash      string
+	ThumbnailHash string
+	LookupHash    string
 	// ChunkSize chunk size
 	ChunkSize int64
 	//UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.

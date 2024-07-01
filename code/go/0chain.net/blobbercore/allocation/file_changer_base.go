@@ -32,16 +32,12 @@ type BaseFileChanger struct {
 	//client side:
 	MimeType string `json:"mimetype,omitempty"`
 	//client side:
-	//client side:
-	FixedMerkleRoot string `json:"fixed_merkle_root,omitempty"`
 
 	//server side: update them by ChangeProcessor
-	AllocationID string `json:"allocation_id"`
-	//client side:
-	ValidationRootSignature string `json:"validation_root_signature,omitempty"`
-	//client side:
-	ValidationRoot string `json:"validation_root,omitempty"`
-	Size           int64  `json:"size"`
+	AllocationID      string `json:"allocation_id"`
+	DataHash          string `json:"data_hash"`
+	DataHashSignature string `json:"data_hash_signature"`
+	Size              int64  `json:"size"`
 	//server side:
 	ThumbnailHash     string `json:"thumbnail_content_hash,omitempty"`
 	ThumbnailSize     int64  `json:"thumbnail_size"`
@@ -58,7 +54,7 @@ type BaseFileChanger struct {
 	ChunkEndIndex   int    `json:"chunk_end_index,omitempty"`   // end index of chunks. all chunks MUST be uploaded one by one because of CompactMerkleTree
 	ChunkHash       string `json:"chunk_hash,omitempty"`
 	UploadOffset    int64  `json:"upload_offset,omitempty"` // It is next position that new incoming chunk should be append to
-	PathHash        string `json:"-"`                       // hash of path
+	LookupHash      string `json:"-"`                       // hash of path
 }
 
 // swagger:model UploadResult
@@ -106,7 +102,8 @@ func (fc *BaseFileChanger) DeleteTempFile() error {
 	fileInputData := &filestore.FileInputData{}
 	fileInputData.Name = fc.Filename
 	fileInputData.Path = fc.Path
-	fileInputData.ValidationRoot = fc.ValidationRoot
+	fileInputData.DataHash = fc.DataHash
+	fileInputData.LookupHash = fc.LookupHash
 	err := filestore.GetFileStore().DeleteTempFile(fc.AllocationID, fc.ConnectionID, fileInputData)
 	if fc.ThumbnailSize > 0 {
 		fileInputData := &filestore.FileInputData{}
@@ -125,6 +122,7 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context, mut *sync.Mute
 		fileInputData.Name = fc.ThumbnailFilename
 		fileInputData.Path = fc.Path
 		fileInputData.ThumbnailHash = fc.ThumbnailHash
+		fileInputData.LookupHash = fc.LookupHash
 		fileInputData.ChunkSize = fc.ChunkSize
 		fileInputData.IsThumbnail = true
 		_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fc.ConnectionID, fileInputData)
@@ -135,8 +133,8 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context, mut *sync.Mute
 	fileInputData := &filestore.FileInputData{}
 	fileInputData.Name = fc.Filename
 	fileInputData.Path = fc.Path
-	fileInputData.ValidationRoot = fc.ValidationRoot
-	fileInputData.FixedMerkleRoot = fc.FixedMerkleRoot
+	fileInputData.DataHash = fc.DataHash
+	fileInputData.LookupHash = fc.LookupHash
 	fileInputData.ChunkSize = fc.ChunkSize
 	fileInputData.Size = fc.Size
 	_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fc.ConnectionID, fileInputData)

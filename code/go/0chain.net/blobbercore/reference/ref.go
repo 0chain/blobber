@@ -89,6 +89,8 @@ type Ref struct {
 	NumUpdates        int64          `gorm:"column:num_of_updates" json:"num_of_updates"`
 	NumBlockDownloads int64          `gorm:"column:num_of_block_downloads" json:"num_of_block_downloads"`
 	FilestoreVersion  int            `gorm:"column:filestore_version" json:"-"`
+	DataHash          string         `gorm:"column:data_hash" filelist:"data_hash"`
+	DataHashSignature string         `gorm:"column:data_hash_signature" filelist:"data_hash_signature"`
 	HashToBeComputed  bool           `gorm:"-"`
 	prevID            int64          `gorm:"-"`
 }

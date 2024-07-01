@@ -68,10 +68,10 @@ func SaveFileChanger(connectionID string, fileChanger *BaseFileChanger) error {
 		return common.NewError("connection_not_found", "connection not found")
 	}
 	connectionObj.lock.Lock()
-	if connectionObj.changes[fileChanger.PathHash] == nil {
+	if connectionObj.changes[fileChanger.LookupHash] == nil {
 		return common.NewError("connection_change_not_found", "connection change not found")
 	}
-	connectionObj.changes[fileChanger.PathHash].baseChanger = fileChanger
+	connectionObj.changes[fileChanger.LookupHash].baseChanger = fileChanger
 	connectionObj.lock.Unlock()
 	return nil
 }

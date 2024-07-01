@@ -57,6 +57,7 @@ const (
 	MerkleChunkSize = 64
 	ChunkSize       = 64 * KB
 	BufferSize      = 80 * ChunkSize
+	ThumbnailSuffix = "_thumbnail"
 )
 
 func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error) {
@@ -157,6 +158,17 @@ func (fs *FileStore) MoveToFilestore(allocID, hash string, version int) error {
 	}
 
 	_ = os.Rename(preCommitPath, fPath)
+
+	// Check if thumbnail exists
+	thumbPath := fs.getPreCommitPathForFile(allocID, hash+ThumbnailSuffix, version)
+	if _, err := os.Stat(thumbPath); err == nil {
+		thumbFilePath, err := fs.GetPathForFile(allocID, hash+ThumbnailSuffix, version)
+		if err != nil {
+			return common.NewError("get_file_path_error", err.Error())
+		}
+		_ = os.Rename(thumbPath, thumbFilePath)
+	}
+
 	return nil
 }
 
@@ -193,14 +205,14 @@ func (fs *FileStore) DeletePreCommitDir(allocID string) error {
 }
 
 func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData) (_ bool, err error) {
-
+	now := time.Now()
 	logging.Logger.Info("Committing write", zap.String("allocation_id", allocID), zap.Any("file_data", fileData))
 	filePathHash := encryption.Hash(fileData.Path)
 	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, filePathHash, conID)
 
-	fileHash := fileData.ValidationRoot
+	fileHash := fileData.LookupHash
 	if fileData.IsThumbnail {
-		fileHash = fileData.ThumbnailHash
+		fileHash = fileData.LookupHash + ThumbnailSuffix
 	}
 
 	preCommitPath := fs.getPreCommitPathForFile(allocID, fileHash, VERSION)
@@ -255,7 +267,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 		return true, nil
 	}
 
-	key := getKey(allocID, fileData.ValidationRoot)
+	key := getKey(allocID, fileData.LookupHash)
 	l, _ := contentHashMapLock.GetLock(key)
 	l.Lock()
 	defer func() {
@@ -270,7 +282,18 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	}
 
 	fileSize := rStat.Size()
-	now := time.Now()
+	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	defer cancel()
+	err = fileData.Hasher.Wait(ctx, conID, allocID, fileData.Name, filePathHash)
+	if err != nil {
+		return false, common.NewError("hasher_wait_error", err.Error())
+	}
+	md5Hash := fileData.Hasher.GetMd5Hash()
+	if md5Hash != fileData.DataHash {
+		return false, common.NewError("hash_mismatch",
+			fmt.Sprintf("calculated hash does not match with expected hash. Expected %s, got %s.",
+				fileData.DataHash, md5Hash))
+	}
 	err = os.Rename(tempFilePath, preCommitPath)
 	if err != nil {
 		return false, common.NewError("write_error", err.Error())
@@ -401,6 +424,7 @@ func (fs *FileStore) DeleteAllocation(allocID string) {
 func (fs *FileStore) GetFileThumbnail(readBlockIn *ReadBlockInput) (*FileDownloadResponse, error) {
 	var fileObjectPath string
 	var err error
+	readBlockIn.Hash += ThumbnailSuffix
 	startBlock := readBlockIn.StartBlockNum
 	if startBlock < 0 {
 		return nil, common.NewError("invalid_block_number", "Invalid block number. Start block number cannot be negative")

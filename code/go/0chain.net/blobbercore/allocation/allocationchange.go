@@ -32,8 +32,8 @@ const (
 type AllocationChangeProcessor interface {
 	CommitToFileStore(ctx context.Context, mut *sync.Mutex) error
 	DeleteTempFile() error
-	ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange, allocationRoot string,
-		ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error)
+	ApplyChange(ctx context.Context, change *AllocationChange,
+		ts common.Timestamp, fileIDMeta map[string]string, collector reference.QueryCollector) error
 	GetPath() []string
 	Marshal() (string, error)
 	Unmarshal(string) error
@@ -74,6 +74,7 @@ type AllocationChange struct {
 	Input        string                    `gorm:"column:input"`
 	FilePath     string                    `gorm:"-"`
 	LookupHash   string                    `gorm:"column:lookup_hash;size:64"`
+	AllocationID string                    `gorm:"-" json:"-"`
 	datastore.ModelWithTS
 }
 
@@ -255,28 +256,17 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 }
 
 func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocationRoot, prevAllocationRoot string,
-	ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error) {
-	rootRef, err := cc.GetRootRef(ctx)
-	if err != nil {
-		return rootRef, err
-	}
-	if rootRef.Hash != prevAllocationRoot {
-		return rootRef, common.NewError("invalid_prev_root", "Invalid prev root")
-	}
+	ts common.Timestamp, fileIDMeta map[string]string) error {
+	collector := reference.NewCollector(len(cc.Changes))
 	for idx, change := range cc.Changes {
+		change.AllocationID = cc.AllocationID
 		changeProcessor := cc.AllocationChanges[idx]
-		_, err := changeProcessor.ApplyChange(ctx, rootRef, change, allocationRoot, ts, fileIDMeta)
+		err := changeProcessor.ApplyChange(ctx, change, ts, fileIDMeta, collector)
 		if err != nil {
-			return rootRef, err
+			return err
 		}
 	}
-	collector := reference.NewCollector(len(cc.Changes))
-	_, err = rootRef.CalculateHash(ctx, true, collector)
-	if err != nil {
-		return rootRef, err
-	}
-	err = collector.Finalize(ctx)
-	return rootRef, err
+	return collector.Finalize(ctx)
 }
 
 func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error {

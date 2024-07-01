@@ -5,9 +5,11 @@ package filestore
 
 import (
 	"context"
+	"crypto/md5"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash"
 	"io"
 	"math"
 	"os"
@@ -406,6 +408,7 @@ func getNewValidationTree(dataSize int64) *validationTree {
 type CommitHasher struct {
 	fmt           *fixedMerkleTree
 	vt            *validationTree
+	md5hasher     hash.Hash
 	isInitialized bool
 	doneChan      chan struct{}
 	hashErr       error
@@ -414,8 +417,7 @@ type CommitHasher struct {
 
 func GetNewCommitHasher(dataSize int64) *CommitHasher {
 	c := new(CommitHasher)
-	c.fmt = getNewFixedMerkleTree()
-	c.vt = getNewValidationTree(dataSize)
+	c.md5hasher = md5.New()
 	c.isInitialized = true
 	c.doneChan = make(chan struct{})
 	c.dataSize = dataSize
@@ -474,7 +476,7 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 			pq.DataBytes -= int64(n)
 			pq.Offset += int64(n)
 			totalWritten += int64(n)
-			_, err = c.Write(buf[:n])
+			_, err = c.md5hasher.Write(buf[:n])
 			if err != nil {
 				logging.Logger.Error("hasher_write", zap.Error(err), zap.Int("n", n), zap.Int64("offset", pq.Offset), zap.Int64("dataBytes", pq.DataBytes), zap.Int64("dataSize", c.dataSize), zap.String("filename", fileName), zap.Int64("totalWritten", totalWritten))
 				c.hashErr = err
@@ -483,7 +485,6 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 		}
 		buf = nil
 		if toFinalize {
-			c.hashErr = c.Finalize()
 			return
 		}
 	}
@@ -567,4 +568,8 @@ func (c *CommitHasher) GetFixedMerkleRoot() string {
 
 func (c *CommitHasher) GetValidationMerkleRoot() string {
 	return hex.EncodeToString(c.vt.GetValidationRoot())
+}
+
+func (c *CommitHasher) GetMd5Hash() string {
+	return hex.EncodeToString(c.md5hasher.Sum(nil))
 }
