@@ -19,6 +19,7 @@ type NewDir struct {
 	ConnectionID string `json:"connection_id" validation:"required"`
 	Path         string `json:"filepath" validation:"required"`
 	AllocationID string `json:"allocation_id"`
+	CustomMeta   string `json:"custom_meta,omitempty"`
 }
 
 func (nf *NewDir) ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
@@ -79,6 +80,7 @@ func (nf *NewDir) ApplyChange(ctx context.Context, rootRef *reference.Ref, chang
 					fmt.Sprintf("file path %s has no entry in fileID meta", newRef.Path))
 			}
 			newRef.FileID = fileID
+			newRef.CustomMeta = nf.CustomMeta
 			dirRef.AddChild(newRef)
 			dirRef = newRef
 		}

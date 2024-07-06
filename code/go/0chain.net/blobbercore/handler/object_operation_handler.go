@@ -1245,6 +1245,8 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*all
 		return nil, common.NewError("invalid_parameters", "Invalid dir path passed")
 	}
 
+	customMeta := r.FormValue("custom_meta")
+
 	exisitingRef, err := fsh.checkIfFileAlreadyExists(ctx, allocationID, dirPath)
 	if err != nil {
 		Logger.Error("Error file reference", zap.Error(err))
@@ -1257,6 +1259,11 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*all
 	if exisitingRef != nil {
 		// target directory exists, return StatusOK
 		if exisitingRef.Type == reference.DIRECTORY {
+			if exisitingRef.CustomMeta != customMeta {
+				_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+					return reference.UpdateCustomMeta(ctx, exisitingRef.ID, customMeta)
+				})
+			}
 			return nil, common.NewError("directory_exists", "Directory already exists`")
 		}
 
@@ -1293,6 +1300,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*all
 	newDir.ConnectionID = connectionID
 	newDir.Path = dirPath
 	newDir.AllocationID = allocationID
+	newDir.CustomMeta = customMeta
 
 	connectionObj.AddChange(allocationChange, &newDir)
 

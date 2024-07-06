@@ -60,7 +60,7 @@ type Ref struct {
 	PathHash                string `gorm:"column:path_hash;size:64;not null" dirlist:"path_hash" filelist:"path_hash"`
 	ParentPath              string `gorm:"column:parent_path;size:999;index:idx_parent_path_alloc,priority:2"`
 	PathLevel               int    `gorm:"column:level;not null;default:0"`
-	CustomMeta              string `gorm:"column:custom_meta;not null" filelist:"custom_meta"`
+	CustomMeta              string `gorm:"column:custom_meta;not null" filelist:"custom_meta" dirlist:"custom_meta"`
 	ValidationRoot          string `gorm:"column:validation_root;size:64;not null;index:idx_validation_alloc,priority:2" filelist:"validation_root"`
 	PrevValidationRoot      string `gorm:"column:prev_validation_root" filelist:"prev_validation_root" json:"prev_validation_root"`
 	ValidationRootSignature string `gorm:"column:validation_root_signature;size:64" filelist:"validation_root_signature" json:"validation_root_signature,omitempty"`
@@ -668,4 +668,9 @@ func GetListingFieldsMap(refEntity interface{}, tagName string) map[string]inter
 		}
 	}
 	return result
+}
+
+func UpdateCustomMeta(ctx context.Context, refID int64, customMeta string) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+	return db.Model(&Ref{}).Where("id = ?", refID).Update("custom_meta", customMeta).Error
 }
