@@ -9,10 +9,12 @@ import (
 	"sync"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"go.uber.org/zap"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
 type NewDir struct {
@@ -80,6 +82,7 @@ func (nf *NewDir) ApplyChange(ctx context.Context, rootRef *reference.Ref, chang
 					fmt.Sprintf("file path %s has no entry in fileID meta", newRef.Path))
 			}
 			newRef.FileID = fileID
+			logging.Logger.Info("new_dir", zap.String("path", newRef.Path), zap.String("custom_meta", nf.CustomMeta))
 			newRef.CustomMeta = nf.CustomMeta
 			dirRef.AddChild(newRef)
 			dirRef = newRef

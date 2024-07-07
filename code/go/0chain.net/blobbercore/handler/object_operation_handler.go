@@ -1246,6 +1246,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*all
 	}
 
 	customMeta := r.FormValue("custom_meta")
+	logging.Logger.Info("create_dir", zap.String("dir_path", dirPath), zap.String("custom_meta", customMeta))
 
 	exisitingRef, err := fsh.checkIfFileAlreadyExists(ctx, allocationID, dirPath)
 	if err != nil {
