@@ -670,7 +670,7 @@ func GetListingFieldsMap(refEntity interface{}, tagName string) map[string]inter
 	return result
 }
 
-func UpdateCustomMeta(ctx context.Context, refID int64, customMeta string) error {
+func UpdateCustomMeta(ctx context.Context, ref *Ref, customMeta string) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-	return db.Model(&Ref{}).Where("id = ?", refID).Update("custom_meta", customMeta).Error
+	return db.Model(ref).Update("custom_meta", customMeta).Error
 }
