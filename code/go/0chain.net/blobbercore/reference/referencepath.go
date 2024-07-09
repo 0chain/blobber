@@ -11,6 +11,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 type ReferencePath struct {
@@ -238,70 +239,43 @@ func GetObjectTree(ctx context.Context, allocationID, path string) (*Ref, error)
 // To retrieve refs efficiently form pagination index is created in postgresql on path column so it can be used to paginate refs
 // very easily and effectively; Same case for offsetDate.
 func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, level, pageLimit int) (refs *[]PaginatedRef, totalPages int, newOffsetPath string, err error) {
-	var totalRows int64
-	var pRefs []PaginatedRef
+	var (
+		pRefs   = make([]PaginatedRef, 0, pageLimit/4)
+		dbError error
+		dbQuery *gorm.DB
+	)
 	path = filepath.Clean(path)
-
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-	errChan := make(chan error, 2)
-	go func() {
-		err1 := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-			tx := datastore.GetStore().GetTransaction(ctx)
-			db1 := tx.Model(&Ref{}).Where("allocation_id = ? AND (path=? OR path LIKE ?)", allocationID, path, path+"%")
-			if _type != "" {
-				db1 = db1.Where("type = ?", _type)
-			}
-			if level != 0 {
-				db1 = db1.Where("level = ?", level)
-			}
-
-			db1 = db1.Where("path > ?", offsetPath)
-
-			db1 = db1.Order("path")
-			err1 := db1.Limit(pageLimit).Find(&pRefs).Error
-			wg.Done()
-
-			return err1
-		})
-		if err1 != nil {
-			errChan <- err1
+	tx := datastore.GetStore().GetTransaction(ctx)
+	pathLevel := len(strings.Split(strings.TrimSuffix(path, "/"), "/")) + 1
+	if pathLevel == level {
+		dbQuery = tx.Model(&Ref{}).Where("allocation_id = ? AND parent_path = ? and level = ?", allocationID, path, level)
+		if _type != "" {
+			dbQuery = dbQuery.Where("type = ?", _type)
+		}
+		dbQuery = dbQuery.Where("path > ?", offsetPath)
+		dbQuery = dbQuery.Order("path")
+	} else {
+		dbQuery = tx.Model(&Ref{}).Where("allocation_id = ? AND (path=? OR path LIKE ?)", allocationID, path, path+"%")
+		if _type != "" {
+			dbQuery = dbQuery.Where("type = ?", _type)
+		}
+		if level != 0 {
+			dbQuery = dbQuery.Where("level = ?", level)
 		}
 
-	}()
+		dbQuery = dbQuery.Where("path > ?", offsetPath)
 
-	go func() {
-		err2 := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-			tx := datastore.GetStore().GetTransaction(ctx)
-			db2 := tx.Model(&Ref{}).Where("allocation_id = ? AND (path=? OR path LIKE ?)", allocationID, path, path+"%")
-			if _type != "" {
-				db2 = db2.Where("type = ?", _type)
-			}
-			if level != 0 {
-				db2 = db2.Where("level = ?", level)
-			}
-			err2 := db2.Count(&totalRows).Error
-			wg.Done()
-
-			return err2
-		})
-		if err2 != nil {
-			errChan <- err2
-		}
-	}()
-	wg.Wait()
-	close(errChan)
-	for err := range errChan {
-		if err != nil {
-			return nil, 0, "", err
-		}
+		dbQuery = dbQuery.Order("path")
 	}
-
+	dbError = dbQuery.Limit(pageLimit).Find(&pRefs).Error
+	if dbError != nil && dbError != gorm.ErrRecordNotFound {
+		err = dbError
+		return
+	}
 	refs = &pRefs
 	if len(pRefs) > 0 {
 		newOffsetPath = pRefs[len(pRefs)-1].Path
 	}
-	totalPages = int(math.Ceil(float64(totalRows) / float64(pageLimit)))
 	return
 }
 
@@ -388,7 +362,7 @@ func GetUpdatedRefs(ctx context.Context, allocationID, path, offsetPath, _type,
 // refs ordered by path in ascending order, this will return paths in decending order for same timestamp.
 // So if a file is created with path "/a/b/c/d/e/f.txt" and if "/a" didn't exist previously then
 // creation date for "/a", "/a/b", "/a/b/c", "/a/b/c/d", "/a/b/c/d/e" and "/a/b/c/d/e/f.txt" will be the same.
-// The refs returned will be in "/a/b/c/d/e/f.txt", "/a/b/c/d/e", ... order.
+// The refs returned will be in "/a", "/a/b", .. "/a/b/c/d/e/f.txt" order.
 //
 // pageLimit --> maximum number of refs to return
 // fromDate --> timestamp to begin searching refs from i.e. refs created date greater than fromDate

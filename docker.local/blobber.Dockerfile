@@ -32,4 +32,4 @@ COPY --from=blobber_build  /usr/local/lib/libmcl*.so \
 ENV APP_DIR=/blobber
 WORKDIR $APP_DIR
 COPY --from=blobber_build /0chain/code/go/0chain.net/blobber/blobber $APP_DIR/bin/blobber
-COPY ./code/go/0chain.net/swagger.yaml /docs/swagger.yaml
+# COPY ./code/go/0chain.net/swagger.yaml /docs/swagger.yaml

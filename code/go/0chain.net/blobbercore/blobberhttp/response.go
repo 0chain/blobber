@@ -55,6 +55,7 @@ type ListResult struct {
 	Entities       []map[string]interface{} `json:"list"`
 }
 
+// swagger:model DownloadResponse
 type DownloadResponse struct {
 	Success      bool                   `json:"success"`
 	Data         []byte                 `json:"data"`
@@ -63,6 +64,7 @@ type DownloadResponse struct {
 	LatestRM     *readmarker.ReadMarker `json:"latest_rm"`
 }
 
+// swagger:model LatestWriteMarkerResult
 type LatestWriteMarkerResult struct {
 	LatestWM *writemarker.WriteMarker `json:"latest_write_marker"`
 	PrevWM   *writemarker.WriteMarker `json:"prev_write_marker"`

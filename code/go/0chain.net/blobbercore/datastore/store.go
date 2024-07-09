@@ -2,6 +2,7 @@ package datastore
 
 import (
 	"context"
+	"database/sql"
 
 	"gorm.io/gorm"
 )
@@ -41,7 +42,7 @@ type Store interface {
 	// GetDB get raw gorm db
 	GetDB() *gorm.DB
 	// CreateTransaction create transaction, and save it in context
-	CreateTransaction(ctx context.Context) context.Context
+	CreateTransaction(ctx context.Context, opts ...*sql.TxOptions) context.Context
 	// GetTransaction get transaction from context
 	GetTransaction(ctx context.Context) *EnhancedDB
 	WithNewTransaction(f func(ctx context.Context) error) error

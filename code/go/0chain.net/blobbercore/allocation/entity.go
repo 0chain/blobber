@@ -38,6 +38,7 @@ const (
 	CanRenameMask       = uint16(32) // 0010 0000
 )
 
+// swagger:model Allocation
 type Allocation struct {
 	ID             string           `gorm:"column:id;size:64;primaryKey"`
 	Tx             string           `gorm:"column:tx;size:64;not null;unique;index:idx_unique_allocations_tx,unique"`
@@ -207,7 +208,7 @@ func AddToPending(ctx context.Context, clientID, allocationID string, pendingWri
 	defer lock.Unlock()
 
 	pending := new(Pending)
-	err = db.Model(&Pending{}).Where("id=?", key).First(pending).Error
+	err = db.Model(&Pending{}).Where("id=?", key).Take(pending).Error
 	switch {
 	case err == nil:
 		pending.PendingWrite += pendingWrite
@@ -239,6 +240,7 @@ const (
 )
 
 // Terms for allocation by its Tx.
+// swagger:model
 type Terms struct {
 	ID           int64      `gorm:"column:id;primaryKey"`
 	BlobberID    string     `gorm:"blobber_id;size:64;not null"`

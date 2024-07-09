@@ -27,6 +27,7 @@ import (
 // Only when blobber is not in sync with blockchain, SaveLatestReadMarker will be called.
 var ReadmarkerMapLock = common.GetNewLocker()
 
+// swagger:model ReadMarker
 type ReadMarker struct {
 	ClientID        string           `gorm:"column:client_id;size:64;primaryKey" json:"client_id"`
 	AllocationID    string           `gorm:"column:allocation_id;size:64;primaryKey" json:"allocation_id"`
@@ -126,7 +127,7 @@ func (rm *ReadMarkerEntity) VerifyMarker(ctx context.Context, sa *allocation.All
 func GetLatestReadMarkerEntity(ctx context.Context, clientID, allocID string) (*ReadMarkerEntity, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	rm := &ReadMarkerEntity{}
-	err := db.First(rm, "client_id = ? AND allocation_id = ?", clientID, allocID).Error
+	err := db.Take(rm, "client_id = ? AND allocation_id = ?", clientID, allocID).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		latestRM, err := GetLatestReadMarkerEntityFromChain(clientID, allocID)
 		if err != nil {
