@@ -274,7 +274,6 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 	}
 	refs = &pRefs
 	if len(pRefs) > 0 {
-		logging.Logger.Info("getRefs", zap.String("path", pRefs[len(pRefs)-1].Path), zap.String("custom_meta", pRefs[len(pRefs)-1].CustomMeta))
 		newOffsetPath = pRefs[len(pRefs)-1].Path
 	}
 	return

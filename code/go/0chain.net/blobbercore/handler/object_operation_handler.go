@@ -1246,7 +1246,6 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*all
 	}
 
 	customMeta := r.FormValue("custom_meta")
-	logging.Logger.Info("create_dir", zap.String("dir_path", dirPath), zap.String("custom_meta", customMeta))
 
 	exisitingRef, err := fsh.checkIfFileAlreadyExists(ctx, allocationID, dirPath)
 	if err != nil {
@@ -1262,7 +1261,6 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*all
 		if exisitingRef.Type == reference.DIRECTORY {
 
 			if exisitingRef.CustomMeta != customMeta {
-				logging.Logger.Info("Updating custom meta", zap.Int64("id", exisitingRef.ID))
 				_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 					err := reference.UpdateCustomMeta(ctx, exisitingRef, customMeta)
 					if err != nil {
