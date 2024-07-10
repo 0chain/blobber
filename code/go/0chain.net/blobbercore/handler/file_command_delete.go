@@ -86,8 +86,6 @@ func (cmd *DeleteFileCommand) ProcessContent(_ context.Context, allocationObj *a
 
 	result := allocation.UploadResult{}
 	result.Filename = cmd.existingFileRef.Name
-	result.ValidationRoot = cmd.existingFileRef.ValidationRoot
-	result.FixedMerkleRoot = cmd.existingFileRef.FixedMerkleRoot
 	result.Size = cmd.existingFileRef.Size
 	result.UpdateChange = true
 

@@ -373,17 +373,12 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		return nil, common.NewErrorf("download_file", "BlockNum or NumBlocks is too large to convert to int")
 	}
 
-	fromPreCommit := false
+	fromPreCommit := fileref.IsPrecommit
 	if downloadMode == DownloadContentThumb {
-
-		if fileref.IsPrecommit {
-			fromPreCommit = fileref.ThumbnailHash != fileref.PrevThumbnailHash
-		}
-
 		rbi := &filestore.ReadBlockInput{
 			AllocationID:     alloc.ID,
 			FileSize:         fileref.ThumbnailSize,
-			Hash:             fileref.ThumbnailHash,
+			Hash:             fileref.LookupHash,
 			StartBlockNum:    int(dr.BlockNum),
 			NumBlocks:        int(dr.NumBlocks),
 			IsThumbnail:      true,
@@ -397,15 +392,10 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			return nil, common.NewErrorf("download_file", "couldn't get thumbnail block: %v", err)
 		}
 	} else {
-
-		if fileref.IsPrecommit {
-			fromPreCommit = fileref.ValidationRoot != fileref.PrevValidationRoot
-		}
-
 		rbi := &filestore.ReadBlockInput{
 			AllocationID:     alloc.ID,
 			FileSize:         fileref.Size,
-			Hash:             fileref.ValidationRoot,
+			Hash:             fileref.LookupHash,
 			StartBlockNum:    int(dr.BlockNum),
 			NumBlocks:        int(dr.NumBlocks),
 			VerifyDownload:   dr.VerifyDownload,
@@ -997,8 +987,6 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 		result := &allocation.UploadResult{}
 		result.Filename = fileRef.Name
 		result.Hash = fileRef.Hash
-		result.ValidationRoot = fileRef.ValidationRoot
-		result.FixedMerkleRoot = fileRef.FixedMerkleRoot
 		result.Size = fileRef.Size
 
 		return result, nil

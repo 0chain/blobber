@@ -255,7 +255,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	if err != nil {
 		return nil, common.NewError("bad_db_operation", "Error retrieving file stats. "+err.Error())
 	}
-	wm, _ := writemarker.GetWriteMarkerEntity(ctx, fileref.AllocationRoot)
+	wm, _ := writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
 	if wm != nil && fileStats != nil {
 		fileStats.WriteMarkerRedeemTxn = wm.CloseTxnID
 		fileStats.OnChain = wm.OnChain()

@@ -57,23 +57,16 @@ type Ref struct {
 	FileMetaHash            string `gorm:"column:file_meta_hash;size:64;not null" dirlist:"file_meta_hash" filelist:"file_meta_hash"`
 	Hash                    string `gorm:"column:hash;size:64;not null" dirlist:"hash" filelist:"hash"`
 	NumBlocks               int64  `gorm:"column:num_of_blocks;not null;default:0" dirlist:"num_of_blocks" filelist:"num_of_blocks"`
-	PathHash                string `gorm:"column:path_hash;size:64;not null" dirlist:"path_hash" filelist:"path_hash"`
 	ParentPath              string `gorm:"column:parent_path;size:999;index:idx_parent_path_alloc,priority:2"`
 	PathLevel               int    `gorm:"column:level;not null;default:0"`
 	CustomMeta              string `gorm:"column:custom_meta;not null" filelist:"custom_meta"`
-	ValidationRoot          string `gorm:"column:validation_root;size:64;not null;index:idx_validation_alloc,priority:2" filelist:"validation_root"`
-	PrevValidationRoot      string `gorm:"column:prev_validation_root" filelist:"prev_validation_root" json:"prev_validation_root"`
-	ValidationRootSignature string `gorm:"column:validation_root_signature;size:64" filelist:"validation_root_signature" json:"validation_root_signature,omitempty"`
 	Size                    int64  `gorm:"column:size;not null;default:0" dirlist:"size" filelist:"size"`
-	FixedMerkleRoot         string `gorm:"column:fixed_merkle_root;size:64;not null" filelist:"fixed_merkle_root"`
 	ActualFileSize          int64  `gorm:"column:actual_file_size;not null;default:0" dirlist:"actual_file_size" filelist:"actual_file_size"`
 	ActualFileHashSignature string `gorm:"column:actual_file_hash_signature;size:64" filelist:"actual_file_hash_signature"  json:"actual_file_hash_signature,omitempty"`
 	ActualFileHash          string `gorm:"column:actual_file_hash;size:64;not null" filelist:"actual_file_hash"`
 	MimeType                string `gorm:"column:mimetype;size:255;not null" filelist:"mimetype"`
-	AllocationRoot          string `gorm:"column:allocation_root;size:64;not null"`
 	ThumbnailSize           int64  `gorm:"column:thumbnail_size;not null;default:0" filelist:"thumbnail_size"`
 	ThumbnailHash           string `gorm:"column:thumbnail_hash;size:64;not null" filelist:"thumbnail_hash"`
-	PrevThumbnailHash       string `gorm:"column:prev_thumbnail_hash" filelist:"prev_thumbnail_hash"`
 	ActualThumbnailSize     int64  `gorm:"column:actual_thumbnail_size;not null;default:0" filelist:"actual_thumbnail_size"`
 	ActualThumbnailHash     string `gorm:"column:actual_thumbnail_hash;size:64;not null" filelist:"actual_thumbnail_hash"`
 	EncryptedKey            string `gorm:"column:encrypted_key;size:64" filelist:"encrypted_key"`
@@ -432,14 +425,12 @@ func (r *Ref) GetFileMetaHashData() string {
 
 func (fr *Ref) GetFileHashData() string {
 	return fmt.Sprintf(
-		"%s:%s:%s:%s:%d:%s:%s:%d:%s:%d:%s",
+		"%s:%s:%s:%s:%d:%d:%s:%d:%s",
 		fr.AllocationID,
 		fr.Type, // don't need to add it as well
 		fr.Name, // don't see any utility as fr.Path below has name in it
 		fr.Path,
 		fr.Size,
-		fr.ValidationRoot,
-		fr.FixedMerkleRoot,
 		fr.ActualFileSize,
 		fr.ActualFileHash,
 		fr.ChunkSize,
@@ -457,7 +448,6 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool, collector Q
 	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / float64(fr.ChunkSize)))
 	fr.PathLevel = len(strings.Split(strings.TrimRight(fr.Path, "/"), "/"))
 	fr.LookupHash = GetReferenceLookup(fr.AllocationID, fr.Path)
-	fr.PathHash = fr.LookupHash
 
 	var err error
 	if saveToDB && fr.HashToBeComputed {
@@ -483,7 +473,6 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool, collector Que
 
 	childHashes := make([]string, l)
 	childFileMetaHashes := make([]string, l)
-	childPathHashes := make([]string, l)
 	var refNumBlocks, size, actualSize int64
 
 	for i, childRef := range r.Children {
@@ -496,7 +485,6 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool, collector Que
 
 		childFileMetaHashes[i] = childRef.FileMetaHash
 		childHashes[i] = childRef.Hash
-		childPathHashes[i] = childRef.PathHash
 		refNumBlocks += childRef.NumBlocks
 		size += childRef.Size
 		actualSize += childRef.ActualFileSize
@@ -504,7 +492,6 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool, collector Que
 
 	r.FileMetaHash = encryption.Hash(r.Path + strings.Join(childFileMetaHashes, ":"))
 	r.Hash = encryption.Hash(r.GetHashData() + strings.Join(childHashes, ":"))
-	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
 	r.NumBlocks = refNumBlocks
 	r.Size = size
 	r.ActualFileSize = actualSize

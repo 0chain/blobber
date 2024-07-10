@@ -82,7 +82,6 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, rootRef *reference
 	fileRef.DataHash = nf.DataHash
 	fileRef.DataHashSignature = nf.DataHashSignature
 	fileRef.LookupHash = nf.LookupHash
-	fileRef.AllocationRoot = allocationRoot
 	fileRef.Size = nf.Size
 	fileRef.ThumbnailHash = nf.ThumbnailHash
 	fileRef.ThumbnailSize = nf.ThumbnailSize
