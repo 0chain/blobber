@@ -554,7 +554,8 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 	if allocationObj.AllocationRoot == "" {
 		latestWM = nil
 	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, rootRef.Hash)
+		//TODO: remove latestWM
+		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, rootRef.FileMetaHash)
 		if err != nil {
 			errCh <- common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 			return

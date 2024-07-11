@@ -978,7 +978,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 		allocationChange.Operation = constants.FileOperationDelete
 		dfc := &allocation.DeleteFileChange{ConnectionID: connectionObj.ID,
 			AllocationID: connectionObj.AllocationID, Name: fileRef.Name,
-			Hash: fileRef.Hash, Path: fileRef.Path, Size: deleteSize}
+			Hash: fileRef.LookupHash, Path: fileRef.Path, Size: deleteSize}
 
 		allocation.UpdateConnectionObjSize(connectionObj.ID, allocationChange.Size)
 
@@ -986,7 +986,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 
 		result := &allocation.UploadResult{}
 		result.Filename = fileRef.Name
-		result.Hash = fileRef.Hash
+		result.Hash = fileRef.LookupHash
 		result.Size = fileRef.Size
 
 		return result, nil
@@ -1306,25 +1306,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	}
 
 	Logger.Info("rollback_root_ref", zap.Any("root_ref", rootRef))
-	allocationRoot := rootRef.Hash
 	fileMetaRoot := rootRef.FileMetaHash
-
-	if allocationRoot != writeMarker.AllocationRoot {
-		result.AllocationRoot = allocationObj.AllocationRoot
-		result.WriteMarker = latestWriteMarkerEntity
-		result.Success = false
-		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root." +
-			" Expected hash: " + allocationRoot
-		txn.Rollback()
-		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
-	}
-
-	chainHash := writemarker.CalculateChainHash(latestWriteMarkerEntity.WM.ChainHash, allocationRoot)
-	if chainHash != writeMarker.ChainHash {
-		txn.Rollback()
-		return nil, common.NewError("chain_hash_mismatch", "Chain hash in the write marker does not match the calculated chain hash")
-	}
-
 	if fileMetaRoot != writeMarker.FileMetaRoot {
 		if latestWriteMarkerEntity != nil {
 			result.WriteMarker = latestWriteMarkerEntity
@@ -1349,13 +1331,11 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 
 	alloc.BlobberSizeUsed -= latestWriteMarkerEntity.WM.Size
 	alloc.UsedSize -= latestWriteMarkerEntity.WM.Size
-	alloc.AllocationRoot = allocationRoot
 	alloc.FileMetaRoot = fileMetaRoot
 	alloc.IsRedeemRequired = true
 	updateMap := map[string]interface{}{
 		"blobber_size_used":  alloc.BlobberSizeUsed,
 		"used_size":          alloc.UsedSize,
-		"allocation_root":    alloc.AllocationRoot,
 		"file_meta_root":     alloc.FileMetaRoot,
 		"is_redeem_required": true,
 	}

@@ -55,7 +55,6 @@ type Ref struct {
 	Name                    string `gorm:"column:name;size:100;not null;index:idx_name_gin" dirlist:"name" filelist:"name"` // uses GIN tsvector index for full-text search
 	Path                    string `gorm:"column:path;size:1000;not null;index:idx_path_alloc,priority:2;index:path_idx;index:idx_path_gin_trgm" dirlist:"path" filelist:"path"`
 	FileMetaHash            string `gorm:"column:file_meta_hash;size:64;not null" dirlist:"file_meta_hash" filelist:"file_meta_hash"`
-	Hash                    string `gorm:"column:hash;size:64;not null" dirlist:"hash" filelist:"hash"`
 	NumBlocks               int64  `gorm:"column:num_of_blocks;not null;default:0" dirlist:"num_of_blocks" filelist:"num_of_blocks"`
 	ParentPath              string `gorm:"column:parent_path;size:999;index:idx_parent_path_alloc,priority:2"`
 	PathLevel               int    `gorm:"column:level;not null;default:0"`
@@ -120,25 +119,21 @@ type PaginatedRef struct { //Gorm smart select fields.
 	Path                    string `gorm:"column:path" json:"path,omitempty"`
 	Hash                    string `gorm:"column:hash" json:"hash,omitempty"`
 	NumBlocks               int64  `gorm:"column:num_of_blocks" json:"num_blocks,omitempty"`
-	PathHash                string `gorm:"column:path_hash" json:"path_hash,omitempty"`
 	ParentPath              string `gorm:"column:parent_path" json:"parent_path,omitempty"`
 	PathLevel               int    `gorm:"column:level" json:"level,omitempty"`
 	CustomMeta              string `gorm:"column:custom_meta" json:"custom_meta,omitempty"`
-	ValidationRootSignature string `gorm:"column:validation_root_signature" json:"validation_root_signature,omitempty"`
-	ValidationRoot          string `gorm:"column:validation_root" json:"validation_root,omitempty"`
 	Size                    int64  `gorm:"column:size" json:"size,omitempty"`
-	FixedMerkleRoot         string `gorm:"column:fixed_merkle_root" json:"fixed_merkle_root,omitempty"`
 	ActualFileSize          int64  `gorm:"column:actual_file_size" json:"actual_file_size,omitempty"`
 	ActualFileHashSignature string `gorm:"column:actual_file_hash_signature" json:"actual_file_hash_signature,omitempty"`
 	ActualFileHash          string `gorm:"column:actual_file_hash" json:"actual_file_hash,omitempty"`
 	MimeType                string `gorm:"column:mimetype" json:"mimetype,omitempty"`
-	AllocationRoot          string `gorm:"column:allocation_root" json:"allocation_root,omitempty"`
 	ThumbnailSize           int64  `gorm:"column:thumbnail_size" json:"thumbnail_size,omitempty"`
 	ThumbnailHash           string `gorm:"column:thumbnail_hash" json:"thumbnail_hash,omitempty"`
 	ActualThumbnailSize     int64  `gorm:"column:actual_thumbnail_size" json:"actual_thumbnail_size,omitempty"`
 	ActualThumbnailHash     string `gorm:"column:actual_thumbnail_hash" json:"actual_thumbnail_hash,omitempty"`
 	EncryptedKey            string `gorm:"column:encrypted_key" json:"encrypted_key,omitempty"`
 	EncryptedKeyPoint       string `gorm:"column:encrypted_key_point" json:"encrypted_key_point,omitempty"`
+	FileMetaHash            string `gorm:"column:file_meta_hash;size:64;not null" dirlist:"file_meta_hash" filelist:"file_meta_hash"`
 
 	CreatedAt common.Timestamp `gorm:"column:created_at" json:"created_at,omitempty"`
 	UpdatedAt common.Timestamp `gorm:"column:updated_at" json:"updated_at,omitempty"`
@@ -444,7 +439,6 @@ func (r *Ref) GetHashData() string {
 
 func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool, collector QueryCollector) (string, error) {
 	fr.FileMetaHash = encryption.Hash(fr.GetFileMetaHashData())
-	fr.Hash = encryption.Hash(fr.GetFileHashData())
 	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / float64(fr.ChunkSize)))
 	fr.PathLevel = len(strings.Split(strings.TrimRight(fr.Path, "/"), "/"))
 	fr.LookupHash = GetReferenceLookup(fr.AllocationID, fr.Path)
@@ -453,12 +447,12 @@ func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool, collector Q
 	if saveToDB && fr.HashToBeComputed {
 		err = fr.SaveFileRef(ctx, collector)
 	}
-	return fr.Hash, err
+	return fr.FileMetaHash, err
 }
 
 func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool, collector QueryCollector) (h string, err error) {
 	if !r.HashToBeComputed {
-		h = r.Hash
+		h = r.FileMetaHash
 		return
 	}
 
@@ -471,7 +465,6 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool, collector Que
 		}
 	}()
 
-	childHashes := make([]string, l)
 	childFileMetaHashes := make([]string, l)
 	var refNumBlocks, size, actualSize int64
 
@@ -484,20 +477,18 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool, collector Que
 		}
 
 		childFileMetaHashes[i] = childRef.FileMetaHash
-		childHashes[i] = childRef.Hash
 		refNumBlocks += childRef.NumBlocks
 		size += childRef.Size
 		actualSize += childRef.ActualFileSize
 	}
 
 	r.FileMetaHash = encryption.Hash(r.Path + strings.Join(childFileMetaHashes, ":"))
-	r.Hash = encryption.Hash(r.GetHashData() + strings.Join(childHashes, ":"))
 	r.NumBlocks = refNumBlocks
 	r.Size = size
 	r.ActualFileSize = actualSize
 	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1
 	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
-	return r.Hash, err
+	return r.FileMetaHash, err
 }
 
 func (r *Ref) CalculateHash(ctx context.Context, saveToDB bool, collector QueryCollector) (string, error) {

@@ -82,7 +82,7 @@ func (cmd *DeleteFileCommand) ProcessContent(_ context.Context, allocationObj *a
 	connectionID := cmd.connectionID
 	cmd.changeProcessor = &allocation.DeleteFileChange{ConnectionID: connectionID,
 		AllocationID: allocationObj.ID, Name: cmd.existingFileRef.Name,
-		Hash: cmd.existingFileRef.Hash, Path: cmd.existingFileRef.Path, Size: deleteSize}
+		Hash: cmd.existingFileRef.LookupHash, Path: cmd.existingFileRef.Path, Size: deleteSize}
 
 	result := allocation.UploadResult{}
 	result.Filename = cmd.existingFileRef.Name
