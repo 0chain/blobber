@@ -48,7 +48,7 @@ func init() {
 
 type Ref struct {
 	ID                      int64  `gorm:"column:id;primaryKey"`
-	FileID                  string `gorm:"column:file_id" dirlist:"file_id" filelist:"file_id"`
+	ParentID                int64  `gorm:"column:parent_id"`
 	Type                    string `gorm:"column:type;size:1" dirlist:"type" filelist:"type"`
 	AllocationID            string `gorm:"column:allocation_id;size:64;not null;index:idx_path_alloc,priority:1;index:idx_parent_path_alloc,priority:1;index:idx_validation_alloc,priority:1" dirlist:"allocation_id" filelist:"allocation_id"`
 	LookupHash              string `gorm:"column:lookup_hash;size:64;not null;index:idx_lookup_hash" dirlist:"lookup_hash" filelist:"lookup_hash"`
@@ -420,7 +420,7 @@ func (r *Ref) GetFileMetaHashData() string {
 
 func (fr *Ref) GetFileHashData() string {
 	return fmt.Sprintf(
-		"%s:%s:%s:%s:%d:%d:%s:%d:%s",
+		"%s:%s:%s:%s:%d:%d:%s:%d",
 		fr.AllocationID,
 		fr.Type, // don't need to add it as well
 		fr.Name, // don't see any utility as fr.Path below has name in it
@@ -429,12 +429,11 @@ func (fr *Ref) GetFileHashData() string {
 		fr.ActualFileSize,
 		fr.ActualFileHash,
 		fr.ChunkSize,
-		fr.FileID,
 	)
 }
 
 func (r *Ref) GetHashData() string {
-	return fmt.Sprintf("%s:%s:%s", r.AllocationID, r.Path, r.FileID)
+	return fmt.Sprintf("%s:%s", r.AllocationID, r.Path)
 }
 
 func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool, collector QueryCollector) (string, error) {

@@ -3,7 +3,6 @@ package allocation
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -34,12 +33,6 @@ func (nf *NewDir) ApplyChange(ctx context.Context,
 	newRef.CreatedAt = ts
 	newRef.UpdatedAt = ts
 	newRef.HashToBeComputed = true
-	fileID, ok := fileIDMeta[newRef.Path]
-	if !ok || fileID == "" {
-		return common.NewError("invalid_parameter",
-			fmt.Sprintf("file path %s has no entry in fileID meta", newRef.Path))
-	}
-	newRef.FileID = fileID
 	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		//check if ref exists
 		exists, err := reference.IsRefExist(ctx, nf.AllocationID, newRef.Path)

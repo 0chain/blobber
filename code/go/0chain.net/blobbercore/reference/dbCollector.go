@@ -2,7 +2,6 @@ package reference
 
 import (
 	"context"
-	"sync"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 )
@@ -16,7 +15,6 @@ type QueryCollector interface {
 type dbCollector struct {
 	createdRefs []*Ref
 	deletedRefs []*Ref
-	mut         sync.Mutex
 }
 
 func NewCollector(changes int) QueryCollector {
@@ -27,15 +25,11 @@ func NewCollector(changes int) QueryCollector {
 }
 
 func (dc *dbCollector) CreateRefRecord(ref *Ref) {
-	dc.mut.Lock()
 	dc.createdRefs = append(dc.createdRefs, ref)
-	dc.mut.Unlock()
 }
 
 func (dc *dbCollector) DeleteRefRecord(ref *Ref) {
-	dc.mut.Lock()
 	dc.deletedRefs = append(dc.deletedRefs, ref)
-	dc.mut.Unlock()
 }
 
 func (dc *dbCollector) Finalize(ctx context.Context) error {

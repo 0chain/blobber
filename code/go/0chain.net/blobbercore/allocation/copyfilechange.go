@@ -77,12 +77,6 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, rootRef *reference.Re
 			newRef := reference.NewDirectoryRef()
 			newRef.AllocationID = rf.AllocationID
 			newRef.Path = filepath.Join("/", strings.Join(fields[:i+1], "/"))
-			fileID, ok := fileIDMeta[newRef.Path]
-			if !ok || fileID == "" {
-				return nil, common.NewError("invalid_parameter",
-					fmt.Sprintf("file path %s has no entry in file ID meta", newRef.Path))
-			}
-			newRef.FileID = fileID
 			newRef.ParentPath = filepath.Join("/", strings.Join(fields[:i], "/"))
 			newRef.Name = fields[i]
 			newRef.HashToBeComputed = true
@@ -116,7 +110,6 @@ func (rf *CopyFileChange) processCopyRefs(
 		return nil, common.NewError("invalid_parameter",
 			fmt.Sprintf("file path %s has no entry in fileID meta", newRef.Path))
 	}
-	newRef.FileID = fileID
 	newRef.ParentPath = destRef.Path
 	newRef.CreatedAt = ts
 	newRef.UpdatedAt = ts

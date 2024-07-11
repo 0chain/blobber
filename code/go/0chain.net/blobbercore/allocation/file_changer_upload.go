@@ -3,7 +3,6 @@ package allocation
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -62,31 +61,50 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 		FilestoreVersion:        filestore.VERSION,
 	}
 
-	fileID, ok := fileIDMeta[newFile.Path]
-	if !ok || fileID == "" {
-		return common.NewError("invalid_parameter",
-			fmt.Sprintf("file path %s has no entry in fileID meta", newFile.Path))
-	}
-	newFile.FileID = fileID
-
 	// find if ref exists
-	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-		var refResult struct {
-			ID int64
-		}
-		db := datastore.GetStore().GetTransaction(ctx)
-		err := db.Model(&reference.Ref{}).Select("id").Where("lookup_hash = ?", newFile.LookupHash).Take(&refResult).Error
-		if err == gorm.ErrRecordNotFound {
-			collector.CreateRefRecord(newFile)
-		} else if err != nil {
-			return err
-		}
+	var refResult struct {
+		ID int64
+	}
+	db := datastore.GetStore().GetTransaction(ctx)
+	err := db.Model(&reference.Ref{}).Select("id").Where("lookup_hash = ?", newFile.LookupHash).Take(&refResult).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return err
+	}
+	if refResult.ID > 0 {
 		deleteRecord := &reference.Ref{
 			ID: refResult.ID,
 		}
 		collector.DeleteRefRecord(deleteRecord)
-		return nil
-	})
+	}
+	refResult.ID = 0
+	// get parent id
+	parent := filepath.Dir(nf.Path)
+	parentLookupHash := reference.GetReferenceLookup(nf.AllocationID, parent)
+	err = db.Model(&reference.Ref{}).Select("id").Where("lookup_hash = ?", parentLookupHash).Take(&refResult).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return err
+	}
+	// create parent directory
+	if refResult.ID == 0 {
+		// get all parent directories
+		fields, err := common.GetParentPaths(filepath.Dir(parent))
+		if err != nil {
+			return err
+		}
+		parentLookupHashes := make([]string, 0, len(fields))
+		for i := 0; i < len(fields); i++ {
+			parentLookupHashes = append(parentLookupHashes, reference.GetReferenceLookup(nf.AllocationID, fields[i]))
+
+		}
+		var parentRefs []reference.Ref
+		err = db.Model(&reference.Ref{}).Select("id", "path").Where("lookup_hash IN ?", parentLookupHashes).Order("path").Find(&parentRefs).Error
+		if err != nil && err != gorm.ErrRecordNotFound {
+			return err
+		}
+	}
+
+	newFile.ParentID = refResult.ID
+	collector.CreateRefRecord(newFile)
 
 	return err
 }
