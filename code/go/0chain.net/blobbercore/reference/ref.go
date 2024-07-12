@@ -2,7 +2,6 @@ package reference
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math"
 	"path/filepath"
@@ -155,41 +154,98 @@ func NewFileRef() *Ref {
 }
 
 // Mkdir create dirs if they don't exits. do nothing if dir exists. last dir will be return without child
+// func Mkdir(ctx context.Context, allocationID, destpath string) (*Ref, error) {
+// 	var dirRef *Ref
+// 	db := datastore.GetStore().GetTransaction(ctx)
+// 	// cleaning path to avoid edge case issues: append '/' prefix if not added and removing suffix '/' if added
+// 	destpath = strings.TrimSuffix(filepath.Clean("/"+destpath), "/")
+// 	dirs := strings.Split(destpath, "/")
+
+// 	for i := range dirs {
+// 		currentPath := filepath.Join("/", filepath.Join(dirs[:i+1]...))
+// 		ref, err := GetReference(ctx, allocationID, currentPath)
+// 		if err == nil {
+// 			dirRef = ref
+// 			continue
+// 		}
+
+// 		if !errors.Is(err, gorm.ErrRecordNotFound) {
+// 			// unexpected sql error
+// 			return nil, err
+// 		}
+
+// 		// dir doesn't exists , create it
+// 		newRef := NewDirectoryRef()
+// 		newRef.AllocationID = allocationID
+// 		newRef.Path = currentPath
+// 		newRef.ParentPath = filepath.Join("/", filepath.Join(dirs[:i]...))
+// 		newRef.Name = dirs[i]
+// 		newRef.Type = DIRECTORY
+// 		newRef.PathLevel = i + 1
+// 		newRef.LookupHash = GetReferenceLookup(allocationID, newRef.Path)
+// 		err = db.Create(newRef).Error
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		dirRef = newRef
+// 	}
+
+// 	return dirRef, nil
+// }
+
 func Mkdir(ctx context.Context, allocationID, destpath string) (*Ref, error) {
-	var dirRef *Ref
 	db := datastore.GetStore().GetTransaction(ctx)
-	// cleaning path to avoid edge case issues: append '/' prefix if not added and removing suffix '/' if added
 	destpath = strings.TrimSuffix(filepath.Clean("/"+destpath), "/")
-	dirs := strings.Split(destpath, "/")
+	fields, err := common.GetParentPaths(filepath.Dir(destpath))
+	if err != nil {
+		return nil, err
+	}
 
-	for i := range dirs {
-		currentPath := filepath.Join("/", filepath.Join(dirs[:i+1]...))
-		ref, err := GetReference(ctx, allocationID, currentPath)
-		if err == nil {
-			dirRef = ref
-			continue
+	parentLookupHashes := make([]string, 0, len(fields))
+	for i := 0; i < len(fields); i++ {
+		parentLookupHashes = append(parentLookupHashes, GetReferenceLookup(allocationID, fields[i]))
+	}
+
+	var parentRefs []*Ref
+	err = db.Model(&Ref{}).Select("id", "path", "type").Where("lookup_hash IN ?", parentLookupHashes).Order("path").Find(&parentRefs).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, err
+	}
+	var (
+		parentID   int64
+		parentPath = "/"
+	)
+	if len(parentRefs) > 0 {
+		parentID = parentRefs[len(parentRefs)-1].ID
+		parentPath = parentRefs[len(parentRefs)-1].Path
+		for i := 0; i < len(parentRefs); i++ {
+			if parentRefs[i].Type != DIRECTORY {
+				return nil, common.NewError("invalid_dir_tree", "DB has invalid tree.")
+			}
 		}
-
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			// unexpected sql error
-			return nil, err
-		}
-
-		// dir doesn't exists , create it
+	}
+	for i := len(parentRefs); i < len(fields); i++ {
 		newRef := NewDirectoryRef()
 		newRef.AllocationID = allocationID
-		newRef.Path = currentPath
-		newRef.ParentPath = filepath.Join("/", filepath.Join(dirs[:i]...))
-		newRef.Name = dirs[i]
-		newRef.Type = DIRECTORY
+		newRef.Path = fields[i]
+		newRef.ParentPath = parentPath
+		newRef.Name = filepath.Base(fields[i])
 		newRef.PathLevel = i + 1
-		newRef.LookupHash = GetReferenceLookup(allocationID, newRef.Path)
+		newRef.ParentID = parentID
+		newRef.LookupHash = parentLookupHashes[i]
 		err = db.Create(newRef).Error
 		if err != nil {
 			return nil, err
 		}
+		parentID = newRef.ID
+		parentPath = newRef.Path
+	}
 
-		dirRef = newRef
+	dirRef := &Ref{
+		AllocationID: allocationID,
+		ID:           parentID,
+		Path:         parentPath,
 	}
 
 	return dirRef, nil

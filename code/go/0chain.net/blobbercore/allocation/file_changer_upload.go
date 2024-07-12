@@ -14,6 +14,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 )
 
 // UploadFileChanger file change processor for continuous upload in INIT/APPEND/FINALIZE
@@ -60,13 +61,15 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 		PathLevel:               len(strings.Split(strings.TrimRight(nf.Path, "/"), "/")),
 		FilestoreVersion:        filestore.VERSION,
 	}
+	newFile.FileMetaHash = encryption.Hash(newFile.GetFileMetaHashData())
 
 	// find if ref exists
 	var refResult struct {
-		ID int64
+		ID   int64
+		Type string
 	}
 	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Model(&reference.Ref{}).Select("id").Where("lookup_hash = ?", newFile.LookupHash).Take(&refResult).Error
+	err := db.Model(&reference.Ref{}).Select("id", "type").Where("lookup_hash = ?", newFile.LookupHash).Take(&refResult).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return err
 	}
@@ -80,26 +83,20 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 	// get parent id
 	parent := filepath.Dir(nf.Path)
 	parentLookupHash := reference.GetReferenceLookup(nf.AllocationID, parent)
-	err = db.Model(&reference.Ref{}).Select("id").Where("lookup_hash = ?", parentLookupHash).Take(&refResult).Error
+	err = db.Model(&reference.Ref{}).Select("id", "type").Where("lookup_hash = ?", parentLookupHash).Take(&refResult).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return err
 	}
 	// create parent directory
 	if refResult.ID == 0 {
-		// get all parent directories
-		fields, err := common.GetParentPaths(filepath.Dir(parent))
+		parentRef, err := reference.Mkdir(ctx, nf.AllocationID, parent)
 		if err != nil {
 			return err
 		}
-		parentLookupHashes := make([]string, 0, len(fields))
-		for i := 0; i < len(fields); i++ {
-			parentLookupHashes = append(parentLookupHashes, reference.GetReferenceLookup(nf.AllocationID, fields[i]))
-
-		}
-		var parentRefs []reference.Ref
-		err = db.Model(&reference.Ref{}).Select("id", "path").Where("lookup_hash IN ?", parentLookupHashes).Order("path").Find(&parentRefs).Error
-		if err != nil && err != gorm.ErrRecordNotFound {
-			return err
+		refResult.ID = parentRef.ID
+	} else {
+		if refResult.Type != reference.DIRECTORY {
+			return common.NewError("invalid_parameter", "parent path is not a directory")
 		}
 	}
 

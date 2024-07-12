@@ -568,6 +568,21 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			fmt.Sprintf("Error while unmarshalling file ID meta data: %s", err.Error()))
 	}
 
+	versionMarkerStr := r.FormValue("version_marker")
+	if versionMarkerStr == "" {
+		return nil, common.NewError("invalid_parameters", "Invalid version marker passed")
+	}
+	versionMarker := writemarker.VersionMarker{}
+	err = json.Unmarshal([]byte(versionMarkerStr), &versionMarker)
+	if err != nil {
+		return nil, common.NewError("unmarshall_error", fmt.Sprintf("Error while unmarshalling version marker: %s", err.Error()))
+	}
+
+	err = versionMarker.Verify(allocationID, allocationObj.OwnerPublicKey)
+	if err != nil {
+		return nil, err
+	}
+
 	// Move preCommitDir to finalDir
 	err = connectionObj.MoveToFilestore(ctx)
 	if err != nil {
@@ -587,6 +602,11 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		elapsedGetConnObj
 
 	db := datastore.GetStore().GetTransaction(ctx)
+	err = db.Create(&versionMarker).Error
+	if err != nil {
+		return nil, common.NewError("db_error", fmt.Sprintf("Error while saving version marker: %s", err.Error()))
+	}
+
 	allocationObj.BlobberSizeUsed += connectionObj.Size
 	allocationObj.UsedSize += connectionObj.Size
 

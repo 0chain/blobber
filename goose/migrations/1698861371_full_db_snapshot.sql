@@ -329,7 +329,6 @@ ALTER TABLE read_pools OWNER TO blobber_user;
 
 CREATE TABLE reference_objects (
     id bigint NOT NULL,
-    file_id text,
     type character varying(1),
     allocation_id character varying(64) NOT NULL,
     lookup_hash character varying(64) NOT NULL,
@@ -337,25 +336,17 @@ CREATE TABLE reference_objects (
     thumbnail_filename text,
     path character varying(1000) NOT NULL COLLATE pg_catalog."POSIX",
     file_meta_hash character varying(64) NOT NULL,
-    hash character varying(64) NOT NULL,
     num_of_blocks bigint DEFAULT 0 NOT NULL,
-    path_hash character varying(64) NOT NULL,
     parent_path character varying(999),
     level bigint DEFAULT 0 NOT NULL,
     custom_meta text NOT NULL,
-    validation_root character varying(64) NOT NULL,
-    prev_validation_root text,
-    validation_root_signature character varying(64),
     size bigint DEFAULT 0 NOT NULL,
-    fixed_merkle_root character varying(64) NOT NULL,
     actual_file_size bigint DEFAULT 0 NOT NULL,
     actual_file_hash_signature character varying(64),
     actual_file_hash character varying(64) NOT NULL,
     mimetype character varying(255) NOT NULL,
-    allocation_root character varying(64) NOT NULL,
     thumbnail_size bigint DEFAULT 0 NOT NULL,
     thumbnail_hash character varying(64) NOT NULL,
-    prev_thumbnail_hash text,
     actual_thumbnail_size bigint DEFAULT 0 NOT NULL,
     actual_thumbnail_hash character varying(64) NOT NULL,
     encrypted_key character varying(64),
@@ -367,6 +358,9 @@ CREATE TABLE reference_objects (
     chunk_size bigint DEFAULT 65536 NOT NULL,
     num_of_updates bigint,
     num_of_block_downloads bigint
+    data_hash character varying(64),
+    data_hash_signature character varying(64),
+    parent_id bigint NOT NULL
 );
 
 
@@ -852,6 +846,14 @@ CREATE INDEX path_idx ON reference_objects USING btree (path);
 
 ALTER TABLE ONLY allocation_changes
     ADD CONSTRAINT fk_allocation_connections_changes FOREIGN KEY (connection_id) REFERENCES allocation_connections(id) ON DELETE CASCADE;
+
+
+ --
+ -- Name: fk_reference_objects; TYPE FK CONSTRAINT; Schema: public; Owner: blobber_user
+ --
+
+ ALTER TABLE ONLY reference_objects
+     ADD CONSTRAINT fk_reference_objects FOREIGN KEY (parent_id) REFERENCES reference_objects(id) ON DELETE CASCADE;    
 
 
  --
