@@ -689,11 +689,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 				"Latest write marker is in failed state")
 		}
 
-		if latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size != writeMarker.ChainSize {
-			return nil, common.NewErrorf("invalid_chain_size",
-				"Invalid chain size. expected:%v got %v", latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size, writeMarker.ChainSize)
-		}
-
 		if latestWriteMarkerEntity.Status != writemarker.Committed {
 			writeMarker.ChainLength = latestWriteMarkerEntity.WM.ChainLength
 		}
@@ -707,20 +702,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("chain_length_exceeded", "Chain length exceeded")
 	}
 
-	err = writemarkerEntity.VerifyMarker(ctx, allocationObj, connectionObj, latestWriteMarkerEntity)
-	if err != nil {
-		result.AllocationRoot = allocationObj.AllocationRoot
-		result.ErrorMessage = "Verification of write marker failed: " + err.Error()
-		result.Success = false
-		if latestWriteMarkerEntity != nil {
-			result.WriteMarker = latestWriteMarkerEntity
-		}
-		Logger.Error("verify_writemarker_failed", zap.Error(err))
-		return &result, common.NewError("write_marker_verification_failed", result.ErrorMessage)
-	}
-
-	elapsedVerifyWM := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj
-
 	var clientIDForWriteRedeem = writeMarker.ClientID
 
 	if err := writePreRedeem(ctx, allocationObj, &writeMarker, clientIDForWriteRedeem); err != nil {
@@ -728,7 +709,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
-		elapsedGetConnObj - elapsedVerifyWM
+		elapsedGetConnObj
 
 	fileIDMetaStr := r.FormValue("file_id_meta")
 	if fileIDMetaStr == "" {
@@ -747,9 +728,9 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("move_to_filestore_error", fmt.Sprintf("Error while moving to filestore: %s", err.Error()))
 	}
 
-	elapsedMoveToFilestore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
+	elapsedMoveToFilestore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedWritePreRedeem
 
-	rootRef, err := connectionObj.ApplyChanges(
+	rootRef, connectionSize, err := connectionObj.ApplyChanges(
 		ctx, writeMarker.AllocationRoot, writeMarker.PreviousAllocationRoot, writeMarker.Timestamp, fileIDMeta)
 	if err != nil {
 		Logger.Error("Error applying changes", zap.Error(err))
@@ -758,9 +739,29 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if !rootRef.IsPrecommit {
 		return nil, common.NewError("no_root_change", "No change in root ref")
 	}
+	connectionObj.Size = connectionSize
 
 	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
-		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
+		elapsedGetConnObj - elapsedWritePreRedeem
+
+	if latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size != writeMarker.ChainSize {
+		return nil, common.NewErrorf("invalid_chain_size",
+			"Invalid chain size. expected:%v got %v", latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size, writeMarker.ChainSize)
+	}
+
+	err = writemarkerEntity.VerifyMarker(ctx, allocationObj, connectionObj, latestWriteMarkerEntity)
+	if err != nil {
+		result.AllocationRoot = allocationObj.AllocationRoot
+		result.ErrorMessage = "Verification of write marker failed: " + err.Error()
+		result.Success = false
+		if latestWriteMarkerEntity != nil {
+			result.WriteMarker = latestWriteMarkerEntity
+		}
+		Logger.Error("verify_writemarker_failed", zap.Error(err))
+		return &result, common.NewError("write_marker_verification_failed", result.ErrorMessage)
+	}
+
+	elapsedVerifyWM := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedWritePreRedeem - elapsedMoveToFilestore
 
 	allocationRoot := rootRef.Hash
 	fileMetaRoot := rootRef.FileMetaHash
