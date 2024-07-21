@@ -68,3 +68,7 @@ type LatestWriteMarkerResult struct {
 	PrevWM   *writemarker.WriteMarker `json:"prev_write_marker"`
 	Version  string                   `json:"version"`
 }
+
+type LatestVersionMarkerResult struct {
+	VersionMarker *writemarker.VersionMarker `json:"version_marker"`
+}

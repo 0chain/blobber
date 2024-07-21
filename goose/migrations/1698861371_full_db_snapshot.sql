@@ -104,6 +104,7 @@ CREATE TABLE allocations (
     finalized boolean DEFAULT false NOT NULL,
     file_options integer DEFAULT 63 NOT NULL,
     start_time bigint NOT NULL
+    allocation_version bigint DEFAULT 0 NOT NULL
 );
 
 

@@ -4,6 +4,8 @@
 CREATE TABLE version_markers(
     id bigint NOT NULL,
     allocation_id character varying(64) NOT NULL,
+    blobber_id character varying(64) NOT NULL,
+    client_id character varying(64) NOT NULL,
     "version" bigint NOT NULL,
     "timestamp" bigint NOT NULL,
     signature character varying(64), 
@@ -42,5 +44,7 @@ ALTER SEQUENCE version_markers_id_seq OWNED BY version_markers.id;
 ALTER TABLE ONLY version_markers
     ADD CONSTRAINT version_markers_pkey PRIMARY KEY (id);
 
+
+CREATE INDEX version_markers_allocation_id_idx ON version_markers USING btree (allocation_id,version);
 
 -- +goose StatementEnd

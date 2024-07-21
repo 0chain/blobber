@@ -418,7 +418,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 	return &result, nil
 }
 
-func (fsh *StorageHandler) GetLatestWriteMarker(ctx context.Context, r *http.Request) (*blobberhttp.LatestWriteMarkerResult, error) {
+func (fsh *StorageHandler) GetLatestWriteMarker(ctx context.Context, r *http.Request) (*blobberhttp.LatestVersionMarkerResult, error) {
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	if clientID == "" {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
@@ -439,41 +439,20 @@ func (fsh *StorageHandler) GetLatestWriteMarker(ctx context.Context, r *http.Req
 		return nil, common.NewError("invalid_signature", "could not verify the allocation owner")
 	}
 
-	var latestWM *writemarker.WriteMarkerEntity
-	var prevWM *writemarker.WriteMarkerEntity
-	if allocationObj.AllocationRoot == "" {
-		latestWM = nil
-	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
+	var vm *writemarker.VersionMarker
+	if allocationObj.AllocationVersion != 0 {
+		vm, err = writemarker.GetVersionMarker(ctx, allocationId, allocationObj.AllocationVersion)
 		if err != nil {
-			Logger.Error("[latest_write_marker]", zap.String("allocation_root", allocationObj.AllocationRoot), zap.String("allocation_id", allocationObj.ID))
-			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation. "+err.Error())
+			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 		}
-		if latestWM == nil {
-			Logger.Info("[latest_write_marker]", zap.String("allocation_root", allocationObj.AllocationRoot), zap.String("allocation_id", allocationObj.ID))
-			return nil, common.NewError("latest_write_marker_read_error", "Latest write marker not found for allocation.")
-		}
-		if latestWM.WM.PreviousAllocationRoot != "" {
-			prevWM, err = writemarker.GetWriteMarkerEntity(ctx, latestWM.WM.PreviousAllocationRoot)
-			if err != nil {
-				return nil, common.NewError("latest_write_marker_read_error", "Error reading the previous write marker for allocation."+err.Error())
-			}
-		}
+	} else {
+		vm = &writemarker.VersionMarker{}
 	}
 
-	var result blobberhttp.LatestWriteMarkerResult
-	result.Version = writemarker.MARKER_VERSION
-	if latestWM != nil {
-		if latestWM.Status == writemarker.Committed {
-			latestWM.WM.ChainLength = 0 // start a new chain
-		}
-		result.LatestWM = &latestWM.WM
+	result := &blobberhttp.LatestVersionMarkerResult{
+		VersionMarker: vm,
 	}
-	if prevWM != nil {
-		result.PrevWM = &prevWM.WM
-	}
-
-	return &result, nil
+	return result, nil
 }
 
 func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request) (*blobberhttp.ReferencePathResult, error) {

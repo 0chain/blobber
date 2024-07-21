@@ -13,6 +13,8 @@ import (
 
 type VersionMarker struct {
 	ID            int64  `gorm:"column:sequence;primaryKey"`
+	ClientID      string `gorm:"client_id" json:"client_id"`
+	BlobberID     string `gorm:"blobber_id" json:"blobber_id"`
 	AllocationID  string `gorm:"allocation_id" json:"allocation_id"`
 	Version       int64  `gorm:"version" json:"version"`
 	Timestamp     int64  `gorm:"timestamp" json:"timestamp"`
@@ -30,6 +32,13 @@ func GetCurrentVersion(ctx context.Context, allocationID string) (*VersionMarker
 	db := datastore.GetStore().GetTransaction(ctx)
 	var vm VersionMarker
 	err := db.Where("allocation_id = ?", allocationID).Order("id DESC").Take(&vm).Error
+	return &vm, err
+}
+
+func GetVersionMarker(ctx context.Context, allocationID string, version int64) (*VersionMarker, error) {
+	db := datastore.GetStore().GetTransaction(ctx)
+	var vm VersionMarker
+	err := db.Where("allocation_id = ? and version = ?", allocationID, version).Order("id DESC").Take(&vm).Error
 	return &vm, err
 }
 
@@ -56,5 +65,5 @@ func (vm *VersionMarker) Verify(allocationID, clientPubKey string) error {
 }
 
 func (vm *VersionMarker) GetHashData() string {
-	return fmt.Sprintf("%s:%d:%d", vm.AllocationID, vm.Version, vm.Timestamp)
+	return fmt.Sprintf("%s:%s:%s:%d:%d", vm.AllocationID, vm.ClientID, vm.BlobberID, vm.Version, vm.Timestamp)
 }
