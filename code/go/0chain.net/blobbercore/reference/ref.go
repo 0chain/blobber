@@ -292,6 +292,23 @@ func GetReferencesByName(ctx context.Context, allocationID, name string) (refs [
 	return refs, nil
 }
 
+func SearchReferencesByName(ctx context.Context, allocationID, query string) (refs []*Ref, err error) {
+	db := datastore.GetStore().GetTransaction(ctx)
+	words := strings.Fields(query)
+	tsQuery := strings.Join(words, "&") // For multiple words query with &
+	if len(words) == 1 {
+		tsQuery = tsQuery + ":*" // do prefix search for single word.
+	}
+	err = db.Model(&Ref{}).
+		Where("allocation_id = ? AND to_tsvector('english', name) @@ to_tsquery(?)", allocationID, tsQuery).
+		Limit(10).
+		Find(&refs).Error
+	if err != nil {
+		return nil, err
+	}
+	return refs, nil
+}
+
 // IsRefExist checks if ref with given path exists and returns error other than gorm.ErrRecordNotFound
 func IsRefExist(ctx context.Context, allocationID, path string) (bool, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
