@@ -7,6 +7,8 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 )
 
 func DeleteObject(ctx context.Context, allocationID, objPath string, ts common.Timestamp) error {
@@ -22,6 +24,7 @@ func DeleteObject(ctx context.Context, allocationID, objPath string, ts common.T
 		Valid: true,
 	}, allocationID, "/", objPath, likePath).Error
 	if err != nil {
+		logging.Logger.Error("delete_object_error", zap.Error(err))
 		return err
 	}
 	return err

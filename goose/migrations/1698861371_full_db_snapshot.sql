@@ -783,6 +783,12 @@ CREATE INDEX idx_name_gin ON reference_objects USING gin (to_tsvector('english':
 
 CREATE INDEX idx_parent_path_alloc ON reference_objects USING btree (allocation_id, parent_path);
 
+--
+-- Name: idx_parent_id_alloc; Type: INDEX; Schema: public; Owner: blobber_user
+--
+
+CREATE INDEX idx_parent_id_alloc ON reference_objects USING btree (allocation_id, parent_id) where deleted_at is NULL;
+
 
 --
 -- Name: idx_path_alloc; Type: INDEX; Schema: public; Owner: blobber_user

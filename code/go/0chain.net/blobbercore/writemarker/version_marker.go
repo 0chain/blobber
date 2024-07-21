@@ -12,12 +12,14 @@ import (
 )
 
 type VersionMarker struct {
-	ID              int64  `gorm:"column:sequence;primaryKey"`
-	AllocationID    string `gorm:"allocation_id" json:"allocation_id"`
-	Version         int64  `gorm:"version" json:"version"`
-	PreviousVersion int64  `gorm:"previous_version" json:"previous_version"`
-	Timestamp       int64  `gorm:"timestamp" json:"timestamp"`
-	Signature       string `gorm:"signature" json:"signature"`
+	ID            int64  `gorm:"column:sequence;primaryKey"`
+	AllocationID  string `gorm:"allocation_id" json:"allocation_id"`
+	Version       int64  `gorm:"version" json:"version"`
+	Timestamp     int64  `gorm:"timestamp" json:"timestamp"`
+	Signature     string `gorm:"signature" json:"signature"`
+	IsRepair      bool   `gorm:"is_repair" json:"is_repair"`
+	RepairVersion int64  `gorm:"repair_version" json:"repair_version"`
+	RepairOffset  string `gorm:"repair_offset" json:"repair_offset"`
 }
 
 func (VersionMarker) TableName() string {
@@ -54,5 +56,5 @@ func (vm *VersionMarker) Verify(allocationID, clientPubKey string) error {
 }
 
 func (vm *VersionMarker) GetHashData() string {
-	return fmt.Sprintf("%s:%d:%d:%d", vm.AllocationID, vm.Version, vm.PreviousVersion, vm.Timestamp)
+	return fmt.Sprintf("%s:%d:%d", vm.AllocationID, vm.Version, vm.Timestamp)
 }

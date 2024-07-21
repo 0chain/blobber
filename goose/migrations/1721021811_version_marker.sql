@@ -4,10 +4,12 @@
 CREATE TABLE version_markers(
     id bigint NOT NULL,
     allocation_id character varying(64) NOT NULL,
-    version bigint NOT NULL,
-    previous_version bigint NOT NULL,
+    "version" bigint NOT NULL,
     "timestamp" bigint NOT NULL,
     signature character varying(64), 
+    is_repair boolean NOT NULL DEFAULT false,
+    repair_version bigint,
+    repair_offset character varying(1000)
 );
 
 ALTER TABLE version_markers OWNER TO blobber_user;
@@ -21,7 +23,7 @@ CREATE SEQUENCE version_markers_id_seq
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
+    CACHE 100;
 
 ALTER TABLE version_markers_id_seq OWNER TO blobber_user;
 
