@@ -300,7 +300,7 @@ func SearchReferencesByName(ctx context.Context, allocationID, query string) (re
 		tsQuery = tsQuery + ":*" // do prefix search for single word.
 	}
 	err = db.Model(&Ref{}).
-		Where("allocation_id = ? AND to_tsvector('english', name) @@ to_tsquery(?)", allocationID, tsQuery).
+		Where("allocation_id = ? AND to_tsvector('english', name) @@ to_tsquery('english', ?)", allocationID, tsQuery).
 		Limit(10).
 		Find(&refs).Error
 	if err != nil {
