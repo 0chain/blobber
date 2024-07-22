@@ -240,8 +240,10 @@ func Mkdir(ctx context.Context, allocationID, destpath string, ts common.Timesta
 			}
 		}
 	}
-	fields = append(fields, destpath)
-	parentLookupHashes = append(parentLookupHashes, destLookupHash)
+	if destpath != "/" {
+		fields = append(fields, destpath)
+		parentLookupHashes = append(parentLookupHashes, destLookupHash)
+	}
 	for i := len(parentRefs); i < len(fields); i++ {
 		logging.Logger.Info("mkdir: creating directory", zap.String("path", fields[i]), zap.Any("parentID", parentID))
 		var parentIDRef *int64
