@@ -195,11 +195,25 @@ func NewFileRef() *Ref {
 // }
 
 func Mkdir(ctx context.Context, allocationID, destpath string) (*Ref, error) {
-	logging.Logger.Info("mkdir", zap.String("destpath", destpath))
 	db := datastore.GetStore().GetTransaction(ctx)
-	destpath = strings.TrimSuffix(filepath.Clean("/"+destpath), "/")
-	fields, err := common.GetParentPaths(filepath.Dir(destpath))
+	if destpath != "/" {
+		destpath = strings.TrimSuffix(filepath.Clean("/"+destpath), "/")
+	}
+	destLookupHash := GetReferenceLookup(allocationID, destpath)
+	var destRef Ref
+	err := db.Select("id", "type").Where(&Ref{LookupHash: destLookupHash}).Take(&destRef).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, err
+	}
+	if destRef.ID > 0 {
+		if destRef.Type != DIRECTORY {
+			return nil, common.NewError("invalid_dir_tree", "parent path is not a directory")
+		}
+		return &destRef, nil
+	}
+	fields, err := common.GetAllParentPaths(filepath.Dir(destpath))
 	if err != nil {
+		logging.Logger.Error("mkdir: failed to get all parent paths", zap.Error(err), zap.String("destpath", destpath))
 		return nil, err
 	}
 
@@ -226,7 +240,10 @@ func Mkdir(ctx context.Context, allocationID, destpath string) (*Ref, error) {
 			}
 		}
 	}
+	fields = append(fields, destpath)
+	parentLookupHashes = append(parentLookupHashes, destLookupHash)
 	for i := len(parentRefs); i < len(fields); i++ {
+		logging.Logger.Info("mkdir: creating directory", zap.String("path", fields[i]), zap.Any("parentID", parentID))
 		var parentIDRef *int64
 		if parentID > 0 {
 			parentIDRef = &parentID

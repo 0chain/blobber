@@ -86,23 +86,12 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 	// get parent id
 	parent := filepath.Dir(nf.Path)
 	logging.Logger.Info("applyChange", zap.String("parent", parent), zap.String("path", nf.Path))
-	parentLookupHash := reference.GetReferenceLookup(nf.AllocationID, parent)
-	err = db.Model(&reference.Ref{}).Select("id", "type").Where("lookup_hash = ?", parentLookupHash).Take(&refResult).Error
-	if err != nil && err != gorm.ErrRecordNotFound {
+	// create or get parent directory
+	parentRef, err := reference.Mkdir(ctx, nf.AllocationID, parent)
+	if err != nil {
 		return err
 	}
-	// create parent directory
-	if refResult.ID == 0 {
-		parentRef, err := reference.Mkdir(ctx, nf.AllocationID, parent)
-		if err != nil {
-			return err
-		}
-		refResult.ID = parentRef.ID
-	} else {
-		if refResult.Type != reference.DIRECTORY {
-			return common.NewError("invalid_parameter", "parent path is not a directory")
-		}
-	}
+	refResult.ID = parentRef.ID
 
 	newFile.ParentID = &refResult.ID
 	collector.CreateRefRecord(newFile)
