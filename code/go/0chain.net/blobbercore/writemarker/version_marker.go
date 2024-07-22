@@ -12,7 +12,7 @@ import (
 )
 
 type VersionMarker struct {
-	ID            int64  `gorm:"column:sequence;primaryKey"`
+	ID            int64  `gorm:"column:id;primaryKey"`
 	ClientID      string `gorm:"client_id" json:"client_id"`
 	BlobberID     string `gorm:"blobber_id" json:"blobber_id"`
 	AllocationID  string `gorm:"allocation_id" json:"allocation_id"`

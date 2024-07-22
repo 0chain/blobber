@@ -45,6 +45,17 @@ ALTER TABLE ONLY version_markers
     ADD CONSTRAINT version_markers_pkey PRIMARY KEY (id);
 
 
+--
+-- Name: version_markers id; Type: DEFAULT; Schema: public; Owner: blobber_user
+--
+
+ALTER TABLE ONLY version_markers ALTER COLUMN id SET DEFAULT nextval('version_markers_id_seq'::regclass);
+
+
+--
+-- Name: version_markers_allocation_id_idx; Type: INDEX; Schema: public; Owner: blobber_user
+--
+
 CREATE INDEX version_markers_allocation_id_idx ON version_markers USING btree (allocation_id,version);
 
 -- +goose StatementEnd
