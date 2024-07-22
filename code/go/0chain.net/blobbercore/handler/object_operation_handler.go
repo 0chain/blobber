@@ -646,18 +646,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	var result blobberhttp.CommitResult
-
-	fileIDMetaStr := r.FormValue("file_id_meta")
-	if fileIDMetaStr == "" {
-		return nil, common.NewError("invalid_parameters", "Invalid file ID meta passed")
-	}
 	fileIDMeta := make(map[string]string, 0)
-	err = json.Unmarshal([]byte(fileIDMetaStr), &fileIDMeta)
-	if err != nil {
-		return nil, common.NewError("unmarshall_error",
-			fmt.Sprintf("Error while unmarshalling file ID meta data: %s", err.Error()))
-	}
-
 	versionMarkerStr := r.FormValue("version_marker")
 	if versionMarkerStr == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid version marker passed")

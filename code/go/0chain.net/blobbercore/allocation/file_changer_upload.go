@@ -25,7 +25,7 @@ type UploadFileChanger struct {
 
 // ApplyChange update references, and create a new FileRef
 func (nf *UploadFileChanger) applyChange(ctx context.Context,
-	ts common.Timestamp, fileIDMeta map[string]string, collector reference.QueryCollector) error {
+	ts common.Timestamp, _ map[string]string, collector reference.QueryCollector) error {
 
 	if nf.AllocationID == "" {
 		return common.NewError("invalid_parameter", "allocation_id is required")

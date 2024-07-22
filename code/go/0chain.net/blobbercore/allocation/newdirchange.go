@@ -3,11 +3,8 @@ package allocation
 import (
 	"context"
 	"encoding/json"
-	"path/filepath"
-	"strings"
 	"sync"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -20,30 +17,8 @@ type NewDir struct {
 }
 
 func (nf *NewDir) ApplyChange(ctx context.Context,
-	ts common.Timestamp, fileIDMeta map[string]string, collector reference.QueryCollector) error {
-
-	newRef := reference.NewDirectoryRef()
-	newRef.AllocationID = nf.AllocationID
-	newRef.Path = nf.Path
-	newRef.LookupHash = reference.GetReferenceLookup(nf.AllocationID, newRef.Path)
-	newRef.PathLevel = len(strings.Split(strings.TrimRight(newRef.Path, "/"), "/"))
-	newRef.ParentPath = filepath.Dir(newRef.Path)
-	newRef.Name = filepath.Base(newRef.Path)
-	newRef.LookupHash = reference.GetReferenceLookup(nf.AllocationID, newRef.Path)
-	newRef.CreatedAt = ts
-	newRef.UpdatedAt = ts
-	newRef.HashToBeComputed = true
-	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-		//check if ref exists
-		exists, err := reference.IsRefExist(ctx, nf.AllocationID, newRef.Path)
-		if err != nil {
-			return err
-		}
-		if !exists {
-			collector.CreateRefRecord(newRef)
-		}
-		return nil
-	})
+	ts common.Timestamp, _ map[string]string, collector reference.QueryCollector) error {
+	_, err := reference.Mkdir(ctx, nf.AllocationID, nf.Path)
 	return err
 }
 
