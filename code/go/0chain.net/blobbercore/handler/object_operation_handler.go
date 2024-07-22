@@ -708,7 +708,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	if err = allocation.Repo.UpdateAllocation(ctx, allocationObj, updateMap, updateOption); err != nil {
-		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
+		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object "+err.Error())
 	}
 
 	elapsedSaveAllocation := time.Since(startTime) - elapsedAllocation - elapsedGetLock -

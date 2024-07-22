@@ -154,46 +154,6 @@ func NewFileRef() *Ref {
 }
 
 // Mkdir create dirs if they don't exits. do nothing if dir exists. last dir will be return without child
-// func Mkdir(ctx context.Context, allocationID, destpath string) (*Ref, error) {
-// 	var dirRef *Ref
-// 	db := datastore.GetStore().GetTransaction(ctx)
-// 	// cleaning path to avoid edge case issues: append '/' prefix if not added and removing suffix '/' if added
-// 	destpath = strings.TrimSuffix(filepath.Clean("/"+destpath), "/")
-// 	dirs := strings.Split(destpath, "/")
-
-// 	for i := range dirs {
-// 		currentPath := filepath.Join("/", filepath.Join(dirs[:i+1]...))
-// 		ref, err := GetReference(ctx, allocationID, currentPath)
-// 		if err == nil {
-// 			dirRef = ref
-// 			continue
-// 		}
-
-// 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-// 			// unexpected sql error
-// 			return nil, err
-// 		}
-
-// 		// dir doesn't exists , create it
-// 		newRef := NewDirectoryRef()
-// 		newRef.AllocationID = allocationID
-// 		newRef.Path = currentPath
-// 		newRef.ParentPath = filepath.Join("/", filepath.Join(dirs[:i]...))
-// 		newRef.Name = dirs[i]
-// 		newRef.Type = DIRECTORY
-// 		newRef.PathLevel = i + 1
-// 		newRef.LookupHash = GetReferenceLookup(allocationID, newRef.Path)
-// 		err = db.Create(newRef).Error
-// 		if err != nil {
-// 			return nil, err
-// 		}
-
-// 		dirRef = newRef
-// 	}
-
-// 	return dirRef, nil
-// }
-
 func Mkdir(ctx context.Context, allocationID, destpath string, ts common.Timestamp) (*Ref, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	if destpath != "/" {
@@ -260,6 +220,7 @@ func Mkdir(ctx context.Context, allocationID, destpath string, ts common.Timesta
 		newRef.LookupHash = parentLookupHashes[i]
 		newRef.CreatedAt = ts
 		newRef.UpdatedAt = ts
+		newRef.FileMetaHash = encryption.Hash(newRef.GetFileMetaHashData())
 		err = db.Create(newRef).Error
 		if err != nil {
 			return nil, err
