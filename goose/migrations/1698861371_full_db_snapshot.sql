@@ -103,7 +103,7 @@ CREATE TABLE allocations (
     cleaned_up boolean DEFAULT false NOT NULL,
     finalized boolean DEFAULT false NOT NULL,
     file_options integer DEFAULT 63 NOT NULL,
-    start_time bigint NOT NULL
+    start_time bigint NOT NULL,
     allocation_version bigint DEFAULT 0 NOT NULL
 );
 
@@ -361,7 +361,7 @@ CREATE TABLE reference_objects (
     num_of_block_downloads bigint
     data_hash character varying(64),
     data_hash_signature character varying(64),
-    parent_id bigint NOT NULL
+    parent_id bigint DEFAULT NULL
 );
 
 

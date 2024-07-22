@@ -47,7 +47,7 @@ func init() {
 
 type Ref struct {
 	ID                      int64  `gorm:"column:id;primaryKey"`
-	ParentID                int64  `gorm:"column:parent_id"`
+	ParentID                *int64 `gorm:"column:parent_id"`
 	Type                    string `gorm:"column:type;size:1" dirlist:"type" filelist:"type"`
 	AllocationID            string `gorm:"column:allocation_id;size:64;not null;index:idx_path_alloc,priority:1;index:idx_parent_path_alloc,priority:1;index:idx_validation_alloc,priority:1" dirlist:"allocation_id" filelist:"allocation_id"`
 	LookupHash              string `gorm:"column:lookup_hash;size:64;not null;index:idx_lookup_hash" dirlist:"lookup_hash" filelist:"lookup_hash"`
@@ -226,13 +226,17 @@ func Mkdir(ctx context.Context, allocationID, destpath string) (*Ref, error) {
 		}
 	}
 	for i := len(parentRefs); i < len(fields); i++ {
+		var parentIDRef *int64
+		if parentID > 0 {
+			parentIDRef = &parentID
+		}
 		newRef := NewDirectoryRef()
 		newRef.AllocationID = allocationID
 		newRef.Path = fields[i]
 		newRef.ParentPath = parentPath
 		newRef.Name = filepath.Base(fields[i])
 		newRef.PathLevel = i + 1
-		newRef.ParentID = parentID
+		newRef.ParentID = parentIDRef
 		newRef.LookupHash = parentLookupHashes[i]
 		err = db.Create(newRef).Error
 		if err != nil {

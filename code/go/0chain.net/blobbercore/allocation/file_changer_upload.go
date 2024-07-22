@@ -100,7 +100,7 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 		}
 	}
 
-	newFile.ParentID = refResult.ID
+	newFile.ParentID = &refResult.ID
 	collector.CreateRefRecord(newFile)
 
 	return err
