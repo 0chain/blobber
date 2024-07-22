@@ -358,7 +358,7 @@ CREATE TABLE reference_objects (
     is_precommit boolean DEFAULT false NOT NULL,
     chunk_size bigint DEFAULT 65536 NOT NULL,
     num_of_updates bigint,
-    num_of_block_downloads bigint
+    num_of_block_downloads bigint,
     data_hash character varying(64),
     data_hash_signature character varying(64),
     parent_id bigint DEFAULT NULL
