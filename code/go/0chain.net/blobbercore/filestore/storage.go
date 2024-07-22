@@ -215,13 +215,11 @@ func (fs *FileStore) DeletePreCommitDir(allocID string) error {
 func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData) (_ bool, err error) {
 	now := time.Now()
 	logging.Logger.Info("Committing write", zap.String("allocation_id", allocID), zap.Any("file_data", fileData))
-	filePathHash := encryption.Hash(fileData.Path)
-	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, filePathHash, conID)
-
 	fileHash := fileData.LookupHash
 	if fileData.IsThumbnail {
 		fileHash = fileData.LookupHash + ThumbnailSuffix
 	}
+	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, fileHash, conID)
 
 	preCommitPath := fs.getPreCommitPathForFile(allocID, fileHash, VERSION)
 
@@ -292,7 +290,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	fileSize := rStat.Size()
 	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
 	defer cancel()
-	err = fileData.Hasher.Wait(ctx, conID, allocID, fileData.Name, filePathHash)
+	err = fileData.Hasher.Wait(ctx)
 	if err != nil {
 		return false, common.NewError("hasher_wait_error", err.Error())
 	}

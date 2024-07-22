@@ -490,7 +490,7 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 	}
 }
 
-func (c *CommitHasher) Wait(ctx context.Context, connID, allocID, fileName, filePathHash string) error {
+func (c *CommitHasher) Wait(ctx context.Context) error {
 	select {
 	case <-c.doneChan:
 		return c.hashErr
