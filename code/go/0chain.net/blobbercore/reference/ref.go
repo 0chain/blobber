@@ -194,7 +194,7 @@ func NewFileRef() *Ref {
 // 	return dirRef, nil
 // }
 
-func Mkdir(ctx context.Context, allocationID, destpath string) (*Ref, error) {
+func Mkdir(ctx context.Context, allocationID, destpath string, ts common.Timestamp) (*Ref, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	if destpath != "/" {
 		destpath = strings.TrimSuffix(filepath.Clean("/"+destpath), "/")
@@ -256,6 +256,8 @@ func Mkdir(ctx context.Context, allocationID, destpath string) (*Ref, error) {
 		newRef.PathLevel = i + 1
 		newRef.ParentID = parentIDRef
 		newRef.LookupHash = parentLookupHashes[i]
+		newRef.CreatedAt = ts
+		newRef.UpdatedAt = ts
 		err = db.Create(newRef).Error
 		if err != nil {
 			return nil, err

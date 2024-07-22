@@ -87,7 +87,7 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 	parent := filepath.Dir(nf.Path)
 	logging.Logger.Info("applyChange", zap.String("parent", parent), zap.String("path", nf.Path))
 	// create or get parent directory
-	parentRef, err := reference.Mkdir(ctx, nf.AllocationID, parent)
+	parentRef, err := reference.Mkdir(ctx, nf.AllocationID, parent, ts)
 	if err != nil {
 		return err
 	}

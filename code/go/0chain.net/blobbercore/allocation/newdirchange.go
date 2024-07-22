@@ -18,7 +18,7 @@ type NewDir struct {
 
 func (nf *NewDir) ApplyChange(ctx context.Context,
 	ts common.Timestamp, _ map[string]string, collector reference.QueryCollector) error {
-	_, err := reference.Mkdir(ctx, nf.AllocationID, nf.Path)
+	_, err := reference.Mkdir(ctx, nf.AllocationID, nf.Path, ts)
 	return err
 }
 
