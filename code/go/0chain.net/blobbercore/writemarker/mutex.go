@@ -22,6 +22,7 @@ const (
 	LockStatusOK
 )
 
+// swagger:model WriteMarkerLockResult
 type LockResult struct {
 	Status    LockStatus `json:"status,omitempty"`
 	CreatedAt int64      `json:"created_at,omitempty"`

@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// swagger:model PlaylistFile
 type PlaylistFile struct {
 	LookupHash string `gorm:"column:lookup_hash" json:"lookup_hash"`
 	Name       string `gorm:"column:name" json:"name"`

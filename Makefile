@@ -188,3 +188,10 @@ else
 	sed -i "s/BUF_VERSION := [0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/BUF_VERSION := $(VERSION)/g" Makefile
 endif
 endif
+
+.PHONY: markdown-docs
+markdown-docs:
+	swagger generate spec -o ./swagger.yaml -w ./code/go/0chain.net -m
+	sed -i '' "s/in\:\ form/in\:\ formData/g" ./swagger.yaml
+	yq -i '(.paths.*.*.parameters.[] | select(.in == "formData") | select(.type == "object")).type = "file"' swagger.yaml
+	swagger generate markdown -f ./swagger.yaml --output=swagger.md

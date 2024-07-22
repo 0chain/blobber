@@ -1,8 +1,10 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"net/http"
 	"sync"
 )
@@ -115,4 +117,10 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+}
+
+func validatorInfoHandler(ctx context.Context, r *http.Request) (interface{}, error) {
+	return map[string]string{
+		"validator_id": node.Self.ID,
+	}, nil
 }

@@ -5,30 +5,25 @@ package handler
 
 import (
 	"context"
-	"net/http"
-
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/gorilla/mux"
+	"net/http"
 )
 
 /* SetupHandlers sets up the necessary API end points */
 func SetupHandlers(r *mux.Router) {
-	setupHandlers(r)
+	r.HandleFunc("/_blobber_info", RateLimitByCommmitRL(common.ToJSONResponse(GetBlobberInfo)))
 
-	r.HandleFunc("/v1/file/list/{allocation}",
+	s := r.NewRoute().Subrouter()
+	setupHandlers(s)
+
+	s.HandleFunc("/v1/file/list/{allocation}",
 		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ListHandler)))).
 		Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/v1/file/upload/{allocation}", RateLimitByFileRL(common.ToJSONResponse(WithConnection(UploadHandler))))
-	r.HandleFunc("/v1/file/download/{allocation}", RateLimitByFileRL(common.ToByteStream(WithConnection(DownloadHandler)))).Methods(http.MethodGet, http.MethodOptions)
+	s.HandleFunc("/v1/file/upload/{allocation}", RateLimitByFileRL(common.ToJSONResponse(WithConnection(UploadHandler))))
+	s.HandleFunc("/v1/file/download/{allocation}", RateLimitByFileRL(common.ToByteStream(WithConnection(DownloadHandler)))).Methods(http.MethodGet, http.MethodOptions)
 }
 
-// swagger:route GET /v1/block/magic/get getmagicblock
-// a handler to respond to block queries
-//
-// responses:
-//  200: ListResult
-//  404:
-/* ListHandler is the handler to respond to list requests from clients*/
 func ListHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	return listHandler(ctx, r)
 }

@@ -19,6 +19,8 @@ FROM $DOCKER_IMAGE_BASE
 ENV SRC_DIR=/blobber
 ENV GO111MODULE=on
 
+RUN apk --no-cache add yq
+
 # Download the dependencies:
 # Will be cached if we don't change mod/sum files
 COPY ./go.mod          ./go.sum          $SRC_DIR/
