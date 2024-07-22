@@ -691,12 +691,12 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	allocationObj.UsedSize += connectionObj.Size
 
 	updateMap := map[string]interface{}{
-		"used_size":          allocationObj.UsedSize,
-		"blobber_size_used":  allocationObj.BlobberSizeUsed,
-		"is_redeem_required": true,
-		"allocation_version": versionMarker.Version,
-		"prev_used_size":     allocationObj.PrevUsedSize,
-		"prev_blobber_size":  allocationObj.PrevBlobberSizeUsed,
+		"used_size":              allocationObj.UsedSize,
+		"blobber_size_used":      allocationObj.BlobberSizeUsed,
+		"is_redeem_required":     true,
+		"allocation_version":     versionMarker.Version,
+		"prev_used_size":         allocationObj.PrevUsedSize,
+		"prev_blobber_size_used": allocationObj.PrevBlobberSizeUsed,
 	}
 	updateOption := func(a *allocation.Allocation) {
 		a.IsRedeemRequired = true
