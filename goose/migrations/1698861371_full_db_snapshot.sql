@@ -104,7 +104,9 @@ CREATE TABLE allocations (
     finalized boolean DEFAULT false NOT NULL,
     file_options integer DEFAULT 63 NOT NULL,
     start_time bigint NOT NULL,
-    allocation_version bigint DEFAULT 0 NOT NULL
+    allocation_version bigint DEFAULT 0 NOT NULL,
+    prev_used_size bigint DEFAULT 0 NOT NULL,
+    prev_blobber_size_used bigint DEFAULT 0 NOT NULL
 );
 
 
