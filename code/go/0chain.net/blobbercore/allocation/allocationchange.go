@@ -154,6 +154,7 @@ func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clien
 	).Preload("Changes").Take(cc).Error
 
 	if err == nil {
+		logging.Logger.Info("getAllocationChanges", zap.String("connection_id", connectionID), zap.Int("changes", len(cc.Changes)))
 		cc.ComputeProperties()
 		// Load connection Obj size from memory
 		cc.Size = GetConnectionObjSize(connectionID)

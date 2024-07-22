@@ -536,6 +536,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			"Invalid connection id. Connection id was not found: %v", err)
 	}
 	if len(connectionObj.Changes) == 0 {
+		logging.Logger.Info("commit_write", zap.String("connection_id", connectionID))
 		if connectionObj.Status == allocation.NewConnection {
 			return nil, common.NewError("invalid_parameters",
 				"Invalid connection id. Connection not found.")
