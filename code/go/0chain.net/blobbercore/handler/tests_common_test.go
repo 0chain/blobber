@@ -79,7 +79,6 @@ func (mfs *MockFileStore) WriteFile(allocID, connID string,
 		Name:            fileData.Name,
 		Path:            fileData.Path,
 		FixedMerkleRoot: "",
-		ValidationRoot:  fileData.ValidationRoot,
 		Size:            n,
 	}, nil
 }

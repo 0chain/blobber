@@ -80,7 +80,7 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 		return common.NewError("invalid_connection", "Invalid connection id")
 	}
 
-	fileChanger.LookupHash = reference.GetReferenceLookup(allocationObj.ID, cmd.fileChanger.Path)
+	fileChanger.LookupHash = reference.GetReferenceLookup(allocationObj.ID, fileChanger.Path)
 
 	thumbFile, thumbHeader, _ := req.FormFile(UploadThumbnailFile)
 	if thumbHeader != nil {
