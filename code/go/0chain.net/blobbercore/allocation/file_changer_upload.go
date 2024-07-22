@@ -8,6 +8,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
 // swagger:model UploadFileChanger
@@ -83,6 +85,7 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 	refResult.ID = 0
 	// get parent id
 	parent := filepath.Dir(nf.Path)
+	logging.Logger.Info("applyChange", zap.String("parent", parent), zap.String("path", nf.Path))
 	parentLookupHash := reference.GetReferenceLookup(nf.AllocationID, parent)
 	err = db.Model(&reference.Ref{}).Select("id", "type").Where("lookup_hash = ?", parentLookupHash).Take(&refResult).Error
 	if err != nil && err != gorm.ErrRecordNotFound {

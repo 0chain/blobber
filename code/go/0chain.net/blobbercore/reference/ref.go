@@ -195,6 +195,7 @@ func NewFileRef() *Ref {
 // }
 
 func Mkdir(ctx context.Context, allocationID, destpath string) (*Ref, error) {
+	logging.Logger.Info("mkdir", zap.String("destpath", destpath))
 	db := datastore.GetStore().GetTransaction(ctx)
 	destpath = strings.TrimSuffix(filepath.Clean("/"+destpath), "/")
 	fields, err := common.GetParentPaths(filepath.Dir(destpath))
