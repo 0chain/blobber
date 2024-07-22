@@ -415,7 +415,7 @@ type CommitHasher struct {
 	dataSize      int64
 }
 
-func GetNewCommitHasher(dataSize int64) *CommitHasher {
+func NewCommitHasher(dataSize int64) *CommitHasher {
 	c := new(CommitHasher)
 	c.md5hasher = md5.New()
 	c.isInitialized = true
