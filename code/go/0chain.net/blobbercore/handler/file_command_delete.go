@@ -50,12 +50,22 @@ func (cmd *DeleteFileCommand) IsValidated(ctx context.Context, req *http.Request
 	cmd.connectionID = connectionID
 	var err error
 	lookUpHash := reference.GetReferenceLookup(allocationObj.ID, path)
-	cmd.existingFileRef, err = reference.GetLimitedRefFieldsByLookupHashWith(ctx, allocationObj.ID, lookUpHash, []string{"path", "name", "size", "hash", "fixed_merkle_root"})
+	cmd.existingFileRef, err = reference.GetLimitedRefFieldsByLookupHashWith(ctx, allocationObj.ID, lookUpHash, []string{"path", "name", "type", "id", "size"})
 	if err != nil {
 		if errors.Is(gorm.ErrRecordNotFound, err) {
 			return common.ErrFileWasDeleted
 		}
 		return common.NewError("bad_db_operation", err.Error())
+	}
+	if cmd.existingFileRef.Type == reference.DIRECTORY {
+		// check if directory is empty
+		empty, err := reference.IsDirectoryEmpty(ctx, cmd.existingFileRef.ID)
+		if err != nil {
+			return common.NewError("bad_db_operation", err.Error())
+		}
+		if !empty {
+			return common.NewError("invalid_operation", "Directory is not empty")
+		}
 	}
 	cmd.existingFileRef.LookupHash = lookUpHash
 	return nil
@@ -82,7 +92,7 @@ func (cmd *DeleteFileCommand) ProcessContent(_ context.Context, allocationObj *a
 	connectionID := cmd.connectionID
 	cmd.changeProcessor = &allocation.DeleteFileChange{ConnectionID: connectionID,
 		AllocationID: allocationObj.ID, Name: cmd.existingFileRef.Name,
-		Hash: cmd.existingFileRef.LookupHash, Path: cmd.existingFileRef.Path, Size: deleteSize}
+		LookupHash: cmd.existingFileRef.LookupHash, Path: cmd.existingFileRef.Path, Size: deleteSize}
 
 	result := allocation.UploadResult{}
 	result.Filename = cmd.existingFileRef.Name

@@ -1069,7 +1069,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
 	fileRef, err := reference.GetLimitedRefFieldsByPath(ctx, connectionObj.AllocationID, path,
-		[]string{"path", "name", "size", "hash", "validation_root", "fixed_merkle_root"})
+		[]string{"path", "name", "size"})
 
 	if err != nil {
 		Logger.Error("invalid_file", zap.Error(err))
@@ -1084,7 +1084,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 		allocationChange.Operation = constants.FileOperationDelete
 		dfc := &allocation.DeleteFileChange{ConnectionID: connectionObj.ID,
 			AllocationID: connectionObj.AllocationID, Name: fileRef.Name,
-			Hash: fileRef.LookupHash, Path: fileRef.Path, Size: deleteSize}
+			LookupHash: fileRef.LookupHash, Path: fileRef.Path, Size: deleteSize}
 
 		allocation.UpdateConnectionObjSize(connectionObj.ID, allocationChange.Size)
 

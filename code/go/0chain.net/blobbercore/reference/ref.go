@@ -390,7 +390,7 @@ func GetSubDirsFromPath(p string) []string {
 func GetRefWithChildren(ctx context.Context, parentRef *Ref, allocationID, path string, offset, pageLimit int) (*Ref, error) {
 	var refs []*Ref
 	t := datastore.GetStore().GetTransaction(ctx)
-	db := t.Where(Ref{ParentPath: path, AllocationID: allocationID})
+	db := t.Where(Ref{ParentID: &parentRef.ID})
 	err := db.Order("path").
 		Offset(offset).
 		Limit(pageLimit).
@@ -706,4 +706,21 @@ func GetListingFieldsMap(refEntity interface{}, tagName string) map[string]inter
 		}
 	}
 	return result
+}
+
+func IsDirectoryEmpty(ctx context.Context, id int64) (bool, error) {
+	db := datastore.GetStore().GetTransaction(ctx)
+	var ref Ref
+	err := db.Model(&Ref{}).Select("id").Where("parent_id = ?", &id).Take(&ref).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return true, nil
+		}
+		return false, err
+	}
+	if ref.ID > 0 {
+		return false, nil
+	}
+
+	return true, nil
 }

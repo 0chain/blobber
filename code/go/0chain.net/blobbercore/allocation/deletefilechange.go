@@ -3,7 +3,6 @@ package allocation
 import (
 	"context"
 	"encoding/json"
-	"path/filepath"
 	"sync"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -20,12 +19,12 @@ type DeleteFileChange struct {
 	Name         string `json:"name"`
 	Path         string `json:"path"`
 	Size         int64  `json:"size"`
-	Hash         string `json:"hash"`
+	LookupHash   string `json:"lookup_hash"`
 }
 
 func (nf *DeleteFileChange) ApplyChange(ctx context.Context,
 	ts common.Timestamp, _ map[string]string, collector reference.QueryCollector) error {
-	return reference.DeleteObject(ctx, nf.AllocationID, filepath.Clean(nf.Path), ts)
+	return reference.DeleteObject(ctx, nf.AllocationID, nf.LookupHash, ts)
 }
 
 func (nf *DeleteFileChange) Marshal() (string, error) {

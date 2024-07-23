@@ -276,7 +276,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 
 // swagger:route GET /v1/file/list/{allocation} GetListFiles
 // List files.
-// ListHandler is the handler to respond to list requests from clients, 
+// ListHandler is the handler to respond to list requests from clients,
 // it returns a list of files in the allocation,
 // along with the metadata of the files.
 //
@@ -344,7 +344,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 // responses:
 //
 //   200: ListResult
-//   400: 
+//   400:
 
 func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*blobberhttp.ListResult, error) {
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
@@ -391,7 +391,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 
 	if !ok {
 		var listResult blobberhttp.ListResult
-		listResult.AllocationRoot = allocationObj.AllocationRoot
+		listResult.AllocationVersion = allocationObj.AllocationVersion
 		if fileref == nil {
 			fileref = &reference.Ref{Type: reference.DIRECTORY, Path: path, AllocationID: allocationID}
 		}
@@ -470,7 +470,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 	}
 
 	var result blobberhttp.ListResult
-	result.AllocationRoot = allocationObj.AllocationRoot
+	result.AllocationVersion = allocationObj.AllocationVersion
 	result.Meta = dirref.GetListingData(ctx)
 	if clientID != allocationObj.OwnerID {
 		delete(result.Meta, "path")
@@ -941,24 +941,11 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 	if err != nil {
 		return nil, err
 	}
-	var latestWM *writemarker.WriteMarkerEntity
-	if allocationObj.AllocationRoot == "" {
-		latestWM = nil
-	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
-		if err != nil {
-			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
-		}
-	}
-
 	var refResult blobberhttp.RefResult
 	refResult.Refs = refs
 	refResult.TotalPages = totalPages
 	refResult.OffsetPath = newOffsetPath
 	refResult.OffsetDate = newOffsetDate
-	if latestWM != nil {
-		refResult.LatestWM = &latestWM.WM
-	}
 	// Refs will be returned as it is and object tree will be build in client side
 	return &refResult, nil
 }
