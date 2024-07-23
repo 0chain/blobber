@@ -40,9 +40,11 @@ func (dc *dbCollector) Finalize(ctx context.Context) error {
 			return err
 		}
 	}
-	err := db.Create(dc.createdRefs).Error
-	if err != nil {
-		return err
+	if len(dc.createdRefs) > 0 {
+		err := db.Create(dc.createdRefs).Error
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
