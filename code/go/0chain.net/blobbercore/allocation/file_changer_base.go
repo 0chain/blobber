@@ -10,7 +10,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
-// swagger:model BaseFileChanger 
+// swagger:model BaseFileChanger
 // BaseFileChanger base file change processor
 type BaseFileChanger struct {
 	//client side: unmarshal them from 'updateMeta'/'uploadMeta'
@@ -138,6 +138,10 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context, mut *sync.Mute
 	fileInputData.LookupHash = fc.LookupHash
 	fileInputData.ChunkSize = fc.ChunkSize
 	fileInputData.Size = fc.Size
+	fileInputData.Hasher = GetHasher(fc.ConnectionID, fc.LookupHash)
+	if fileInputData.Hasher == nil {
+		return common.NewError("file_store_error", "Error getting hasher")
+	}
 	_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fc.ConnectionID, fileInputData)
 	if err != nil {
 		return common.NewError("file_store_error", "Error committing to file store. "+err.Error())
