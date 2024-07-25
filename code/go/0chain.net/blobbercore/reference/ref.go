@@ -214,6 +214,8 @@ func Mkdir(ctx context.Context, allocationID, destpath string, ts common.Timesta
 		var parentIDRef *int64
 		if parentID > 0 {
 			parentIDRef = &parentID
+		} else if parentPath != "/" {
+			return nil, common.NewError("invalid_dir_tree", "parent path not found")
 		}
 		newRef := NewDirectoryRef()
 		newRef.AllocationID = allocationID
