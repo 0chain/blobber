@@ -255,28 +255,31 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 }
 
 func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocationRoot, prevAllocationRoot string,
-	ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error) {
+	ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, int64, error) {
+	var sizeDiff int64
 	rootRef, err := cc.GetRootRef(ctx)
 	if err != nil {
-		return rootRef, err
+		return rootRef, sizeDiff, err
 	}
+	initalSize := rootRef.Size
 	if rootRef.Hash != prevAllocationRoot {
-		return rootRef, common.NewError("invalid_prev_root", "Invalid prev root")
+		return rootRef, sizeDiff, common.NewError("invalid_prev_root", "Invalid prev root")
 	}
 	for idx, change := range cc.Changes {
 		changeProcessor := cc.AllocationChanges[idx]
 		_, err := changeProcessor.ApplyChange(ctx, rootRef, change, allocationRoot, ts, fileIDMeta)
 		if err != nil {
-			return rootRef, err
+			return rootRef, sizeDiff, err
 		}
 	}
 	collector := reference.NewCollector(len(cc.Changes))
 	_, err = rootRef.CalculateHash(ctx, true, collector)
 	if err != nil {
-		return rootRef, err
+		return rootRef, sizeDiff, err
 	}
+	sizeDiff = rootRef.Size - initalSize
 	err = collector.Finalize(ctx)
-	return rootRef, err
+	return rootRef, sizeDiff, err
 }
 
 func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error {
