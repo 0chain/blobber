@@ -176,14 +176,15 @@ func Mkdir(ctx context.Context, allocationID, destpath string, ts common.Timesta
 		logging.Logger.Error("mkdir: failed to get all parent paths", zap.Error(err), zap.String("destpath", destpath))
 		return nil, err
 	}
-
+	tx := db.Model(&Ref{}).Select("id", "path", "type")
 	parentLookupHashes := make([]string, 0, len(fields))
 	for i := 0; i < len(fields); i++ {
 		parentLookupHashes = append(parentLookupHashes, GetReferenceLookup(allocationID, fields[i]))
+		tx = tx.Or(Ref{LookupHash: parentLookupHashes[i]})
 	}
 
 	var parentRefs []*Ref
-	err = db.Model(&Ref{}).Select("id", "path", "type").Where("lookup_hash IN ?", parentLookupHashes).Order("path").Find(&parentRefs).Error
+	err = tx.Order("path").Find(&parentRefs).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return nil, err
 	}
