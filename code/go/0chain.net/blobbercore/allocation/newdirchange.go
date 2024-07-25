@@ -3,11 +3,15 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"gorm.io/gorm"
 )
 
 type NewDir struct {
@@ -18,7 +22,29 @@ type NewDir struct {
 
 func (nf *NewDir) ApplyChange(ctx context.Context,
 	ts common.Timestamp, _ map[string]string, collector reference.QueryCollector) error {
-	_, err := reference.Mkdir(ctx, nf.AllocationID, nf.Path, ts)
+	parentPath := filepath.Dir(nf.Path)
+	parentPathLookup := reference.GetReferenceLookup(nf.AllocationID, parentPath)
+	parentRef, err := reference.GetReferenceByLookupHash(ctx, nf.AllocationID, parentPathLookup)
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return err
+	}
+	if parentRef.ID == 0 {
+		_, err = reference.Mkdir(ctx, nf.AllocationID, nf.Path, ts)
+	} else {
+		parentIDRef := &parentRef.ID
+		newRef := reference.NewDirectoryRef()
+		newRef.AllocationID = nf.AllocationID
+		newRef.Path = nf.Path
+		newRef.ParentPath = parentPath
+		newRef.Name = filepath.Base(nf.Path)
+		newRef.PathLevel = len(strings.Split(strings.TrimRight(nf.Path, "/"), "/"))
+		newRef.ParentID = parentIDRef
+		newRef.LookupHash = reference.GetReferenceLookup(nf.AllocationID, nf.Path)
+		newRef.CreatedAt = ts
+		newRef.UpdatedAt = ts
+		newRef.FileMetaHash = encryption.Hash(newRef.GetFileMetaHashData())
+		collector.CreateRefRecord(newRef)
+	}
 	return err
 }
 

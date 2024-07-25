@@ -150,6 +150,7 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 	}
 	fileref.AllocationVersion = alloc.AllocationVersion
 	result := fileref.GetListingData(ctx)
+	Logger.Info("GetFileMeta", zap.Any("allocationResultVersion", result["allocation_version"]), zap.Int64("allocationVersion", alloc.AllocationVersion), zap.Any("path", result["path"]))
 
 	if !isOwner && !isRepairer {
 		var authTokenString = r.FormValue("auth_token")

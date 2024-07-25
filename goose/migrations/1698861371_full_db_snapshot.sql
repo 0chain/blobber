@@ -378,7 +378,7 @@ CREATE SEQUENCE reference_objects_id_seq
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 100;
+    CACHE 1;
 
 
 ALTER TABLE reference_objects_id_seq OWNER TO blobber_user;

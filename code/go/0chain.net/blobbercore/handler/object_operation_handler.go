@@ -689,6 +689,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	allocationObj.PrevUsedSize = allocationObj.UsedSize
 	allocationObj.BlobberSizeUsed += connectionObj.Size
 	allocationObj.UsedSize += connectionObj.Size
+	allocationObj.AllocationVersion = versionMarker.Version
 
 	updateMap := map[string]interface{}{
 		"used_size":              allocationObj.UsedSize,
@@ -702,7 +703,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		a.IsRedeemRequired = true
 		a.BlobberSizeUsed = allocationObj.BlobberSizeUsed
 		a.UsedSize = allocationObj.UsedSize
-		a.AllocationVersion = versionMarker.Version
+		a.AllocationVersion = allocationObj.AllocationVersion
 		a.PrevUsedSize = allocationObj.PrevUsedSize
 		a.PrevBlobberSizeUsed = allocationObj.PrevBlobberSizeUsed
 	}

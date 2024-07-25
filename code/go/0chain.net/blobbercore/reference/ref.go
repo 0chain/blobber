@@ -192,11 +192,15 @@ func Mkdir(ctx context.Context, allocationID, destpath string, ts common.Timesta
 		parentPath = "/"
 	)
 	if len(parentRefs) > 0 {
+		logging.Logger.Info("mkdir:parentRefs: ", zap.Any("parentRefs", parentRefs))
 		parentID = parentRefs[len(parentRefs)-1].ID
 		parentPath = parentRefs[len(parentRefs)-1].Path
 		for i := 0; i < len(parentRefs); i++ {
 			if parentRefs[i].Type != DIRECTORY {
-				return nil, common.NewError("invalid_dir_tree", "DB has invalid tree.")
+				return nil, common.NewError("invalid_dir_tree", "parent path is not a directory")
+			}
+			if parentRefs[i].ID == 0 {
+				return nil, common.NewError("invalid_dir_tree", "parent path not found")
 			}
 		}
 	}

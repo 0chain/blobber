@@ -25,7 +25,7 @@ CREATE SEQUENCE version_markers_id_seq
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 100;
+    CACHE 1;
 
 ALTER TABLE version_markers_id_seq OWNER TO blobber_user;
 
