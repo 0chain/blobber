@@ -42,9 +42,8 @@ func ListEntitesResponseHandler(resp *blobbergrpc.ListEntitiesResponse) *blobber
 	}
 
 	return &blobberhttp.ListResult{
-		AllocationRoot: resp.AllocationRoot,
-		Meta:           FileRefGRPCToFileRef(resp.MetaData).GetListingData(ctx),
-		Entities:       entities,
+		Meta:     FileRefGRPCToFileRef(resp.MetaData).GetListingData(ctx),
+		Entities: entities,
 	}
 }
 

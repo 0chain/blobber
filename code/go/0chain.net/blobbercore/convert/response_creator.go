@@ -62,7 +62,6 @@ func ListEntitesResponseCreator(r interface{}) *blobbergrpc.ListEntitiesResponse
 	}
 
 	resp.MetaData = FileRefToFileRefGRPC(reference.ListingDataToRef(httpResp.Meta))
-	resp.AllocationRoot = httpResp.AllocationRoot
 	return &resp
 }
 
