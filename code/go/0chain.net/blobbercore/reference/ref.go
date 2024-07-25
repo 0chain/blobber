@@ -82,6 +82,8 @@ type Ref struct {
 	FilestoreVersion  int            `gorm:"column:filestore_version" json:"-"`
 	DataHash          string         `gorm:"column:data_hash" filelist:"data_hash"`
 	DataHashSignature string         `gorm:"column:data_hash_signature" filelist:"data_hash_signature"`
+	IsEmpty           bool           `gorm:"-" json:"is_empty" dirlist:"is_empty"`
+	AllocationVersion int64          `gorm:"-" json:"allocation_version,omitempty" dirlist:"allocation_version,omitempty" filelist:"allocation_version,omitempty"`
 	HashToBeComputed  bool           `gorm:"-"`
 	prevID            int64          `gorm:"-"`
 }
@@ -110,13 +112,11 @@ func (Ref) TableName() string {
 
 type PaginatedRef struct { //Gorm smart select fields.
 	ID                      int64  `gorm:"column:id" json:"id,omitempty"`
-	FileID                  string `gorm:"file_id" json:"file_id"`
 	Type                    string `gorm:"column:type" json:"type,omitempty"`
 	AllocationID            string `gorm:"column:allocation_id" json:"allocation_id,omitempty"`
 	LookupHash              string `gorm:"column:lookup_hash" json:"lookup_hash,omitempty"`
 	Name                    string `gorm:"column:name" json:"name,omitempty"`
 	Path                    string `gorm:"column:path" json:"path,omitempty"`
-	Hash                    string `gorm:"column:hash" json:"hash,omitempty"`
 	NumBlocks               int64  `gorm:"column:num_of_blocks" json:"num_blocks,omitempty"`
 	ParentPath              string `gorm:"column:parent_path" json:"parent_path,omitempty"`
 	PathLevel               int    `gorm:"column:level" json:"level,omitempty"`
@@ -205,7 +205,7 @@ func Mkdir(ctx context.Context, allocationID, destpath string, ts common.Timesta
 		parentLookupHashes = append(parentLookupHashes, destLookupHash)
 	}
 	for i := len(parentRefs); i < len(fields); i++ {
-		logging.Logger.Info("mkdir: creating directory", zap.String("path", fields[i]), zap.Any("parentID", parentID))
+		logging.Logger.Info("mkdir: creating directory", zap.String("path", fields[i]), zap.Any("parentID", parentID), zap.Int("pathLevel", i+1))
 		var parentIDRef *int64
 		if parentID > 0 {
 			parentIDRef = &parentID
@@ -286,6 +286,16 @@ func GetLimitedRefFieldsByLookupHash(ctx context.Context, allocationID, lookupHa
 
 func GetReferenceByLookupHash(ctx context.Context, allocationID, pathHash string) (*Ref, error) {
 	ref := &Ref{}
+	db := datastore.GetStore().GetTransaction(ctx)
+	err := db.Where(&Ref{LookupHash: pathHash}).Take(ref).Error
+	if err != nil {
+		return nil, err
+	}
+	return ref, nil
+}
+
+func GetPaginatedRefByLookupHash(ctx context.Context, pathHash string) (*PaginatedRef, error) {
+	ref := &PaginatedRef{}
 	db := datastore.GetStore().GetTransaction(ctx)
 	err := db.Where(&Ref{LookupHash: pathHash}).Take(ref).Error
 	if err != nil {

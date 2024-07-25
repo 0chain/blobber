@@ -1353,6 +1353,13 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 
 	var result blobberhttp.CommitResult
 	err = versionMarker.Verify(allocationID, allocationObj.OwnerPublicKey)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid version marker passed: "+err.Error())
+	}
+
+	if versionMarker.Version == allocationObj.AllocationVersion {
+		return nil, common.NewError("invalid_parameters", "Invalid version marker passed. Version marker is same as the current version")
+	}
 
 	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock
 	timeoutCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
@@ -1366,17 +1373,6 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	}
 	elapsedApplyRollback := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedWritePreRedeem
 
-	//get allocation root and ref
-	rootRef, err := reference.GetLimitedRefFieldsByPath(c, allocationID, "/", []string{"hash", "file_meta_hash", "is_precommit"})
-	if err != nil && err != gorm.ErrRecordNotFound {
-		txn.Rollback()
-		return nil, common.NewError("root_ref_read_error", "Error reading the root reference: "+err.Error())
-	}
-	if err == gorm.ErrRecordNotFound {
-		rootRef = &reference.Ref{}
-	}
-
-	Logger.Info("rollback_root_ref", zap.Any("root_ref", rootRef))
 	alloc, err := allocation.Repo.GetByIdAndLock(c, allocationID)
 	Logger.Info("[rollback]Lock Allocation", zap.Bool("is_redeem_required", alloc.IsRedeemRequired), zap.String("allocation_root", alloc.AllocationRoot), zap.String("latest_wm_redeemed", alloc.LatestRedeemedWM))
 	if err != nil {
@@ -1398,7 +1394,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	updateOption := func(a *allocation.Allocation) {
 		a.BlobberSizeUsed = alloc.BlobberSizeUsed
 		a.UsedSize = alloc.UsedSize
-		a.AllocationRoot = alloc.AllocationRoot
+		a.AllocationVersion = alloc.AllocationVersion
 		a.FileMetaRoot = alloc.FileMetaRoot
 		a.IsRedeemRequired = alloc.IsRedeemRequired
 	}
@@ -1422,7 +1418,6 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	}
 
 	elapsedCommitRollback := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedWritePreRedeem
-	result.AllocationRoot = allocationObj.AllocationRoot
 	result.Success = true
 	result.ErrorMessage = ""
 	commitOperation := "rollback"

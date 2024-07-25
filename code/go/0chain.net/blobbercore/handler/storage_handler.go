@@ -142,7 +142,13 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 			return nil, common.NewError("invalid_signature", "Invalid signature")
 		}
 	}
-
+	if fileref.Type == reference.DIRECTORY {
+		fileref.IsEmpty, err = reference.IsDirectoryEmpty(ctx, fileref.ID)
+		if err != nil {
+			return nil, common.NewError("bad_db_operation", "Error checking if directory is empty. "+err.Error())
+		}
+	}
+	fileref.AllocationVersion = alloc.AllocationVersion
 	result := fileref.GetListingData(ctx)
 
 	if !isOwner && !isRepairer {
@@ -814,13 +820,13 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 		return nil, common.NewError("invalid_parameters", "empty path and authtoken")
 	}
 
-	var pathRef *reference.Ref
+	var pathRef *reference.PaginatedRef
 	switch {
 	case path != "":
 		pathHash = reference.GetReferenceLookup(allocationID, path)
 		fallthrough
 	case pathHash != "":
-		pathRef, err = reference.GetReferenceByLookupHash(ctx, allocationID, pathHash)
+		pathRef, err = reference.GetPaginatedRefByLookupHash(ctx, pathHash)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return nil, common.NewError("invalid_path", "")
@@ -854,7 +860,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 		}
 
 		if pathRef == nil {
-			pathRef, err = reference.GetReferenceByLookupHash(ctx, allocationID, authToken.FilePathHash)
+			pathRef, err = reference.GetPaginatedRefByLookupHash(ctx, authToken.FilePathHash)
 			if err != nil {
 				return nil, fsh.convertGormError(err)
 			}
@@ -925,7 +931,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 	switch {
 	case refType == "regular":
 		refs, totalPages, newOffsetPath, err = reference.GetRefs(
-			ctx, allocationID, path, offsetPath, fileType, level, pageLimit,
+			ctx, allocationID, path, offsetPath, fileType, level, pageLimit, pathRef,
 		)
 
 	case refType == "updated":

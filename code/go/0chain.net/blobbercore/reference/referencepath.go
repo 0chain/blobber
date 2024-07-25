@@ -2,6 +2,7 @@ package reference
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"path/filepath"
 	"strings"
@@ -11,7 +12,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 type ReferencePath struct {
@@ -238,38 +238,96 @@ func GetObjectTree(ctx context.Context, allocationID, path string) (*Ref, error)
 // Might need to consider covering index for efficient search https://blog.crunchydata.com/blog/why-covering-indexes-are-incredibly-helpful
 // To retrieve refs efficiently form pagination index is created in postgresql on path column so it can be used to paginate refs
 // very easily and effectively; Same case for offsetDate.
-func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, level, pageLimit int) (refs *[]PaginatedRef, totalPages int, newOffsetPath string, err error) {
-	var (
-		pRefs   = make([]PaginatedRef, 0, pageLimit/4)
-		dbError error
-		dbQuery *gorm.DB
-	)
-	path = filepath.Clean(path)
-	tx := datastore.GetStore().GetTransaction(ctx)
-	pathLevel := len(strings.Split(strings.TrimSuffix(path, "/"), "/")) + 1
-	if pathLevel == level {
-		dbQuery = tx.Model(&Ref{}).Where("allocation_id = ? AND parent_path = ? and level = ?", allocationID, path, level)
-		if _type != "" {
-			dbQuery = dbQuery.Where("type = ?", _type)
-		}
-		dbQuery = dbQuery.Where("path > ?", offsetPath)
-		dbQuery = dbQuery.Order("path")
+func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, level, pageLimit int, parentRef *PaginatedRef) (refs *[]PaginatedRef, totalPages int, newOffsetPath string, err error) {
+	levelQuery := " order by path LIMIT " + fmt.Sprintf("%d", pageLimit)
+	if level == 0 {
+		level = math.MaxInt
 	} else {
-		dbQuery = tx.Model(&Ref{}).Where("allocation_id = ? AND (path=? OR path LIKE ?)", allocationID, path, path+"%")
-		if _type != "" {
-			dbQuery = dbQuery.Where("type = ?", _type)
-		}
-		if level != 0 {
-			dbQuery = dbQuery.Where("level = ?", level)
-		}
-
-		dbQuery = dbQuery.Where("path > ?", offsetPath)
-
-		dbQuery = dbQuery.Order("path")
+		levelQuery = fmt.Sprintf(" AND level = %d order by path LIMIT %d", level, pageLimit)
 	}
-	dbError = dbQuery.Limit(pageLimit).Find(&pRefs).Error
-	if dbError != nil && dbError != gorm.ErrRecordNotFound {
-		err = dbError
+	refTypes := []string{}
+	if _type != "" {
+		refTypes = append(refTypes, _type)
+	} else {
+		refTypes = append(refTypes, "f", "d")
+	}
+	pRefs := make([]PaginatedRef, 0, pageLimit/4)
+	if parentRef.Type != DIRECTORY {
+		pRefs = append(pRefs, *parentRef)
+		refs = &pRefs
+		return
+	}
+	if offsetPath == "" || path == offsetPath {
+		pRefs = append(pRefs, *parentRef)
+	}
+	tx := datastore.GetStore().GetTransaction(ctx)
+	rows, err := tx.Raw(`WITH RECURSIVE hierarchy_cte AS (
+		SELECT
+			id,
+			parent_id,
+			path,
+			level,
+			hierarchy.type,
+			size,
+			actual_file_size,
+			data_hash,
+			mimetype,
+			encrypted_key,
+			encrypted_key_point,
+			actual_file_hash_signature,
+			custom_meta,
+			num_blocks,
+			file_meta_hash,
+			parent_path
+		FROM
+		reference_objects as hierarchy
+		WHERE
+			parent_id = ?
+	
+		UNION
+	
+		SELECT
+			h.id,
+			h.parent_id,
+			h.path,
+			h.level,
+			h.type,
+			h.size,
+			h.actual_file_size,
+			h.data_hash,
+			h.mimetype,
+			h.encrypted_key,
+			h.encrypted_key_point,
+			h.actual_file_hash_signature,
+			h.custom_meta,
+			h.num_blocks,
+			h.file_meta_hash,
+			h.parent_path
+		FROM
+			hierarchy h
+		INNER JOIN
+			hierarchy_cte hc ON h.parent_id = hc.id
+		WHERE
+			hc.type='d'
+			AND h.level <= ?
+			AND h.deleted_at IS NULL
+	)
+	SELECT * from hierarchy_cte where type IN ? AND path > ?`+levelQuery, parentRef.ID, level, refTypes, offsetPath).Rows()
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var ref PaginatedRef
+		err = tx.ScanRows(rows, &ref)
+		if err != nil {
+			return
+		}
+		ref.AllocationID = allocationID
+		pRefs = append(pRefs, ref)
+	}
+	if err != nil {
 		return
 	}
 	refs = &pRefs
