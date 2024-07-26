@@ -306,7 +306,7 @@ func GetReferenceByLookupHash(ctx context.Context, allocationID, pathHash string
 func GetPaginatedRefByLookupHash(ctx context.Context, pathHash string) (*PaginatedRef, error) {
 	ref := &PaginatedRef{}
 	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Where(&Ref{LookupHash: pathHash}).Take(ref).Error
+	err := db.Model(&Ref{}).Where(&Ref{LookupHash: pathHash}).Take(ref).Error
 	if err != nil {
 		return nil, err
 	}
