@@ -246,23 +246,27 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 		levelQuery = fmt.Sprintf(" AND level = %d order by path LIMIT %d", level, pageLimit)
 	}
 	refTypes := []string{}
-	returnDirectory := false
+	returnParentDirectory := false
 	if _type != "" {
 		refTypes = append(refTypes, _type)
 		if _type == DIRECTORY {
-			returnDirectory = true
+			returnParentDirectory = true
 		}
 	} else {
 		refTypes = append(refTypes, "f", "d")
-		returnDirectory = true
+		returnParentDirectory = true
 	}
 	pRefs := make([]PaginatedRef, 0, pageLimit/4)
 	if parentRef.Type != DIRECTORY {
 		pRefs = append(pRefs, *parentRef)
 		refs = &pRefs
 		return
+	} else if level == parentRef.PathLevel && returnParentDirectory {
+		pRefs = append(pRefs, *parentRef)
+		refs = &pRefs
+		return
 	}
-	if (offsetPath == "" || path == offsetPath) && returnDirectory {
+	if (offsetPath == "" || path == offsetPath) && returnParentDirectory && level == math.MaxInt {
 		pRefs = append(pRefs, *parentRef)
 	}
 	tx := datastore.GetStore().GetTransaction(ctx)
@@ -279,11 +283,13 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 			mimetype,
 			encrypted_key,
 			encrypted_key_point,
+			h.actual_file_hash,
 			actual_file_hash_signature,
 			custom_meta,
 			num_of_blocks,
 			file_meta_hash,
-			parent_path
+			parent_path,
+			updated_at
 		FROM
 		reference_objects as hierarchy
 		WHERE
@@ -303,11 +309,13 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 			h.mimetype,
 			h.encrypted_key,
 			h.encrypted_key_point,
+			h.actual_file_hash,
 			h.actual_file_hash_signature,
 			h.custom_meta,
 			h.num_of_blocks,
 			h.file_meta_hash,
-			h.parent_path
+			h.parent_path,
+			h.updated_at
 		FROM
 			reference_objects h
 		INNER JOIN
