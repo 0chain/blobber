@@ -61,12 +61,13 @@ func GetAllParentPaths(fPath string) ([]string, error) {
 	}
 	splittedPaths := strings.Split(fPath, "/")
 	var paths []string
-	fmt.Println("splittedPaths", splittedPaths)
 	for i := 0; i < len(splittedPaths); i++ {
 		subPath := strings.Join(splittedPaths[0:i], "/")
 		paths = append(paths, subPath)
 	}
-	return paths[2:], nil
+	returnPaths := []string{"/"}
+	returnPaths = append(returnPaths, paths[2:]...)
+	return returnPaths, nil
 }
 
 // GetPathFields will return slice of fields of path.

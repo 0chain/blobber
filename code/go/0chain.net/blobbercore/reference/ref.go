@@ -82,8 +82,8 @@ type Ref struct {
 	FilestoreVersion  int            `gorm:"column:filestore_version" json:"-"`
 	DataHash          string         `gorm:"column:data_hash" filelist:"data_hash"`
 	DataHashSignature string         `gorm:"column:data_hash_signature" filelist:"data_hash_signature"`
-	IsEmpty           bool           `gorm:"-" json:"is_empty" dirlist:"is_empty"`
-	AllocationVersion int64          `gorm:"-" json:"allocation_version,omitempty" dirlist:"allocation_version,omitempty" filelist:"allocation_version,omitempty"`
+	IsEmpty           bool           `gorm:"-" dirlist:"is_empty"`
+	AllocationVersion int64          `gorm:"-" dirlist:"allocation_version,omitempty" filelist:"allocation_version,omitempty"`
 	HashToBeComputed  bool           `gorm:"-"`
 	prevID            int64          `gorm:"-"`
 }
@@ -171,7 +171,7 @@ func Mkdir(ctx context.Context, allocationID, destpath string, ts common.Timesta
 		}
 		return &destRef, nil
 	}
-	fields, err := common.GetAllParentPaths(filepath.Dir(destpath))
+	fields, err := common.GetAllParentPaths(destpath)
 	if err != nil {
 		logging.Logger.Error("mkdir: failed to get all parent paths", zap.Error(err), zap.String("destpath", destpath))
 		return nil, err

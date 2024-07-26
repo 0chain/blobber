@@ -33,7 +33,7 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 		return common.NewError("invalid_parameter", "allocation_id is required")
 	}
 
-	parentPath, _ := filepath.Split(nf.Path)
+	parentPath := filepath.Dir(nf.Path)
 	nf.LookupHash = reference.GetReferenceLookup(nf.AllocationID, nf.Path)
 	newFile := &reference.Ref{
 		ActualFileHash:          nf.ActualHash,
