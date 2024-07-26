@@ -38,7 +38,7 @@ func init() {
 		field := refType.Field(i)
 		dirListTag := field.Tag.Get(DIR_LIST_TAG)
 
-		if dirListTag != "" {
+		if dirListTag != "" && dirListTag != "is_empty" && dirListTag != "allocation_version" {
 			dirListFields = append(dirListFields, dirListTag)
 		}
 	}
