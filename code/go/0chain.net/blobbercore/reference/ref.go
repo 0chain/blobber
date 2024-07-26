@@ -83,7 +83,7 @@ type Ref struct {
 	DataHash          string         `gorm:"column:data_hash" filelist:"data_hash"`
 	DataHashSignature string         `gorm:"column:data_hash_signature" filelist:"data_hash_signature"`
 	IsEmpty           bool           `gorm:"-" dirlist:"is_empty"`
-	AllocationVersion int64          `gorm:"-" dirlist:"allocation_version,omitempty" filelist:"allocation_version,omitempty"`
+	AllocationVersion int64          `gorm:"-" dirlist:"allocation_version" filelist:"allocation_version"`
 	HashToBeComputed  bool           `gorm:"-"`
 	prevID            int64          `gorm:"-"`
 }
