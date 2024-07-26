@@ -132,7 +132,7 @@ type PaginatedRef struct { //Gorm smart select fields.
 	ActualThumbnailHash     string `gorm:"column:actual_thumbnail_hash" json:"actual_thumbnail_hash,omitempty"`
 	EncryptedKey            string `gorm:"column:encrypted_key" json:"encrypted_key,omitempty"`
 	EncryptedKeyPoint       string `gorm:"column:encrypted_key_point" json:"encrypted_key_point,omitempty"`
-	FileMetaHash            string `gorm:"column:file_meta_hash;size:64;not null" dirlist:"file_meta_hash" filelist:"file_meta_hash"`
+	FileMetaHash            string `gorm:"column:file_meta_hash;size:64;not null" json:"file_meta_hash"`
 
 	CreatedAt common.Timestamp `gorm:"column:created_at" json:"created_at,omitempty"`
 	UpdatedAt common.Timestamp `gorm:"column:updated_at" json:"updated_at,omitempty"`
