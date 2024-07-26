@@ -35,7 +35,9 @@ func (nf *NewDir) ApplyChange(ctx context.Context,
 		newRef := reference.NewDirectoryRef()
 		newRef.AllocationID = nf.AllocationID
 		newRef.Path = nf.Path
-		newRef.ParentPath = parentPath
+		if newRef.Path != "/" {
+			newRef.ParentPath = parentPath
+		}
 		newRef.Name = filepath.Base(nf.Path)
 		newRef.PathLevel = len(strings.Split(strings.TrimRight(nf.Path, "/"), "/"))
 		newRef.ParentID = parentIDRef

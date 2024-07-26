@@ -220,7 +220,9 @@ func Mkdir(ctx context.Context, allocationID, destpath string, ts common.Timesta
 		newRef := NewDirectoryRef()
 		newRef.AllocationID = allocationID
 		newRef.Path = fields[i]
-		newRef.ParentPath = parentPath
+		if newRef.Path != "/" {
+			newRef.ParentPath = parentPath
+		}
 		newRef.Name = filepath.Base(fields[i])
 		newRef.PathLevel = i + 1
 		newRef.ParentID = parentIDRef
