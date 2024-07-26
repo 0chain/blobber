@@ -127,8 +127,6 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, allocationObj 
 		return result, common.NewError("upload_error", "Failed to upload the file. "+err.Error())
 	}
 
-	result.ValidationRoot = fileOutputData.ValidationRoot
-	result.FixedMerkleRoot = fileOutputData.FixedMerkleRoot
 	result.Size = fileOutputData.Size
 
 	cmd.fileChanger.AllocationID = allocationObj.ID

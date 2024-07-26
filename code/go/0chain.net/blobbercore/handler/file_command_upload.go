@@ -129,7 +129,6 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, allocationObj 
 		return result, common.NewError("upload_error", "Failed to write file. "+err.Error())
 	}
 	result.Filename = cmd.fileChanger.Filename
-	result.ValidationRoot = fileOutputData.ValidationRoot
 	result.Size = fileOutputData.Size
 
 	allocationSize := allocation.GetConnectionObjSize(connectionID) + cmd.fileChanger.Size

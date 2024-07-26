@@ -10,8 +10,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 )
 
-func (rf *RenameFileChange) ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
-	allocationRoot string, ts common.Timestamp, _ map[string]string) (*reference.Ref, error) {
+func (rf *RenameFileChange) ApplyChange(ctx context.Context,
+	ts common.Timestamp, fileIDMeta map[string]string, collector reference.QueryCollector) error {
 
-	return rf.applyChange(ctx, rootRef, change, allocationRoot, ts, nil)
+	return rf.applyChange(ctx, ts, fileIDMeta, collector)
 }

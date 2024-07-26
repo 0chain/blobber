@@ -76,10 +76,9 @@ func (mfs *MockFileStore) WriteFile(allocID, connID string,
 	b := bytes.NewBuffer(make([]byte, 0))
 	n, _ := io.Copy(b, infile)
 	return &filestore.FileOutputData{
-		Name:            fileData.Name,
-		Path:            fileData.Path,
-		FixedMerkleRoot: "",
-		Size:            n,
+		Name: fileData.Name,
+		Path: fileData.Path,
+		Size: n,
 	}, nil
 }
 
@@ -116,6 +115,10 @@ func (mfs *MockFileStore) DeletePreCommitDir(allocID string) error {
 
 func (mfs *MockFileStore) GetTempFilePath(allocID, connID, fileName, filePathHash string) string {
 	return ""
+}
+
+func (mfs *MockFileStore) CopyFile(allocationID, oldFileLookupHash, newFileLookupHash string) error {
+	return nil
 }
 
 func (mfs *MockFileStore) GetFileBlock(in *filestore.ReadBlockInput) (*filestore.FileDownloadResponse, error) {

@@ -320,6 +320,46 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	return true, nil
 }
 
+func (fs *FileStore) CopyFile(allocationID, oldFileLookupHash, newFileLookupHash string) error {
+	var err error
+	oldObjectPath, err := fs.GetPathForFile(allocationID, oldFileLookupHash, VERSION)
+	if err != nil {
+		return common.NewError("get_file_path_error", err.Error())
+	}
+	oldFile, err := os.Open(oldObjectPath)
+	if err != nil {
+		return common.NewError("file_open_error", err.Error())
+	}
+	defer oldFile.Close()
+	stat, err := oldFile.Stat()
+	if err != nil {
+		return common.NewError("file_stat_error", err.Error())
+	}
+	size := stat.Size()
+
+	newObjectPath := fs.getPreCommitPathForFile(allocationID, newFileLookupHash, VERSION)
+	newFile, err := os.Create(newObjectPath)
+	if err != nil {
+		return common.NewError("file_create_error", err.Error())
+	}
+	defer func() {
+		newFile.Close()
+		if err != nil {
+			os.Remove(newObjectPath) //nolint:errcheck
+		}
+	}()
+	bufSize := BufferSize
+	if size < int64(bufSize) {
+		bufSize = int(size)
+	}
+	copyBuf := make([]byte, bufSize)
+	_, err = io.CopyBuffer(newFile, oldFile, copyBuf)
+	if err != nil {
+		return common.NewError("file_copy_error", err.Error())
+	}
+	return nil
+}
+
 func (fs *FileStore) GetFilePathSize(allocID, filehash, thumbHash string, version int) (int64, int64, error) {
 
 	filePath, err := fs.GetPathForFile(allocID, filehash, version)

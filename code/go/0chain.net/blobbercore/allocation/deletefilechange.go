@@ -20,11 +20,12 @@ type DeleteFileChange struct {
 	Path         string `json:"path"`
 	Size         int64  `json:"size"`
 	LookupHash   string `json:"lookup_hash"`
+	Type         string `json:"type"`
 }
 
 func (nf *DeleteFileChange) ApplyChange(ctx context.Context,
 	ts common.Timestamp, _ map[string]string, collector reference.QueryCollector) error {
-	return reference.DeleteObject(ctx, nf.AllocationID, nf.LookupHash, ts)
+	return reference.DeleteObject(ctx, nf.AllocationID, nf.LookupHash, nf.Type, ts)
 }
 
 func (nf *DeleteFileChange) Marshal() (string, error) {

@@ -30,11 +30,9 @@ type FileInputData struct {
 }
 
 type FileOutputData struct {
-	Name            string
-	Path            string
-	ValidationRoot  string
-	FixedMerkleRoot string
-	ThumbnailHash   string
+	Name          string
+	Path          string
+	ThumbnailHash string
 	// Size written size/chunk size
 	Size int64
 	// ChunkUploaded the chunk is uploaded or not.
@@ -56,6 +54,7 @@ type FileStorer interface {
 	DeleteFromFilestore(allocID, hash string, version int) error
 	DeletePreCommitDir(allocID string) error
 	DeleteAllocation(allocID string)
+	CopyFile(allocationID, oldFileLookupHash, newFileLookupHash string) error
 	// GetFileBlock Get blocks of file starting from blockNum upto numBlocks. blockNum can't be less than 1.
 	GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadResponse, error)
 	GetBlocksMerkleTreeForChallenge(cri *ChallengeReadBlockInput) (*ChallengeResponse, error)

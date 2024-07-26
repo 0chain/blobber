@@ -253,14 +253,12 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 			pathHash := encryption.Hash(test.remotePath)
 			hasher := NewCommitHasher(0)
 			fid := &FileInputData{
-				Name:            test.fileName,
-				Path:            test.remotePath,
-				ValidationRoot:  validationRoot,
-				FixedMerkleRoot: fixedMerkleRoot,
-				ChunkSize:       64 * KB,
-				FilePathHash:    pathHash,
-				Hasher:          hasher,
-				Size:            int64(size),
+				Name:         test.fileName,
+				Path:         test.remotePath,
+				ChunkSize:    64 * KB,
+				FilePathHash: pathHash,
+				Hasher:       hasher,
+				Size:         int64(size),
 			}
 
 			f, err := os.Open(fPath)
