@@ -117,7 +117,7 @@ type PaginatedRef struct { //Gorm smart select fields.
 	LookupHash              string `gorm:"column:lookup_hash" json:"lookup_hash,omitempty"`
 	Name                    string `gorm:"column:name" json:"name,omitempty"`
 	Path                    string `gorm:"column:path" json:"path,omitempty"`
-	NumBlocks               int64  `gorm:"column:num_of_blocks" json:"num_blocks,omitempty"`
+	NumBlocks               int64  `gorm:"column:num_of_blocks" json:"num_of_blocks,omitempty"`
 	ParentPath              string `gorm:"column:parent_path" json:"parent_path,omitempty"`
 	PathLevel               int    `gorm:"column:level" json:"level,omitempty"`
 	CustomMeta              string `gorm:"column:custom_meta" json:"custom_meta,omitempty"`

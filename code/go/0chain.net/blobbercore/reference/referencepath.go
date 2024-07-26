@@ -276,7 +276,7 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 			encrypted_key_point,
 			actual_file_hash_signature,
 			custom_meta,
-			num_blocks,
+			num_of_blocks,
 			file_meta_hash,
 			parent_path
 		FROM
@@ -300,11 +300,11 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 			h.encrypted_key_point,
 			h.actual_file_hash_signature,
 			h.custom_meta,
-			h.num_blocks,
+			h.num_of_blocks,
 			h.file_meta_hash,
 			h.parent_path
 		FROM
-			hierarchy h
+			reference_objects h
 		INNER JOIN
 			hierarchy_cte hc ON h.parent_id = hc.id
 		WHERE
