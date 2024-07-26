@@ -246,10 +246,15 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 		levelQuery = fmt.Sprintf(" AND level = %d order by path LIMIT %d", level, pageLimit)
 	}
 	refTypes := []string{}
+	returnDirectory := false
 	if _type != "" {
 		refTypes = append(refTypes, _type)
+		if _type == DIRECTORY {
+			returnDirectory = true
+		}
 	} else {
 		refTypes = append(refTypes, "f", "d")
+		returnDirectory = true
 	}
 	pRefs := make([]PaginatedRef, 0, pageLimit/4)
 	if parentRef.Type != DIRECTORY {
@@ -257,7 +262,7 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 		refs = &pRefs
 		return
 	}
-	if offsetPath == "" || path == offsetPath {
+	if (offsetPath == "" || path == offsetPath) && returnDirectory {
 		pRefs = append(pRefs, *parentRef)
 	}
 	tx := datastore.GetStore().GetTransaction(ctx)
