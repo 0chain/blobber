@@ -239,7 +239,7 @@ func GetObjectTree(ctx context.Context, allocationID, path string) (*Ref, error)
 // To retrieve refs efficiently form pagination index is created in postgresql on path column so it can be used to paginate refs
 // very easily and effectively; Same case for offsetDate.
 func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, level, pageLimit int, parentRef *PaginatedRef) (refs *[]PaginatedRef, totalPages int, newOffsetPath string, err error) {
-	levelQuery := " order by level,path LIMIT " + fmt.Sprintf("%d", pageLimit)
+	levelQuery := " order by path LIMIT " + fmt.Sprintf("%d", pageLimit)
 	if level == 0 {
 		level = math.MaxInt
 	} else {
