@@ -42,7 +42,7 @@ func init() {
 			dirListFields = append(dirListFields, dirListTag)
 		}
 	}
-	dirListFields = append(dirListFields, "parent_path")
+	dirListFields = append(dirListFields, "parent_path", "id")
 }
 
 type Ref struct {
