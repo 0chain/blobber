@@ -96,6 +96,9 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 	if fileChanger.ChunkSize <= 0 {
 		fileChanger.ChunkSize = fileref.CHUNK_SIZE
 	}
+	if allocationObj.CanUpdate() {
+		fileChanger.CanUpdate = true
+	}
 
 	origfile, _, err := req.FormFile(UploadFile)
 	if err != nil {

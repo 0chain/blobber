@@ -52,6 +52,15 @@ func (rf *RenameFileChange) applyChange(ctx context.Context,
 	if err != nil {
 		return common.NewError("invalid_reference_path", err.Error())
 	}
+	if ref.Type == reference.DIRECTORY {
+		isEmpty, err := reference.IsDirectoryEmpty(ctx, ref.ID)
+		if err != nil {
+			return common.NewError("invalid_reference_path", err.Error())
+		}
+		if !isEmpty {
+			return common.NewError("invalid_reference_path", "Directory is not empty")
+		}
+	}
 	deleteRef := &reference.Ref{
 		ID: ref.ID,
 	}

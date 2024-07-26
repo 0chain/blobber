@@ -55,7 +55,8 @@ type BaseFileChanger struct {
 	ChunkEndIndex   int    `json:"chunk_end_index,omitempty"`   // end index of chunks. all chunks MUST be uploaded one by one because of CompactMerkleTree
 	ChunkHash       string `json:"chunk_hash,omitempty"`
 	UploadOffset    int64  `json:"upload_offset,omitempty"` // It is next position that new incoming chunk should be append to
-	LookupHash      string `json:"-"`                       // hash of path
+	CanUpdate       bool   `json:"can_update"`              // can file be updated or not
+	LookupHash      string `json:"-"`                       // hash of allocationID+path
 }
 
 // swagger:model UploadResult

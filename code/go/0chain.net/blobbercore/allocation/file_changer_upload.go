@@ -77,6 +77,9 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 		return err
 	}
 	if refResult.ID > 0 {
+		if !nf.CanUpdate {
+			return common.NewError("prohibited_allocation_file_options", "Cannot update data in this allocation.")
+		}
 		deleteRecord := &reference.Ref{
 			ID: refResult.ID,
 		}

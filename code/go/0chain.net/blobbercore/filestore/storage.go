@@ -321,6 +321,9 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 }
 
 func (fs *FileStore) CopyFile(allocationID, oldFileLookupHash, newFileLookupHash string) error {
+	if oldFileLookupHash == newFileLookupHash {
+		return nil
+	}
 	var err error
 	oldObjectPath, err := fs.GetPathForFile(allocationID, oldFileLookupHash, VERSION)
 	if err != nil {
