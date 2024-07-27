@@ -88,7 +88,6 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 		}
 		collector.DeleteRefRecord(deleteRecord)
 	}
-	refResult.ID = 0
 	// get parent id
 	parent := filepath.Dir(nf.Path)
 	// create or get parent directory
@@ -96,9 +95,7 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 	if err != nil {
 		return err
 	}
-	refResult.ID = parentRef.ID
-
-	newFile.ParentID = &refResult.ID
+	newFile.ParentID = &parentRef.ID
 	collector.CreateRefRecord(newFile)
 
 	return err
