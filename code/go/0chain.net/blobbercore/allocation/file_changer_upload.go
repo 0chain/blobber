@@ -8,7 +8,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -16,7 +15,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
 // swagger:model UploadFileChanger
@@ -70,10 +68,16 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 		ID   int64
 		Type string
 	}
-	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Model(&reference.Ref{}).Select("id", "type").Where("lookup_hash = ?", newFile.LookupHash).Take(&refResult).Error
-	if err != nil && err != gorm.ErrRecordNotFound {
-		return err
+	cachedRef := collector.GetFromCache(newFile.LookupHash)
+	if cachedRef != nil {
+		refResult.ID = cachedRef.ID
+		refResult.Type = cachedRef.Type
+	} else {
+		db := datastore.GetStore().GetTransaction(ctx)
+		err := db.Model(&reference.Ref{}).Select("id", "type").Where("lookup_hash = ?", newFile.LookupHash).Take(&refResult).Error
+		if err != nil && err != gorm.ErrRecordNotFound {
+			return err
+		}
 	}
 	if refResult.ID > 0 {
 		if !nf.CanUpdate {
@@ -87,9 +91,8 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 	refResult.ID = 0
 	// get parent id
 	parent := filepath.Dir(nf.Path)
-	logging.Logger.Info("applyChange", zap.String("parent", parent), zap.String("path", nf.Path))
 	// create or get parent directory
-	parentRef, err := reference.Mkdir(ctx, nf.AllocationID, parent, ts)
+	parentRef, err := reference.Mkdir(ctx, nf.AllocationID, parent, ts, collector)
 	if err != nil {
 		return err
 	}

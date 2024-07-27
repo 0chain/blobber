@@ -10,11 +10,14 @@ type QueryCollector interface {
 	CreateRefRecord(ref *Ref)
 	DeleteRefRecord(ref *Ref)
 	Finalize(ctx context.Context) error
+	AddToCache(ref *Ref)
+	GetFromCache(lookupHash string) *Ref
 }
 
 type dbCollector struct {
 	createdRefs []*Ref
 	deletedRefs []*Ref
+	refMap      map[string]*Ref
 }
 
 func NewCollector(changes int) QueryCollector {
@@ -48,4 +51,12 @@ func (dc *dbCollector) Finalize(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (dc *dbCollector) AddToCache(ref *Ref) {
+	dc.refMap[ref.LookupHash] = ref
+}
+
+func (dc *dbCollector) GetFromCache(lookupHash string) *Ref {
+	return dc.refMap[lookupHash]
 }

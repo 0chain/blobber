@@ -154,16 +154,25 @@ func NewFileRef() *Ref {
 }
 
 // Mkdir create dirs if they don't exits. do nothing if dir exists. last dir will be return without child
-func Mkdir(ctx context.Context, allocationID, destpath string, ts common.Timestamp) (*Ref, error) {
+func Mkdir(ctx context.Context, allocationID, destpath string, ts common.Timestamp, collector QueryCollector) (*Ref, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	if destpath != "/" {
 		destpath = strings.TrimSuffix(filepath.Clean("/"+destpath), "/")
 	}
 	destLookupHash := GetReferenceLookup(allocationID, destpath)
 	var destRef Ref
-	err := db.Select("id", "type").Where(&Ref{LookupHash: destLookupHash}).Take(&destRef).Error
-	if err != nil && err != gorm.ErrRecordNotFound {
-		return nil, err
+	cachedRef := collector.GetFromCache(destLookupHash)
+	if cachedRef != nil {
+		destRef = *cachedRef
+	} else {
+		err := db.Select("id", "type").Where(&Ref{LookupHash: destLookupHash}).Take(&destRef).Error
+		if err != nil && err != gorm.ErrRecordNotFound {
+			return nil, err
+		}
+		destRef.LookupHash = destLookupHash
+		if destRef.ID > 0 {
+			defer collector.AddToCache(&destRef)
+		}
 	}
 	if destRef.ID > 0 {
 		if destRef.Type != DIRECTORY {

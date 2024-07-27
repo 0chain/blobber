@@ -18,7 +18,6 @@ import (
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 const (
@@ -295,9 +294,7 @@ func (a *AllocationChangeCollector) DeleteChanges(ctx context.Context) {
 }
 
 type Result struct {
-	Id               string
-	LookupHash       string
-	FilestoreVersion int
+	LookupHash string
 }
 
 // TODO: Need to speed up this function
@@ -314,7 +311,7 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 
 	err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		tx := datastore.GetStore().GetTransaction(ctx)
-		err := tx.Model(&reference.Ref{}).Clauses(clause.Locking{Strength: "NO KEY UPDATE"}).Select("id", "filestore_version", "lookup_hash").Where("allocation_id=? AND is_precommit=? AND type=?", a.AllocationID, true, reference.FILE).
+		err := tx.Model(&reference.Ref{}).Select("lookup_hash").Where("allocation_id=? AND is_precommit=? AND type=?", a.AllocationID, true, reference.FILE).
 			FindInBatches(&refs, 50, func(tx *gorm.DB, batch int) error {
 
 				for _, ref := range refs {
@@ -328,7 +325,7 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 							wg.Done()
 						}()
 
-						err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.LookupHash, ref.FilestoreVersion)
+						err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.LookupHash, filestore.VERSION)
 						if err != nil {
 							logging.Logger.Error(fmt.Sprintf("Error while moving file: %s", err.Error()))
 						}
@@ -359,7 +356,7 @@ func deleteFromFileStore(ctx context.Context, allocationID string) error {
 	return datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		db := datastore.GetStore().GetTransaction(ctx)
 
-		err := db.Model(&reference.Ref{}).Unscoped().Select("id", "lookup_hash", "filestore_version").
+		err := db.Model(&reference.Ref{}).Unscoped().Select("lookup_hash").
 			Where("allocation_id=? AND is_precommit=? AND type=? AND deleted_at is not NULL", allocationID, true, reference.FILE).
 			FindInBatches(&results, 100, func(tx *gorm.DB, batch int) error {
 
@@ -374,7 +371,7 @@ func deleteFromFileStore(ctx context.Context, allocationID string) error {
 						}()
 
 						err := filestore.GetFileStore().DeleteFromFilestore(allocationID, res.LookupHash,
-							res.FilestoreVersion)
+							filestore.VERSION)
 						if err != nil {
 							logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
 								zap.String("validation_root", res.LookupHash))

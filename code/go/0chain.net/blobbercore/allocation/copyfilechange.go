@@ -53,7 +53,7 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context,
 		}
 	}
 
-	parentDir, err := reference.Mkdir(ctx, rf.AllocationID, filepath.Dir(rf.DestPath), ts)
+	parentDir, err := reference.Mkdir(ctx, rf.AllocationID, filepath.Dir(rf.DestPath), ts, collector)
 	if err != nil {
 		return err
 	}

@@ -31,7 +31,7 @@ func (nf *NewDir) ApplyChange(ctx context.Context,
 		return err
 	}
 	if parentRef == nil || parentRef.ID == 0 {
-		_, err = reference.Mkdir(ctx, nf.AllocationID, nf.Path, ts)
+		_, err = reference.Mkdir(ctx, nf.AllocationID, nf.Path, ts, collector)
 	} else {
 		parentIDRef := &parentRef.ID
 		newRef := reference.NewDirectoryRef()
