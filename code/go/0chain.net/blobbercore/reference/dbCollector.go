@@ -24,6 +24,7 @@ func NewCollector(changes int) QueryCollector {
 	return &dbCollector{
 		createdRefs: make([]*Ref, 0, changes*4),
 		deletedRefs: make([]*Ref, 0, changes*4),
+		refMap:      make(map[string]*Ref),
 	}
 }
 
