@@ -21,6 +21,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 )
@@ -468,6 +469,9 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 
 		dirref = parent
 	} else {
+		if fileref == nil {
+			fileref = &reference.Ref{Type: reference.DIRECTORY, Path: path, AllocationID: allocationID}
+		}
 		r, err := reference.GetRefWithChildren(ctx, fileref, allocationID, filePath, offset, pageLimit)
 		if err != nil {
 			return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
@@ -830,6 +834,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 		pathRef, err = reference.GetPaginatedRefByLookupHash(ctx, pathHash)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
+				logging.Logger.Error("GetRefs: GetPaginatedRefByLookupHash", zap.Error(err), zap.String("path", path), zap.String("pathHash", pathHash))
 				return nil, common.NewError("invalid_path", "")
 			}
 			return nil, err
