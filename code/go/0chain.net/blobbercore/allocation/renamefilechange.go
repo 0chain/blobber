@@ -61,6 +61,7 @@ func (rf *RenameFileChange) applyChange(ctx context.Context,
 			return common.NewError("invalid_reference_path", "Directory is not empty")
 		}
 	}
+	rf.Type = ref.Type
 	deleteRef := &reference.Ref{
 		ID: ref.ID,
 	}
@@ -97,6 +98,9 @@ func (rf *RenameFileChange) Unmarshal(input string) error {
 }
 
 func (rf *RenameFileChange) CommitToFileStore(ctx context.Context, mut *sync.Mutex) error {
+	if rf.Type == reference.DIRECTORY {
+		return nil
+	}
 	if rf.newLookupHash == "" {
 		return common.NewError("invalid_reference_path", "new lookup hash is empty")
 	}

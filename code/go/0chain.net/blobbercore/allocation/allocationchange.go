@@ -236,14 +236,14 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 		// 	acp = new(UpdateFileChanger)
 		case constants.FileOperationDelete:
 			acp = new(DeleteFileChange)
-		// case constants.FileOperationRename:
-		// 	acp = new(RenameFileChange)
-		// case constants.FileOperationCopy:
-		// 	acp = new(CopyFileChange)
+		case constants.FileOperationRename:
+			acp = new(RenameFileChange)
+		case constants.FileOperationCopy:
+			acp = new(CopyFileChange)
 		case constants.FileOperationCreateDir:
 			acp = new(NewDir)
-			// case constants.FileOperationMove:
-			// 	acp = new(MoveFileChange)
+		case constants.FileOperationMove:
+			acp = new(MoveFileChange)
 		}
 
 		if acp == nil {

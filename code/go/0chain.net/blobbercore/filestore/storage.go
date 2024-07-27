@@ -360,6 +360,30 @@ func (fs *FileStore) CopyFile(allocationID, oldFileLookupHash, newFileLookupHash
 	if err != nil {
 		return common.NewError("file_copy_error", err.Error())
 	}
+	// copy thumbnail if exists
+	oldThumbPath := fs.getPreCommitPathForFile(allocationID, oldFileLookupHash+ThumbnailSuffix, VERSION)
+	if _, err := os.Stat(oldThumbPath); err == nil {
+		newThumbPath := fs.getPreCommitPathForFile(allocationID, newFileLookupHash+ThumbnailSuffix, VERSION)
+		oldThumbFile, err := os.Open(oldThumbPath)
+		if err != nil {
+			return common.NewError("file_open_error", err.Error())
+		}
+		defer oldThumbFile.Close()
+		newThumbFile, err := os.Create(newThumbPath)
+		if err != nil {
+			return common.NewError("file_create_error", err.Error())
+		}
+		defer func() {
+			newThumbFile.Close()
+			if err != nil {
+				os.Remove(newThumbPath) //nolint:errcheck
+			}
+		}()
+		_, err = io.Copy(newThumbFile, oldThumbFile)
+		if err != nil {
+			return common.NewError("file_copy_error", err.Error())
+		}
+	}
 	return nil
 }
 

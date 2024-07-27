@@ -3,10 +3,14 @@ package allocation
 import (
 	"context"
 	"encoding/json"
+	"path/filepath"
+	"strings"
 	"sync"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 )
 
 type CopyFileChange struct {
@@ -15,6 +19,7 @@ type CopyFileChange struct {
 	SrcPath      string `json:"path"`
 	DestPath     string `json:"dest_path"`
 	Type         string `json:"type"`
+	CustomMeta   string `json:"custom_meta"`
 }
 
 func (rf *CopyFileChange) DeleteTempFile() error {
@@ -23,7 +28,53 @@ func (rf *CopyFileChange) DeleteTempFile() error {
 
 func (rf *CopyFileChange) ApplyChange(ctx context.Context,
 	ts common.Timestamp, _ map[string]string, collector reference.QueryCollector) error {
-	return common.NewError("not_implemented", "not implemented")
+	srcLookUpHash := reference.GetReferenceLookup(rf.AllocationID, rf.SrcPath)
+	destLookUpHash := reference.GetReferenceLookup(rf.AllocationID, rf.DestPath)
+	srcRef, err := reference.GetReferenceByLookupHash(ctx, rf.AllocationID, srcLookUpHash)
+	if err != nil {
+		return err
+	}
+	exist, err := reference.IsRefExist(ctx, rf.AllocationID, rf.DestPath)
+	if err != nil {
+		return err
+	}
+	if exist {
+		return common.NewError("invalid_reference_path", "file already exists")
+	}
+
+	rf.Type = srcRef.Type
+	if srcRef.Type == reference.DIRECTORY {
+		isEmpty, err := reference.IsDirectoryEmpty(ctx, srcRef.ID)
+		if err != nil {
+			return err
+		}
+		if !isEmpty {
+			return common.NewError("invalid_reference_path", "directory is not empty")
+		}
+	}
+
+	parentDir, err := reference.Mkdir(ctx, rf.AllocationID, filepath.Dir(rf.DestPath), ts)
+	if err != nil {
+		return err
+	}
+
+	srcRef.ID = 0
+	srcRef.ParentID = &parentDir.ID
+	srcRef.Path = rf.DestPath
+	srcRef.LookupHash = destLookUpHash
+	srcRef.CreatedAt = ts
+	srcRef.UpdatedAt = ts
+	srcRef.ParentPath = filepath.Dir(rf.DestPath)
+	srcRef.Name = filepath.Base(rf.DestPath)
+	srcRef.PathLevel = len(strings.Split(strings.TrimRight(rf.DestPath, "/"), "/"))
+	srcRef.FileMetaHash = encryption.Hash(srcRef.GetFileHashData())
+	if rf.CustomMeta != "" {
+		srcRef.CustomMeta = rf.CustomMeta
+	}
+	srcRef.IsPrecommit = true
+	collector.CreateRefRecord(srcRef)
+
+	return nil
 }
 
 func (rf *CopyFileChange) Marshal() (string, error) {
@@ -40,7 +91,12 @@ func (rf *CopyFileChange) Unmarshal(input string) error {
 }
 
 func (rf *CopyFileChange) CommitToFileStore(ctx context.Context, mut *sync.Mutex) error {
-	return nil
+	if rf.Type == reference.DIRECTORY {
+		return nil
+	}
+	srcLookUpHash := reference.GetReferenceLookup(rf.AllocationID, rf.SrcPath)
+	destLookUpHash := reference.GetReferenceLookup(rf.AllocationID, rf.DestPath)
+	return filestore.GetFileStore().CopyFile(rf.AllocationID, srcLookUpHash, destLookUpHash)
 }
 
 func (rf *CopyFileChange) GetPath() []string {

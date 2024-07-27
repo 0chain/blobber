@@ -18,6 +18,8 @@ type NewDir struct {
 	ConnectionID string `json:"connection_id" validation:"required"`
 	Path         string `json:"filepath" validation:"required"`
 	AllocationID string `json:"allocation_id"`
+	CustomMeta   string `json:"custom_meta,omitempty"`
+	MimeType     string `json:"mimetype,omitempty"`
 }
 
 func (nf *NewDir) ApplyChange(ctx context.Context,
@@ -45,6 +47,12 @@ func (nf *NewDir) ApplyChange(ctx context.Context,
 		newRef.CreatedAt = ts
 		newRef.UpdatedAt = ts
 		newRef.FileMetaHash = encryption.Hash(newRef.GetFileMetaHashData())
+		if nf.CustomMeta != "" {
+			newRef.CustomMeta = nf.CustomMeta
+		}
+		if nf.MimeType != "" {
+			newRef.MimeType = nf.MimeType
+		}
 		collector.CreateRefRecord(newRef)
 	}
 	return err
