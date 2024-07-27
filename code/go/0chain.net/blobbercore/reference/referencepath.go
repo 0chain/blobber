@@ -294,6 +294,7 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 		reference_objects as hierarchy
 		WHERE
 			parent_id = ?
+			AND deleted_at IS NULL
 	
 		UNION
 	
