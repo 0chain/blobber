@@ -269,6 +269,11 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 	}
 	if (offsetPath == "" || path == offsetPath) && returnParentDirectory && level == math.MaxInt {
 		pRefs = append(pRefs, *parentRef)
+		if pageLimit == 1 {
+			refs = &pRefs
+			newOffsetPath = parentRef.Path
+			return
+		}
 	}
 	tx := datastore.GetStore().GetTransaction(ctx)
 	rows, err := tx.Raw(`WITH RECURSIVE hierarchy_cte AS (
@@ -327,6 +332,7 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 			return
 		}
 		ref.AllocationID = allocationID
+		ref.Name = filepath.Base(ref.Path)
 		pRefs = append(pRefs, ref)
 	}
 	if err != nil {
