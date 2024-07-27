@@ -572,7 +572,7 @@ ALTER TABLE ONLY marketplace_share_info ALTER COLUMN id SET DEFAULT nextval('mar
 ALTER TABLE ONLY reference_objects ALTER COLUMN id SET DEFAULT nextval('reference_objects_id_seq'::regclass);
 
 
-ALTER TABLE ONLY reference_objects ADD CONSTRAINT path_commit UNIQUE(lookup_hash,is_precommit);
+-- ALTER TABLE ONLY reference_objects ADD CONSTRAINT path_commit UNIQUE(lookup_hash,is_precommit);
 
 --
 -- Name: terms id; Type: DEFAULT; Schema: public; Owner: blobber_user
@@ -840,13 +840,6 @@ CREATE INDEX idx_updated_at ON reference_objects USING btree (updated_at DESC);
 --
 
 CREATE INDEX idx_write_pools_cab ON write_pools USING btree (allocation_id);
-
-
---
--- Name: path_idx; Type: INDEX; Schema: public; Owner: blobber_user
---
-
-CREATE INDEX path_idx ON reference_objects USING btree (path);
 
 
 --
