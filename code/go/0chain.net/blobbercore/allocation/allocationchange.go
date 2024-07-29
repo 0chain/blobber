@@ -306,13 +306,13 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 		return err
 	}
 	var refs []*Result
-	limitCh := make(chan struct{}, 10)
+	limitCh := make(chan struct{}, 25)
 	wg := &sync.WaitGroup{}
 
 	err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		tx := datastore.GetStore().GetTransaction(ctx)
 		err := tx.Model(&reference.Ref{}).Select("lookup_hash").Where("allocation_id=? AND is_precommit=? AND type=?", a.AllocationID, true, reference.FILE).
-			FindInBatches(&refs, 50, func(tx *gorm.DB, batch int) error {
+			FindInBatches(&refs, 100, func(tx *gorm.DB, batch int) error {
 
 				for _, ref := range refs {
 
@@ -339,7 +339,7 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 		wg.Wait()
 
 		if err != nil {
-			logging.Logger.Error("Error while moving to filestore", zap.Error(err))
+			logging.Logger.Error("Error while moving files to filestore", zap.Error(err))
 			return err
 		}
 
@@ -349,7 +349,7 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 }
 
 func deleteFromFileStore(ctx context.Context, allocationID string) error {
-	limitCh := make(chan struct{}, 10)
+	limitCh := make(chan struct{}, 25)
 	wg := &sync.WaitGroup{}
 	var results []Result
 

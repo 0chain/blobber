@@ -756,7 +756,7 @@ CREATE INDEX idx_created_at ON reference_objects USING btree (created_at DESC);
 -- Name: idx_lookup_hash; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX idx_lookup_hash ON reference_objects USING btree (lookup_hash) INCLUDE(id,type,path) where deleted_at IS NULL;
+CREATE INDEX idx_lookup_hash ON reference_objects USING btree (lookup_hash) INCLUDE(id,type) where deleted_at IS NULL;
 
 
 --
@@ -784,7 +784,7 @@ CREATE INDEX idx_name_gin ON reference_objects USING gin (to_tsvector('english':
 -- Name: idx_parent_path_alloc; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX idx_parent_path_alloc ON reference_objects USING btree (allocation_id, parent_path) WHERE deleted_at IS NULL;
+-- CREATE INDEX idx_parent_path_alloc ON reference_objects USING btree (allocation_id, parent_path) WHERE deleted_at IS NULL;
 
 --
 -- Name: idx_parent_id_alloc; Type: INDEX; Schema: public; Owner: blobber_user
