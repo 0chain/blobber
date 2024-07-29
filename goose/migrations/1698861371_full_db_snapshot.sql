@@ -756,7 +756,7 @@ CREATE INDEX idx_created_at ON reference_objects USING btree (created_at DESC);
 -- Name: idx_lookup_hash; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX idx_lookup_hash ON reference_objects USING btree (lookup_hash) INCLUDE(id,reference_objects.type) where deleted_at IS NULL;
+CREATE INDEX idx_lookup_hash ON reference_objects USING btree (lookup_hash) INCLUDE(id,type) where deleted_at IS NULL;
 
 
 --
