@@ -76,10 +76,6 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 		return common.NewError("write_marker_validation_failed", "Write Marker is not for the same allocation transaction")
 	}
 
-	if wme.WM.Size != co.Size {
-		return common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker size %v does not match the connection size %v", wme.WM.Size, co.Size))
-	}
-
 	clientPublicKey := ctx.Value(constants.ContextKeyClientKey).(string)
 	if clientPublicKey == "" {
 		return common.NewError("write_marker_validation_failed", "Could not get the public key of the client")
