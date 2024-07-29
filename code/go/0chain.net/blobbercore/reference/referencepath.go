@@ -2,7 +2,6 @@ package reference
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"path/filepath"
 	"strings"
@@ -12,6 +11,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 type ReferencePath struct {
@@ -239,111 +239,43 @@ func GetObjectTree(ctx context.Context, allocationID, path string) (*Ref, error)
 // To retrieve refs efficiently form pagination index is created in postgresql on path column so it can be used to paginate refs
 // very easily and effectively; Same case for offsetDate.
 func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, level, pageLimit int, parentRef *PaginatedRef) (refs *[]PaginatedRef, totalPages int, newOffsetPath string, err error) {
-	logging.Logger.Info("GetRefs", zap.String("allocation_id", allocationID), zap.String("path", path), zap.String("offsetPath", offsetPath), zap.String("type", _type), zap.Int("level", level), zap.Int("pageLimit", pageLimit))
-	levelQuery := " order by path LIMIT " + fmt.Sprintf("%d", pageLimit)
-	if level == 0 {
-		level = math.MaxInt
-	} else {
-		levelQuery = fmt.Sprintf(" AND level = %d order by path LIMIT %d", level, pageLimit)
-	}
-	refTypes := []string{}
-	returnParentDirectory := false
-	if _type != "" {
-		refTypes = append(refTypes, _type)
-		if _type == DIRECTORY {
-			returnParentDirectory = true
-		}
-	} else {
-		refTypes = append(refTypes, "f", "d")
-		returnParentDirectory = true
-	}
-	pRefs := make([]PaginatedRef, 0, pageLimit/4)
-	if parentRef.Type != DIRECTORY {
-		pRefs = append(pRefs, *parentRef)
-		refs = &pRefs
-		return
-	} else if level == parentRef.PathLevel && returnParentDirectory {
-		pRefs = append(pRefs, *parentRef)
-		refs = &pRefs
-		return
-	}
-	if (offsetPath == "" || path == offsetPath) && returnParentDirectory && level == math.MaxInt {
-		pRefs = append(pRefs, *parentRef)
-		if pageLimit == 1 {
-			refs = &pRefs
-			newOffsetPath = parentRef.Path
-			return
-		}
-	}
-	tx := datastore.GetStore().GetTransaction(ctx)
-	rows, err := tx.Raw(`WITH RECURSIVE hierarchy_cte AS (
-		SELECT
-			id,
-			parent_id,
-			path,
-			level,
-			hierarchy.type,
-			actual_file_size,
-			mimetype,
-			encrypted_key,
-			encrypted_key_point,
-			actual_file_hash,
-			custom_meta,
-			updated_at
-		FROM
-		reference_objects as hierarchy
-		WHERE
-			parent_id = ?
-			AND deleted_at IS NULL
-	
-		UNION
-	
-		SELECT
-			h.id,
-			h.parent_id,
-			h.path,
-			h.level,
-			h.type,
-			h.actual_file_size,
-			h.mimetype,
-			h.encrypted_key,
-			h.encrypted_key_point,
-			h.actual_file_hash,
-			h.custom_meta,
-			h.updated_at
-		FROM
-			reference_objects h
-		INNER JOIN
-			hierarchy_cte hc ON h.parent_id = hc.id
-		WHERE
-			hc.type='d'
-			AND h.level <= ?
-			AND h.deleted_at IS NULL
+	var (
+		pRefs   = make([]PaginatedRef, 0, pageLimit/4)
+		dbError error
+		dbQuery *gorm.DB
 	)
-	SELECT * from hierarchy_cte where type IN ? AND path > ?`+levelQuery, parentRef.ID, level, refTypes, offsetPath).Rows()
-	if err != nil {
-		return
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var ref PaginatedRef
-		err = tx.ScanRows(rows, &ref)
-		if err != nil {
-			return
+	path = filepath.Clean(path)
+	tx := datastore.GetStore().GetTransaction(ctx)
+	pathLevel := len(strings.Split(strings.TrimSuffix(path, "/"), "/")) + 1
+	if pathLevel == level {
+		dbQuery = tx.Model(&Ref{}).Where("parent_id = ?", parentRef.ID)
+		if _type != "" {
+			dbQuery = dbQuery.Where("type = ?", _type)
 		}
-		ref.AllocationID = allocationID
-		ref.Name = filepath.Base(ref.Path)
-		pRefs = append(pRefs, ref)
+		dbQuery = dbQuery.Where("path > ?", offsetPath)
+		dbQuery = dbQuery.Order("path")
+	} else {
+		dbQuery = tx.Model(&Ref{}).Where("allocation_id = ? AND path LIKE ?", allocationID, path+"%")
+		if _type != "" {
+			dbQuery = dbQuery.Where("type = ?", _type)
+		}
+		if level != 0 {
+			dbQuery = dbQuery.Where("level = ?", level)
+		}
+
+		dbQuery = dbQuery.Where("path > ?", offsetPath)
+
+		dbQuery = dbQuery.Order("path")
 	}
-	if err != nil {
+	dbError = dbQuery.Limit(pageLimit).Find(&pRefs).Error
+	if dbError != nil && dbError != gorm.ErrRecordNotFound {
+		err = dbError
 		return
 	}
 	refs = &pRefs
 	if len(pRefs) > 0 {
 		newOffsetPath = pRefs[len(pRefs)-1].Path
 	}
-	logging.Logger.Info("GetRefsResult", zap.Int("refs_count", len(pRefs)))
 	return
 }
 
