@@ -290,14 +290,20 @@ func ReadConfig(deploymentMode int) {
 	} else if Configuration.MinConfirmation > 100 {
 		Configuration.MinConfirmation = 100
 	}
-
-	Configuration.BlockLimitDaily = viper.GetInt64("rate_limiters.block_limit_daily")
+	// TODO: Read values from config only, this is for testing
+	// Configuration.BlockLimitDaily = viper.GetInt64("rate_limiters.block_limit_daily")
+	Configuration.BlockLimitDaily = 312500000
 	Configuration.BlockLimitRequest = viper.GetInt64("rate_limiters.block_limit_request")
-	Configuration.BlockLimitMonthly = viper.GetInt64("rate_limiters.block_limit_monthly")
-	Configuration.UploadLimitMonthly = viper.GetInt64("rate_limiters.upload_limit_monthly")
-	Configuration.CommitLimitMonthly = viper.GetInt64("rate_limiters.commit_limit_monthly")
-	Configuration.CommitLimitDaily = viper.GetInt64("rate_limiters.commit_limit_daily")
-	Configuration.CommitZeroLimitDaily = viper.GetInt64("rate_limiters.commit_zero_limit_daily")
+	// Configuration.BlockLimitMonthly = viper.GetInt64("rate_limiters.block_limit_monthly")
+	Configuration.BlockLimitMonthly = 312500000
+	// Configuration.UploadLimitMonthly = viper.GetInt64("rate_limiters.upload_limit_monthly")
+	Configuration.UploadLimitMonthly = 312500000
+	// Configuration.CommitLimitMonthly = viper.GetInt64("rate_limiters.commit_limit_monthly")
+	Configuration.CommitLimitMonthly = 300000000
+	// Configuration.CommitLimitDaily = viper.GetInt64("rate_limiters.commit_limit_daily")
+	Configuration.CommitLimitDaily = 300000000
+	// Configuration.CommitZeroLimitDaily = viper.GetInt64("rate_limiters.commit_zero_limit_daily")
+	Configuration.CommitZeroLimitDaily = 300000000
 }
 
 // StorageSCConfiguration will include all the required sc configs to operate blobber
