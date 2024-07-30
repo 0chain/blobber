@@ -282,9 +282,14 @@ func GetReferenceByLookupHashForDownload(ctx context.Context, allocationID, path
 
 func GetReferencesByName(ctx context.Context, allocationID, name string) (refs []*Ref, err error) {
 	db := datastore.GetStore().GetTransaction(ctx)
+	words := strings.Fields(name)
+	tsQuery := strings.Join(words, "&") // For multiple words query with &
+	if len(words) == 1 {
+		tsQuery = tsQuery + ":*" // do prefix search for single word.
+	}
 	err = db.Model(&Ref{}).
-		Where("allocation_id = ? AND name @@ plainto_tsquery(?)", allocationID, name).
-		Order("ts_rank_cd(to_tsvector('english', name), plainto_tsquery(?)) DESC").
+		Where("allocation_id = ? AND to_tsvector('english', name) @@ to_tsquery('english', ?)", allocationID, tsQuery).
+		Limit(20).
 		Find(&refs).Error
 	if err != nil {
 		return nil, err
