@@ -11,6 +11,6 @@ import (
 )
 
 func (nf *UploadFileChanger) ApplyChange(ctx context.Context,
-	ts common.Timestamp, fileIDMeta map[string]string, collector reference.QueryCollector) error {
-	return nf.applyChange(ctx, ts, fileIDMeta, collector)
+	ts common.Timestamp, allocationVersion int64, collector reference.QueryCollector) error {
+	return nf.applyChange(ctx, ts, allocationVersion, collector)
 }

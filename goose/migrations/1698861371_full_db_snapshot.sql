@@ -357,13 +357,13 @@ CREATE TABLE reference_objects (
     created_at bigint,
     updated_at bigint,
     deleted_at timestamp with time zone,
-    is_precommit boolean DEFAULT false NOT NULL,
     chunk_size bigint DEFAULT 65536 NOT NULL,
     num_of_updates bigint,
     num_of_block_downloads bigint,
     data_hash character varying(64),
     data_hash_signature character varying(64),
-    parent_id bigint DEFAULT NULL
+    parent_id bigint DEFAULT NULL,
+    allocation_version bigint DEFAULT 0 NOT NULL
 );
 
 
@@ -571,8 +571,6 @@ ALTER TABLE ONLY marketplace_share_info ALTER COLUMN id SET DEFAULT nextval('mar
 
 ALTER TABLE ONLY reference_objects ALTER COLUMN id SET DEFAULT nextval('reference_objects_id_seq'::regclass);
 
-
--- ALTER TABLE ONLY reference_objects ADD CONSTRAINT path_commit UNIQUE(lookup_hash,is_precommit);
 
 --
 -- Name: terms id; Type: DEFAULT; Schema: public; Owner: blobber_user

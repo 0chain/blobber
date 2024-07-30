@@ -25,7 +25,7 @@ type UploadFileChanger struct {
 
 // ApplyChange update references, and create a new FileRef
 func (nf *UploadFileChanger) applyChange(ctx context.Context,
-	ts common.Timestamp, _ map[string]string, collector reference.QueryCollector) error {
+	ts common.Timestamp, allocationVersion int64, collector reference.QueryCollector) error {
 
 	if nf.AllocationID == "" {
 		return common.NewError("invalid_parameter", "allocation_id is required")
@@ -54,12 +54,12 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 		ChunkSize:               nf.ChunkSize,
 		CreatedAt:               ts,
 		UpdatedAt:               ts,
-		IsPrecommit:             true,
 		LookupHash:              nf.LookupHash,
 		DataHash:                nf.DataHash,
 		DataHashSignature:       nf.DataHashSignature,
 		PathLevel:               len(strings.Split(strings.TrimRight(nf.Path, "/"), "/")),
 		FilestoreVersion:        filestore.VERSION,
+		AllocationVersion:       allocationVersion,
 	}
 	newFile.FileMetaHash = encryption.Hash(newFile.GetFileMetaHashData())
 
@@ -83,15 +83,20 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 		if !nf.CanUpdate {
 			return common.NewError("prohibited_allocation_file_options", "Cannot update data in this allocation.")
 		}
+		if refResult.Type != reference.FILE {
+			return common.NewError("invalid_reference_path", "Directory already exists with the same path")
+		}
 		deleteRecord := &reference.Ref{
-			ID: refResult.ID,
+			ID:         refResult.ID,
+			LookupHash: newFile.LookupHash,
+			Type:       refResult.Type,
 		}
 		collector.DeleteRefRecord(deleteRecord)
 	}
 	// get parent id
 	parent := filepath.Dir(nf.Path)
 	// create or get parent directory
-	parentRef, err := reference.Mkdir(ctx, nf.AllocationID, parent, ts, collector)
+	parentRef, err := reference.Mkdir(ctx, nf.AllocationID, parent, allocationVersion, ts, collector)
 	if err != nil {
 		return err
 	}

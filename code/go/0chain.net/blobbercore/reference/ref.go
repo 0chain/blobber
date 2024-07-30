@@ -75,15 +75,14 @@ type Ref struct {
 	UpdatedAt               common.Timestamp `gorm:"column:updated_at;index:idx_updated_at,sort:desc;" dirlist:"updated_at" filelist:"updated_at"`
 
 	DeletedAt         gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
-	IsPrecommit       bool           `gorm:"column:is_precommit;not null;default:false" filelist:"is_precommit" dirlist:"is_precommit"`
 	ChunkSize         int64          `gorm:"column:chunk_size;not null;default:65536" dirlist:"chunk_size" filelist:"chunk_size"`
 	NumUpdates        int64          `gorm:"column:num_of_updates" json:"num_of_updates"`
 	NumBlockDownloads int64          `gorm:"column:num_of_block_downloads" json:"num_of_block_downloads"`
 	FilestoreVersion  int            `gorm:"column:filestore_version" json:"-"`
 	DataHash          string         `gorm:"column:data_hash" filelist:"data_hash"`
 	DataHashSignature string         `gorm:"column:data_hash_signature" filelist:"data_hash_signature"`
+	AllocationVersion int64          `gorm:"allocation_version" dirlist:"allocation_version" filelist:"allocation_version"`
 	IsEmpty           bool           `gorm:"-" dirlist:"is_empty"`
-	AllocationVersion int64          `gorm:"-" dirlist:"allocation_version" filelist:"allocation_version"`
 	HashToBeComputed  bool           `gorm:"-"`
 	prevID            int64          `gorm:"-"`
 }
@@ -146,15 +145,15 @@ func GetReferenceLookup(allocationID, path string) string {
 }
 
 func NewDirectoryRef() *Ref {
-	return &Ref{Type: DIRECTORY, IsPrecommit: true}
+	return &Ref{Type: DIRECTORY}
 }
 
 func NewFileRef() *Ref {
-	return &Ref{Type: FILE, IsPrecommit: true}
+	return &Ref{Type: FILE}
 }
 
 // Mkdir create dirs if they don't exits. do nothing if dir exists. last dir will be return without child
-func Mkdir(ctx context.Context, allocationID, destpath string, ts common.Timestamp, collector QueryCollector) (*Ref, error) {
+func Mkdir(ctx context.Context, allocationID, destpath string, allocationVersion int64, ts common.Timestamp, collector QueryCollector) (*Ref, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	if destpath != "/" {
 		destpath = strings.TrimSuffix(filepath.Clean("/"+destpath), "/")
@@ -239,6 +238,7 @@ func Mkdir(ctx context.Context, allocationID, destpath string, ts common.Timesta
 		newRef.CreatedAt = ts
 		newRef.UpdatedAt = ts
 		newRef.FileMetaHash = encryption.Hash(newRef.GetFileMetaHashData())
+		newRef.AllocationVersion = allocationVersion
 		err = db.Create(newRef).Error
 		if err != nil {
 			return nil, err
@@ -624,7 +624,6 @@ func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
 
 func (r *Ref) SaveFileRef(ctx context.Context, collector QueryCollector) error {
 	r.prevID = r.ID
-	r.IsPrecommit = true
 	r.NumUpdates += 1
 	if r.ID > 0 {
 		deleteRef := &Ref{ID: r.ID}
@@ -638,7 +637,6 @@ func (r *Ref) SaveFileRef(ctx context.Context, collector QueryCollector) error {
 
 func (r *Ref) SaveDirRef(ctx context.Context, collector QueryCollector) error {
 	r.prevID = r.ID
-	r.IsPrecommit = true
 	r.NumUpdates += 1
 	if r.ID > 0 {
 		deleteRef := &Ref{ID: r.ID}

@@ -454,7 +454,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		return nil, common.NewErrorf("download_file", "BlockNum or NumBlocks is too large to convert to int")
 	}
 
-	fromPreCommit := fileref.IsPrecommit
+	fromPreCommit := alloc.AllocationVersion == fileref.AllocationVersion
 	if downloadMode == DownloadContentThumb {
 		rbi := &filestore.ReadBlockInput{
 			AllocationID:     alloc.ID,
@@ -464,7 +464,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			NumBlocks:        int(dr.NumBlocks),
 			IsThumbnail:      true,
 			IsPrecommit:      fromPreCommit,
-			FilestoreVersion: fileref.FilestoreVersion,
+			FilestoreVersion: filestore.VERSION,
 		}
 
 		logging.Logger.Info("calling GetFileBlock for thumb", zap.Any("rbi", rbi))
@@ -481,7 +481,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			NumBlocks:        int(dr.NumBlocks),
 			VerifyDownload:   dr.VerifyDownload,
 			IsPrecommit:      fromPreCommit,
-			FilestoreVersion: fileref.FilestoreVersion,
+			FilestoreVersion: filestore.VERSION,
 		}
 		logging.Logger.Info("calling GetFileBlock", zap.Any("rbi", rbi))
 		fileDownloadResponse, err = filestore.GetFileStore().GetFileBlock(rbi)
@@ -638,7 +638,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	var result blobberhttp.CommitResult
-	fileIDMeta := make(map[string]string, 0)
 	versionMarkerStr := r.FormValue("version_marker")
 	if versionMarkerStr == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid version marker passed")
@@ -655,22 +654,24 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	// Move preCommitDir to finalDir
-	err = connectionObj.MoveToFilestore(ctx)
-	if err != nil {
-		return nil, common.NewError("move_to_filestore_error", fmt.Sprintf("Error while moving to filestore: %s", err.Error()))
+	if allocationObj.IsRedeemRequired {
+		err = connectionObj.MoveToFilestore(ctx, allocationObj.AllocationVersion)
+		if err != nil {
+			return nil, common.NewError("move_to_filestore_error", fmt.Sprintf("Error while moving to filestore: %s", err.Error()))
+		}
 	}
 
 	elapsedMoveToFilestore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj
 
 	err = connectionObj.ApplyChanges(
-		ctx, common.Now(), fileIDMeta)
+		ctx, common.Now(), versionMarker.Version)
 	if err != nil {
 		Logger.Error("Error applying changes", zap.Error(err))
 		return nil, err
 	}
 
 	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
-		elapsedGetConnObj
+		elapsedGetConnObj - elapsedMoveToFilestore
 
 	db := datastore.GetStore().GetTransaction(ctx)
 	err = db.Create(&versionMarker).Error
@@ -1354,6 +1355,10 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
+	if !allocationObj.IsRedeemRequired {
+		return nil, common.NewError("invalid_operation", "Last commit is rollback")
+	}
+
 	versionMarkerString := r.FormValue("version_marker")
 	versionMarker := writemarker.VersionMarker{}
 	err = json.Unmarshal([]byte(versionMarkerString), &versionMarker)
@@ -1361,6 +1366,10 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return nil, common.NewErrorf("invalid_parameters",
 			"Invalid parameters. Error parsing the writemarker for commit: %v",
 			err)
+	}
+
+	if versionMarker.IsRepair {
+		return nil, common.NewError("invalid_parameters", "Invalid version marker passed. Rollback marker cannot be a repair marker")
 	}
 
 	var result blobberhttp.CommitResult
@@ -1373,12 +1382,23 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return nil, common.NewError("invalid_parameters", "Invalid version marker passed. Version marker is same as the current version")
 	}
 
+	currentVersionMarker, err := writemarker.GetCurrentVersion(ctx, allocationID)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Error getting the current version marker")
+	}
+	if currentVersionMarker.IsRepair {
+		return nil, common.NewError("invalid_parameters", "Invalid version marker passed. Allocation is in repair mode")
+	}
+	if versionMarker.Version != currentVersionMarker.Version-1 {
+		return nil, common.NewError("invalid_parameters", "Invalid version marker passed. Version marker is not the previous version")
+	}
+
 	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock
 	timeoutCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	defer cancel()
 	c := datastore.GetStore().CreateTransaction(timeoutCtx)
 	txn := datastore.GetStore().GetTransaction(c)
-	err = allocation.ApplyRollback(c, allocationID)
+	err = allocation.ApplyRollback(c, allocationID, allocationObj.AllocationVersion)
 	if err != nil {
 		txn.Rollback()
 		return nil, common.NewError("allocation_rollback_error", "Error applying the rollback for allocation: "+err.Error())
@@ -1394,12 +1414,12 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 
 	alloc.BlobberSizeUsed = alloc.PrevBlobberSizeUsed
 	alloc.UsedSize = alloc.PrevUsedSize
-	alloc.IsRedeemRequired = true
+	alloc.IsRedeemRequired = false
 	alloc.AllocationVersion = versionMarker.Version
 	updateMap := map[string]interface{}{
 		"blobber_size_used":  alloc.BlobberSizeUsed,
 		"used_size":          alloc.UsedSize,
-		"is_redeem_required": true,
+		"is_redeem_required": false,
 		"allocation_version": versionMarker.Version,
 	}
 

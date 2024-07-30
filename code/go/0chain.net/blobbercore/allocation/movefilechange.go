@@ -26,7 +26,7 @@ func (rf *MoveFileChange) DeleteTempFile() error {
 }
 
 func (rf *MoveFileChange) ApplyChange(cctx context.Context,
-	ts common.Timestamp, _ map[string]string, collector reference.QueryCollector) error {
+	ts common.Timestamp, allocationVersion int64, collector reference.QueryCollector) error {
 	srcLookUpHash := reference.GetReferenceLookup(rf.AllocationID, rf.SrcPath)
 	destLookUpHash := reference.GetReferenceLookup(rf.AllocationID, rf.DestPath)
 
@@ -53,13 +53,15 @@ func (rf *MoveFileChange) ApplyChange(cctx context.Context,
 	}
 	rf.Type = srcRef.Type
 
-	parentDir, err := reference.Mkdir(cctx, rf.AllocationID, filepath.Dir(rf.DestPath), ts, collector)
+	parentDir, err := reference.Mkdir(cctx, rf.AllocationID, filepath.Dir(rf.DestPath), allocationVersion, ts, collector)
 	if err != nil {
 		return err
 	}
 
 	deleteRef := &reference.Ref{
-		ID: srcRef.ID,
+		ID:         srcRef.ID,
+		LookupHash: srcLookUpHash,
+		Type:       srcRef.Type,
 	}
 	collector.DeleteRefRecord(deleteRef)
 
@@ -73,6 +75,7 @@ func (rf *MoveFileChange) ApplyChange(cctx context.Context,
 	srcRef.UpdatedAt = ts
 	srcRef.PathLevel = len(strings.Split(strings.TrimRight(rf.DestPath, "/"), "/"))
 	srcRef.FileMetaHash = encryption.Hash(srcRef.GetFileHashData())
+	srcRef.AllocationVersion = allocationVersion
 	collector.CreateRefRecord(srcRef)
 
 	return nil

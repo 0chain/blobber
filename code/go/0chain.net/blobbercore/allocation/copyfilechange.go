@@ -27,7 +27,7 @@ func (rf *CopyFileChange) DeleteTempFile() error {
 }
 
 func (rf *CopyFileChange) ApplyChange(ctx context.Context,
-	ts common.Timestamp, _ map[string]string, collector reference.QueryCollector) error {
+	ts common.Timestamp, allocationVersion int64, collector reference.QueryCollector) error {
 	srcLookUpHash := reference.GetReferenceLookup(rf.AllocationID, rf.SrcPath)
 	destLookUpHash := reference.GetReferenceLookup(rf.AllocationID, rf.DestPath)
 	srcRef, err := reference.GetReferenceByLookupHash(ctx, rf.AllocationID, srcLookUpHash)
@@ -53,7 +53,7 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context,
 		}
 	}
 
-	parentDir, err := reference.Mkdir(ctx, rf.AllocationID, filepath.Dir(rf.DestPath), ts, collector)
+	parentDir, err := reference.Mkdir(ctx, rf.AllocationID, filepath.Dir(rf.DestPath), allocationVersion, ts, collector)
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,7 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context,
 	if rf.CustomMeta != "" {
 		srcRef.CustomMeta = rf.CustomMeta
 	}
-	srcRef.IsPrecommit = true
+	srcRef.AllocationVersion = allocationVersion
 	collector.CreateRefRecord(srcRef)
 
 	return nil
