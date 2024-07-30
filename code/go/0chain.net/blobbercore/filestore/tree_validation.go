@@ -436,7 +436,7 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 	defer f.Close()
 	var toFinalize bool
 	var totalWritten int64
-
+	logging.Logger.Info("hasher_start", zap.String("fileHash", filePathHash), zap.String("fileName", fileName), zap.String("tempFilePath", tempFilePath))
 	for {
 		select {
 		case <-ctx.Done():
@@ -458,7 +458,6 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 		} else if pq.DataBytes == 0 {
 			continue
 		}
-		logging.Logger.Info("hasher_pop", zap.Int64("offset", pq.Offset), zap.Int64("dataBytes", pq.DataBytes), zap.Any("toFinalize", toFinalize), zap.Int64("dataSize", c.dataSize), zap.String("filename", fileName), zap.Int64("totalWritten", totalWritten))
 		bufSize := 2 * BufferSize
 		if pq.DataBytes < int64(bufSize) {
 			bufSize = int(pq.DataBytes)

@@ -324,6 +324,10 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context, allocat
 		useRefCache = true
 		refs = refCache.CreatedRefs
 		deletedRefs = refCache.DeletedRefs
+	} else if refCache != nil && refCache.AllocationVersion != allocationVersion {
+		logging.Logger.Error("Ref cache is not valid", zap.String("allocation_id", a.AllocationID), zap.String("ref_cache_version", fmt.Sprintf("%d", refCache.AllocationVersion)), zap.String("allocation_version", fmt.Sprintf("%d", allocationVersion)))
+	} else {
+		logging.Logger.Error("Ref cache is nil", zap.String("allocation_id", a.AllocationID))
 	}
 	err := deleteFromFileStore(a.AllocationID, deletedRefs, useRefCache)
 	if err != nil {
@@ -376,7 +380,7 @@ func deleteFromFileStore(allocationID string, deletedRefs []*reference.Ref, useR
 		db := datastore.GetStore().GetTransaction(ctx)
 		if !useRefCache {
 			err := db.Model(&reference.Ref{}).Unscoped().Select("lookup_hash").
-				Where("allocation_id=? AND type=? AND deleted_at is not NULL", allocationID, true, reference.FILE).
+				Where("allocation_id=? AND type=? AND deleted_at is not NULL", allocationID, reference.FILE).
 				Find(&results).Error
 			if err != nil && err != gorm.ErrRecordNotFound {
 				logging.Logger.Error("DeleteFromFileStore", zap.Error(err))

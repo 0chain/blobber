@@ -2,6 +2,7 @@ package reference
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"math"
 	"path/filepath"
@@ -154,45 +155,51 @@ func NewFileRef() *Ref {
 
 // Mkdir create dirs if they don't exits. do nothing if dir exists. last dir will be return without child
 func Mkdir(ctx context.Context, allocationID, destpath string, allocationVersion int64, ts common.Timestamp, collector QueryCollector) (*Ref, error) {
+	var err error
 	db := datastore.GetStore().GetTransaction(ctx)
 	if destpath != "/" {
 		destpath = strings.TrimSuffix(filepath.Clean("/"+destpath), "/")
 	}
 	destLookupHash := GetReferenceLookup(allocationID, destpath)
-	var destRef Ref
+	var destRef *Ref
 	cachedRef := collector.GetFromCache(destLookupHash)
 	if cachedRef != nil {
-		destRef = *cachedRef
+		destRef = cachedRef
 	} else {
-		err := db.Select("id", "type").Where(&Ref{LookupHash: destLookupHash}).Take(&destRef).Error
+		destRef, err = GetReferenceByLookupHashWithNewTransaction(destLookupHash)
 		if err != nil && err != gorm.ErrRecordNotFound {
 			return nil, err
 		}
 		destRef.LookupHash = destLookupHash
 		if destRef.ID > 0 {
-			defer collector.AddToCache(&destRef)
+			defer collector.AddToCache(destRef)
 		}
 	}
 	if destRef.ID > 0 {
 		if destRef.Type != DIRECTORY {
 			return nil, common.NewError("invalid_dir_tree", "parent path is not a directory")
 		}
-		return &destRef, nil
+		return destRef, nil
 	}
 	fields, err := common.GetAllParentPaths(destpath)
 	if err != nil {
 		logging.Logger.Error("mkdir: failed to get all parent paths", zap.Error(err), zap.String("destpath", destpath))
 		return nil, err
 	}
-	tx := db.Model(&Ref{}).Select("id", "path", "type")
 	parentLookupHashes := make([]string, 0, len(fields))
-	for i := 0; i < len(fields); i++ {
-		parentLookupHashes = append(parentLookupHashes, GetReferenceLookup(allocationID, fields[i]))
-		tx = tx.Or(Ref{LookupHash: parentLookupHashes[i]})
-	}
-
 	var parentRefs []*Ref
-	err = tx.Order("path").Find(&parentRefs).Error
+
+	err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		txn := datastore.GetStore().GetTransaction(ctx)
+		tx := txn.Model(&Ref{}).Select("id", "path", "type")
+		for i := 0; i < len(fields); i++ {
+			parentLookupHashes = append(parentLookupHashes, GetReferenceLookup(allocationID, fields[i]))
+			tx = tx.Or(Ref{LookupHash: parentLookupHashes[i]})
+		}
+		return tx.Order("path").Find(&parentRefs).Error
+	}, &sql.TxOptions{
+		ReadOnly: true,
+	})
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return nil, err
 	}
@@ -217,8 +224,10 @@ func Mkdir(ctx context.Context, allocationID, destpath string, allocationVersion
 		fields = append(fields, destpath)
 		parentLookupHashes = append(parentLookupHashes, destLookupHash)
 	}
+	logging.Logger.Info("mkdir: creating directory")
+	collector.LockTransaction()
+	defer collector.UnlockTransaction()
 	for i := len(parentRefs); i < len(fields); i++ {
-		logging.Logger.Info("mkdir: creating directory", zap.String("path", fields[i]), zap.Any("parentID", parentID), zap.Int("pathLevel", i+1))
 		var parentIDRef *int64
 		if parentID > 0 {
 			parentIDRef = &parentID
@@ -749,4 +758,32 @@ func IsDirectoryEmpty(ctx context.Context, id int64) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func GetReferenceByLookupHashWithNewTransaction(lookupHash string) (*Ref, error) {
+	var ref *Ref
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		txn := datastore.GetStore().GetTransaction(ctx)
+		return txn.Model(&Ref{}).Select("id", "type").Where("lookup_hash = ?", lookupHash).Take(&ref).Error
+	}, &sql.TxOptions{
+		ReadOnly: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return ref, nil
+}
+
+func GetFullReferenceByLookupHashWithNewTransaction(lookupHash string) (*Ref, error) {
+	var ref *Ref
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		txn := datastore.GetStore().GetTransaction(ctx)
+		return txn.Model(&Ref{}).Where("lookup_hash = ?", lookupHash).Take(&ref).Error
+	}, &sql.TxOptions{
+		ReadOnly: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return ref, nil
 }

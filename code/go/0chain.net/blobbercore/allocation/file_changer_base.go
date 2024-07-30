@@ -8,6 +8,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 )
 
 // swagger:model BaseFileChanger
@@ -117,6 +119,9 @@ func (fc *BaseFileChanger) DeleteTempFile() error {
 
 func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context, mut *sync.Mutex) error {
 
+	if fc.LookupHash == "" {
+		fc.LookupHash = reference.GetReferenceLookup(fc.AllocationID, fc.Path)
+	}
 	if fc.ThumbnailSize > 0 {
 		fileInputData := &filestore.FileInputData{}
 		fileInputData.Name = fc.ThumbnailFilename
@@ -139,6 +144,7 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context, mut *sync.Mute
 	fileInputData.Size = fc.Size
 	fileInputData.Hasher = GetHasher(fc.ConnectionID, fc.LookupHash)
 	if fileInputData.Hasher == nil {
+		logging.Logger.Error("CommitToFileStore: Error getting hasher", zap.String("connection_id", fc.ConnectionID), zap.String("lookup_hash", fc.LookupHash))
 		return common.NewError("file_store_error", "Error getting hasher")
 	}
 	_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fc.ConnectionID, fileInputData)

@@ -2,11 +2,13 @@ package allocation
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"path/filepath"
 	"strings"
 	"sync"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
@@ -28,31 +30,43 @@ func (rf *CopyFileChange) DeleteTempFile() error {
 
 func (rf *CopyFileChange) ApplyChange(ctx context.Context,
 	ts common.Timestamp, allocationVersion int64, collector reference.QueryCollector) error {
-	collector.LockTransaction()
-	defer collector.UnlockTransaction()
 	srcLookUpHash := reference.GetReferenceLookup(rf.AllocationID, rf.SrcPath)
 	destLookUpHash := reference.GetReferenceLookup(rf.AllocationID, rf.DestPath)
-	srcRef, err := reference.GetReferenceByLookupHash(ctx, rf.AllocationID, srcLookUpHash)
-	if err != nil {
-		return err
-	}
-	exist, err := reference.IsRefExist(ctx, rf.AllocationID, rf.DestPath)
-	if err != nil {
-		return err
-	}
-	if exist {
-		return common.NewError("invalid_reference_path", "file already exists")
-	}
 
-	rf.Type = srcRef.Type
-	if srcRef.Type == reference.DIRECTORY {
-		isEmpty, err := reference.IsDirectoryEmpty(ctx, srcRef.ID)
+	var (
+		srcRef *reference.Ref
+		err    error
+	)
+
+	err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		srcRef, err = reference.GetReferenceByLookupHash(ctx, rf.AllocationID, srcLookUpHash)
 		if err != nil {
 			return err
 		}
-		if !isEmpty {
-			return common.NewError("invalid_reference_path", "directory is not empty")
+		exist, err := reference.IsRefExist(ctx, rf.AllocationID, rf.DestPath)
+		if err != nil {
+			return err
 		}
+		if exist {
+			return common.NewError("invalid_reference_path", "file already exists")
+		}
+
+		rf.Type = srcRef.Type
+		if srcRef.Type == reference.DIRECTORY {
+			isEmpty, err := reference.IsDirectoryEmpty(ctx, srcRef.ID)
+			if err != nil {
+				return err
+			}
+			if !isEmpty {
+				return common.NewError("invalid_reference_path", "directory is not empty")
+			}
+		}
+		return nil
+	}, &sql.TxOptions{
+		ReadOnly: true,
+	})
+	if err != nil {
+		return err
 	}
 
 	parentDir, err := reference.Mkdir(ctx, rf.AllocationID, filepath.Dir(rf.DestPath), allocationVersion, ts, collector)

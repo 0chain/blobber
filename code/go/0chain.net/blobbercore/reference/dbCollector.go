@@ -5,6 +5,8 @@ import (
 	"sync"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 )
 
 type QueryCollector interface {
@@ -24,6 +26,7 @@ type dbCollector struct {
 	refCache    RefCache
 	refMap      map[string]*Ref
 	txnLock     sync.Mutex
+	lock        sync.Mutex
 }
 
 type RefCache struct {
@@ -49,17 +52,21 @@ func NewCollector(changes int) QueryCollector {
 }
 
 func (dc *dbCollector) CreateRefRecord(ref *Ref) {
+	dc.lock.Lock()
 	dc.createdRefs = append(dc.createdRefs, ref)
 	if ref.Type == FILE {
 		dc.refCache.CreatedRefs = append(dc.refCache.CreatedRefs, ref)
 	}
+	dc.lock.Unlock()
 }
 
 func (dc *dbCollector) DeleteRefRecord(ref *Ref) {
+	dc.lock.Lock()
 	dc.deletedRefs = append(dc.deletedRefs, ref)
 	if ref.Type == FILE {
 		dc.refCache.DeletedRefs = append(dc.refCache.DeletedRefs, ref)
 	}
+	dc.lock.Unlock()
 }
 
 func (dc *dbCollector) DeleteLookupRefRecord(ref *Ref) {
@@ -81,15 +88,20 @@ func (dc *dbCollector) Finalize(ctx context.Context, allocationID string, alloca
 		}
 	}
 	dc.refCache.AllocationVersion = allocationVersion
-	cacheMap[allocationID] = &dc.refCache
+	cacheMap[allocationID] = &(dc.refCache)
+	logging.Logger.Info("Finalize", zap.Int("created", len(dc.createdRefs)), zap.Int("deleted", len(dc.deletedRefs)), zap.Int64("allocation_version", cacheMap[allocationID].AllocationVersion), zap.String("allocation_id", allocationID), zap.Bool("cache_map", cacheMap[allocationID] != nil))
 	return nil
 }
 
 func (dc *dbCollector) AddToCache(ref *Ref) {
+	dc.lock.Lock()
 	dc.refMap[ref.LookupHash] = ref
+	dc.lock.Unlock()
 }
 
 func (dc *dbCollector) GetFromCache(lookupHash string) *Ref {
+	dc.lock.Lock()
+	defer dc.lock.Unlock()
 	return dc.refMap[lookupHash]
 }
 
