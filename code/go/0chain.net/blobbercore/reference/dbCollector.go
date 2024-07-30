@@ -18,7 +18,7 @@ type QueryCollector interface {
 type dbCollector struct {
 	createdRefs []*Ref
 	deletedRefs []*Ref
-	refCache    *RefCache
+	refCache    RefCache
 	refMap      map[string]*Ref
 }
 
@@ -36,7 +36,7 @@ func NewCollector(changes int) QueryCollector {
 	return &dbCollector{
 		createdRefs: make([]*Ref, 0, changes*2),
 		deletedRefs: make([]*Ref, 0, changes*2),
-		refCache: &RefCache{
+		refCache: RefCache{
 			CreatedRefs: make([]*Ref, 0, changes),
 			DeletedRefs: make([]*Ref, 0, changes),
 		},
@@ -77,7 +77,7 @@ func (dc *dbCollector) Finalize(ctx context.Context, allocationID string, alloca
 		}
 	}
 	dc.refCache.AllocationVersion = allocationVersion
-	cacheMap[allocationID] = dc.refCache
+	cacheMap[allocationID] = &dc.refCache
 	return nil
 }
 

@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -15,6 +17,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
 // swagger:model UploadFileChanger
@@ -30,7 +33,7 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 	if nf.AllocationID == "" {
 		return common.NewError("invalid_parameter", "allocation_id is required")
 	}
-
+	now := time.Now()
 	parentPath := filepath.Dir(nf.Path)
 	nf.LookupHash = reference.GetReferenceLookup(nf.AllocationID, nf.Path)
 	newFile := &reference.Ref{
@@ -62,23 +65,19 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 		AllocationVersion:       allocationVersion,
 	}
 	newFile.FileMetaHash = encryption.Hash(newFile.GetFileMetaHashData())
-
+	elapsedNewFile := time.Since(now)
 	// find if ref exists
 	var refResult struct {
 		ID   int64
 		Type string
 	}
-	cachedRef := collector.GetFromCache(newFile.LookupHash)
-	if cachedRef != nil {
-		refResult.ID = cachedRef.ID
-		refResult.Type = cachedRef.Type
-	} else {
-		db := datastore.GetStore().GetTransaction(ctx)
-		err := db.Model(&reference.Ref{}).Select("id", "type").Where("lookup_hash = ?", newFile.LookupHash).Take(&refResult).Error
-		if err != nil && err != gorm.ErrRecordNotFound {
-			return err
-		}
+
+	db := datastore.GetStore().GetTransaction(ctx)
+	err := db.Model(&reference.Ref{}).Select("id", "type").Where("lookup_hash = ?", newFile.LookupHash).Take(&refResult).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return err
 	}
+
 	if refResult.ID > 0 {
 		if !nf.CanUpdate {
 			return common.NewError("prohibited_allocation_file_options", "Cannot update data in this allocation.")
@@ -93,6 +92,7 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 		}
 		collector.DeleteRefRecord(deleteRecord)
 	}
+	elapsedNewFileRecord := time.Since(now) - elapsedNewFile
 	// get parent id
 	parent := filepath.Dir(nf.Path)
 	// create or get parent directory
@@ -100,9 +100,11 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 	if err != nil {
 		return err
 	}
+	elapsedMkdir := time.Since(now) - elapsedNewFileRecord - elapsedNewFile
 	newFile.ParentID = &parentRef.ID
 	collector.CreateRefRecord(newFile)
-
+	elapsedCreateRefRecord := time.Since(now) - elapsedMkdir - elapsedNewFileRecord - elapsedNewFile
+	logging.Logger.Info("UploadFileChanger", zap.Duration("elapsedNewFile", elapsedNewFile), zap.Duration("elapsedNewFileRecord", elapsedNewFileRecord), zap.Duration("elapsedMkdir", elapsedMkdir), zap.Duration("elapsedCreateRefRecord", elapsedCreateRefRecord), zap.Duration("elapsedTotal", time.Since(now)))
 	return err
 }
 
