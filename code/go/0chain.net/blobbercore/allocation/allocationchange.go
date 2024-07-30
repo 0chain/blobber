@@ -257,6 +257,7 @@ func (cc *AllocationChangeCollector) ComputeProperties() {
 
 func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context,
 	ts common.Timestamp, allocationVersion int64) error {
+	now := time.Now()
 	collector := reference.NewCollector(len(cc.Changes))
 	for idx, change := range cc.Changes {
 		change.AllocationID = cc.AllocationID
@@ -266,7 +267,11 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context,
 			return err
 		}
 	}
-	return collector.Finalize(ctx, cc.AllocationID, allocationVersion)
+	elapsedApplyChanges := time.Since(now)
+	err := collector.Finalize(ctx, cc.AllocationID, allocationVersion)
+	elapsedFinalize := time.Since(now) - elapsedApplyChanges
+	logging.Logger.Info("ApplyChanges", zap.String("allocation_id", cc.AllocationID), zap.Duration("apply_changes", elapsedApplyChanges), zap.Duration("finalize", elapsedFinalize), zap.Int("changes", len(cc.Changes)))
+	return err
 }
 
 func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error {
