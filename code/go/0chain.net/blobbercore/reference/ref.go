@@ -170,12 +170,12 @@ func Mkdir(ctx context.Context, allocationID, destpath string, allocationVersion
 		if err != nil && err != gorm.ErrRecordNotFound {
 			return nil, err
 		}
-		destRef.LookupHash = destLookupHash
-		if destRef.ID > 0 {
+		if destRef != nil {
+			destRef.LookupHash = destLookupHash
 			defer collector.AddToCache(destRef)
 		}
 	}
-	if destRef.ID > 0 {
+	if destRef != nil {
 		if destRef.Type != DIRECTORY {
 			return nil, common.NewError("invalid_dir_tree", "parent path is not a directory")
 		}
