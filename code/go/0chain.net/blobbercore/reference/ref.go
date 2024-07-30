@@ -289,7 +289,7 @@ func GetReferencesByName(ctx context.Context, allocationID, name string) (refs [
 	}
 	err = db.Model(&Ref{}).
 		Where("allocation_id = ? AND to_tsvector('english', name) @@ to_tsquery('english', ?)", allocationID, tsQuery).
-		Limit(10).
+		Limit(20).
 		Find(&refs).Error
 	if err != nil {
 		return nil, err
