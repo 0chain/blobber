@@ -2,6 +2,7 @@ package reference
 
 import (
 	"context"
+	"sync"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 )
@@ -13,6 +14,8 @@ type QueryCollector interface {
 	AddToCache(ref *Ref)
 	GetFromCache(lookupHash string) *Ref
 	DeleteLookupRefRecord(ref *Ref)
+	LockTransaction()
+	UnlockTransaction()
 }
 
 type dbCollector struct {
@@ -20,6 +23,7 @@ type dbCollector struct {
 	deletedRefs []*Ref
 	refCache    RefCache
 	refMap      map[string]*Ref
+	txnLock     sync.Mutex
 }
 
 type RefCache struct {
@@ -95,4 +99,12 @@ func GetRefCache(allocationID string) *RefCache {
 
 func DeleteRefCache(allocationID string) {
 	cacheMap[allocationID] = nil
+}
+
+func (dc *dbCollector) LockTransaction() {
+	dc.txnLock.Lock()
+}
+
+func (dc *dbCollector) UnlockTransaction() {
+	dc.txnLock.Unlock()
 }

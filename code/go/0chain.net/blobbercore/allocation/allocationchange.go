@@ -259,16 +259,23 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context,
 	ts common.Timestamp, allocationVersion int64) error {
 	now := time.Now()
 	collector := reference.NewCollector(len(cc.Changes))
+	timeoutctx, cancel := context.WithTimeout(ctx, time.Second*60)
+	defer cancel()
+	eg, _ := errgroup.WithContext(timeoutctx)
+	eg.SetLimit(10)
 	for idx, change := range cc.Changes {
-		change.AllocationID = cc.AllocationID
-		changeProcessor := cc.AllocationChanges[idx]
-		err := changeProcessor.ApplyChange(ctx, ts, allocationVersion, collector)
-		if err != nil {
-			return err
-		}
+		eg.Go(func() error {
+			change.AllocationID = cc.AllocationID
+			changeProcessor := cc.AllocationChanges[idx]
+			return changeProcessor.ApplyChange(ctx, ts, allocationVersion, collector)
+		})
+	}
+	err := eg.Wait()
+	if err != nil {
+		return err
 	}
 	elapsedApplyChanges := time.Since(now)
-	err := collector.Finalize(ctx, cc.AllocationID, allocationVersion)
+	err = collector.Finalize(ctx, cc.AllocationID, allocationVersion)
 	elapsedFinalize := time.Since(now) - elapsedApplyChanges
 	logging.Logger.Info("ApplyChanges", zap.String("allocation_id", cc.AllocationID), zap.Duration("apply_changes", elapsedApplyChanges), zap.Duration("finalize", elapsedFinalize), zap.Int("changes", len(cc.Changes)))
 	return err

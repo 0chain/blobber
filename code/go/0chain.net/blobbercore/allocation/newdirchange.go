@@ -24,6 +24,8 @@ type NewDir struct {
 
 func (nf *NewDir) ApplyChange(ctx context.Context,
 	ts common.Timestamp, allocationVersion int64, collector reference.QueryCollector) error {
+	collector.LockTransaction()
+	defer collector.UnlockTransaction()
 	parentPath := filepath.Dir(nf.Path)
 	parentPathLookup := reference.GetReferenceLookup(nf.AllocationID, parentPath)
 	parentRef, err := reference.GetReferenceByLookupHash(ctx, nf.AllocationID, parentPathLookup)

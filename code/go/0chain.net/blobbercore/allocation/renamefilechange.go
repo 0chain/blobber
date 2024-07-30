@@ -33,7 +33,8 @@ func (rf *RenameFileChange) DeleteTempFile() error {
 
 func (rf *RenameFileChange) applyChange(ctx context.Context,
 	ts common.Timestamp, allocationVersion int64, collector reference.QueryCollector) error {
-
+	collector.LockTransaction()
+	defer collector.UnlockTransaction()
 	if rf.Path == "/" {
 		return common.NewError("invalid_operation", "cannot rename root path")
 	}

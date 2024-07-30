@@ -2,6 +2,7 @@ package allocation
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"path/filepath"
 	"strings"
@@ -72,8 +73,12 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 		Type string
 	}
 
-	db := datastore.GetStore().GetTransaction(ctx)
-	err := db.Model(&reference.Ref{}).Select("id", "type").Where("lookup_hash = ?", newFile.LookupHash).Take(&refResult).Error
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		tx := datastore.GetStore().GetTransaction(ctx)
+		return tx.Model(&reference.Ref{}).Select("id", "type").Where("lookup_hash = ?", newFile.LookupHash).Take(&refResult).Error
+	}, &sql.TxOptions{
+		ReadOnly: true,
+	})
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return err
 	}
@@ -96,13 +101,16 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 	// get parent id
 	parent := filepath.Dir(nf.Path)
 	// create or get parent directory
+	collector.LockTransaction()
 	parentRef, err := reference.Mkdir(ctx, nf.AllocationID, parent, allocationVersion, ts, collector)
 	if err != nil {
+		collector.UnlockTransaction()
 		return err
 	}
 	elapsedMkdir := time.Since(now) - elapsedNewFileRecord - elapsedNewFile
 	newFile.ParentID = &parentRef.ID
 	collector.CreateRefRecord(newFile)
+	collector.UnlockTransaction()
 	elapsedCreateRefRecord := time.Since(now) - elapsedMkdir - elapsedNewFileRecord - elapsedNewFile
 	logging.Logger.Info("UploadFileChanger", zap.Duration("elapsedNewFile", elapsedNewFile), zap.Duration("elapsedNewFileRecord", elapsedNewFileRecord), zap.Duration("elapsedMkdir", elapsedMkdir), zap.Duration("elapsedCreateRefRecord", elapsedCreateRefRecord), zap.Duration("elapsedTotal", time.Since(now)))
 	return err

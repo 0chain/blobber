@@ -99,7 +99,7 @@ func (store *postgresStore) GetTransaction(ctx context.Context) *EnhancedDB {
 	return nil
 }
 
-func (store *postgresStore) WithNewTransaction(f func(ctx context.Context) error) error {
+func (store *postgresStore) WithNewTransaction(f func(ctx context.Context) error, opts ...*sql.TxOptions) error {
 	timeoutctx, cancel := context.WithTimeout(context.TODO(), 45*time.Second)
 	defer cancel()
 	ctx := store.CreateTransaction(timeoutctx)

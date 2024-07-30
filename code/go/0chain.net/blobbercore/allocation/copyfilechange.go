@@ -28,6 +28,8 @@ func (rf *CopyFileChange) DeleteTempFile() error {
 
 func (rf *CopyFileChange) ApplyChange(ctx context.Context,
 	ts common.Timestamp, allocationVersion int64, collector reference.QueryCollector) error {
+	collector.LockTransaction()
+	defer collector.UnlockTransaction()
 	srcLookUpHash := reference.GetReferenceLookup(rf.AllocationID, rf.SrcPath)
 	destLookUpHash := reference.GetReferenceLookup(rf.AllocationID, rf.DestPath)
 	srcRef, err := reference.GetReferenceByLookupHash(ctx, rf.AllocationID, srcLookUpHash)
