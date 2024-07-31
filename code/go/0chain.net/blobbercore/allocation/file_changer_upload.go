@@ -72,6 +72,7 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 		ID   int64
 		Type string
 	}
+	logging.Logger.Info("FileUpload: ", zap.String("path", nf.Path), zap.String("lookup_hash", newFile.LookupHash), zap.Int64("allocation_version", allocationVersion))
 
 	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		tx := datastore.GetStore().GetTransaction(ctx)

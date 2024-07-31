@@ -268,9 +268,10 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context,
 		case <-egCtx.Done():
 			return egCtx.Err()
 		default:
+			changeIndex := idx
 			eg.Go(func() error {
 				change.AllocationID = cc.AllocationID
-				changeProcessor := cc.AllocationChanges[idx]
+				changeProcessor := cc.AllocationChanges[changeIndex]
 				return changeProcessor.ApplyChange(ctx, ts, allocationVersion, collector)
 			})
 		}
