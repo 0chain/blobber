@@ -98,6 +98,7 @@ func (dc *dbCollector) Finalize(ctx context.Context, allocationID string, alloca
 
 func (dc *dbCollector) AddToCache(ref *Ref) {
 	dc.lock.Lock()
+	logging.Logger.Info("AddToCache", zap.String("lookup_hash", ref.LookupHash))
 	dc.refMap[ref.LookupHash] = ref
 	dc.lock.Unlock()
 }

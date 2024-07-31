@@ -193,12 +193,15 @@ func Mkdir(ctx context.Context, allocationID, destpath string, allocationVersion
 	var parentRefs []*Ref
 	collector.LockTransaction()
 	defer collector.UnlockTransaction()
+	logging.Logger.Info("checkingCache: ", zap.String("destLookupHash", destLookupHash), zap.String("destpath", destpath))
 	cachedRef = collector.GetFromCache(destLookupHash)
 	if cachedRef != nil {
 		if cachedRef.Type != DIRECTORY {
 			return nil, common.NewError("invalid_dir_tree", "parent path is not a directory")
 		}
 		return cachedRef, nil
+	} else {
+		logging.Logger.Info("noEntryFound: ", zap.String("destLookupHash", destLookupHash), zap.String("destpath", destpath))
 	}
 
 	tx := db.Model(&Ref{}).Select("id", "path", "type")
@@ -214,7 +217,6 @@ func Mkdir(ctx context.Context, allocationID, destpath string, allocationVersion
 		parentPath = "/"
 	)
 	if len(parentRefs) > 0 {
-		logging.Logger.Info("mkdir:parentRefs: ", zap.Any("parentRefs", parentRefs))
 		parentID = parentRefs[len(parentRefs)-1].ID
 		parentPath = parentRefs[len(parentRefs)-1].Path
 		for i := 0; i < len(parentRefs); i++ {
