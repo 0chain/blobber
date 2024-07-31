@@ -246,8 +246,14 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 	)
 	path = filepath.Clean(path)
 	tx := datastore.GetStore().GetTransaction(ctx)
-	pathLevel := len(strings.Split(strings.TrimSuffix(path, "/"), "/")) + 1
-	if pathLevel == level {
+	pathLevel := len(strings.Split(strings.TrimSuffix(path, "/"), "/"))
+	if pageLimit == 1 && offsetPath == "" && (pathLevel == level || level == 0) && _type != FILE {
+		pRefs = append(pRefs, *parentRef)
+		refs = &pRefs
+		newOffsetPath = parentRef.Path
+	}
+
+	if pathLevel+1 == level {
 		dbQuery = tx.Model(&Ref{}).Where("parent_id = ?", parentRef.ID)
 		if _type != "" {
 			dbQuery = dbQuery.Where("type = ?", _type)
