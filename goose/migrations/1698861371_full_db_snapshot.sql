@@ -864,10 +864,10 @@ CREATE INDEX connection_id_index ON allocation_changes USING btree (connection_i
 
 
  --
- -- Name: connection_id_lookup_hash_constraint; Type: UNIQUE CONSTRAINT; Schema: public; Owner: blobber_user
+ -- Name: connection_id_lookup_hash; Type: UNIQUE CONSTRAINT; Schema: public; Owner: blobber_user
  --   
 
-ALTER TABLE ONLY allocation_changes ADD CONSTRAINT  connection_id_lookup_hash_constraint UNIQUE(connection_id,lookup_hash);
+ALTER TABLE ONLY allocation_changes ADD CONSTRAINT connection_id_lookup_hash UNIQUE(connection_id,lookup_hash);
 
 --
 -- Name: file_stats fk_file_stats_ref; Type: FK CONSTRAINT; Schema: public; Owner: blobber_user
