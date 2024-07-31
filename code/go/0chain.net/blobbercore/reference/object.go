@@ -28,7 +28,7 @@ func DeleteObject(ctx context.Context, allocationID, lookupHash, _type string, t
 		}
 		_type = ref.Type
 	}
-	err := db.Exec("UPDATE reference_objects SET deleted_at=? WHERE lookup_hash=?", allocationVersion, sql.NullTime{
+	err := db.Exec("UPDATE reference_objects SET deleted_at=? WHERE lookup_hash=?", sql.NullTime{
 		Time:  common.ToTime(ts),
 		Valid: true,
 	}, lookupHash).Error

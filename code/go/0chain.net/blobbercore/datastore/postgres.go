@@ -11,6 +11,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"moul.io/zapgorm2"
 )
 
 // postgresStore store implementation for postgres
@@ -46,6 +47,8 @@ func (p *postgresStore) GetPgDB() (*gorm.DB, error) {
 }
 
 func (store *postgresStore) Open() error {
+	gormLogger := zapgorm2.New(logging.Logger)
+	gormLogger.SetAsDefault()
 	db, err := gorm.Open(postgres.Open(fmt.Sprintf(
 		"host=%v port=%v user=%v dbname=%v password=%v sslmode=disable",
 		config.Configuration.DBHost, config.Configuration.DBPort,
@@ -53,6 +56,7 @@ func (store *postgresStore) Open() error {
 		config.Configuration.DBPassword)), &gorm.Config{
 		SkipDefaultTransaction: true, // https://gorm.io/docs/performance.html#Disable-Default-Transaction
 		PrepareStmt:            true, //https://gorm.io/docs/performance.html#Caches-Prepared-Statement
+		Logger:                 gormLogger,
 	})
 	if err != nil {
 		return common.NewErrorf("db_open_error", "Error opening the DB connection: %v", err)
