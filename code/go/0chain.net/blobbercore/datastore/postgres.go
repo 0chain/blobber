@@ -48,6 +48,9 @@ func (p *postgresStore) GetPgDB() (*gorm.DB, error) {
 
 func (store *postgresStore) Open() error {
 	gormLogger := zapgorm2.New(logging.Logger)
+	gormLogger.SlowThreshold = 100 * time.Millisecond
+	gormLogger.IgnoreRecordNotFoundError = true
+	gormLogger.SkipCallerLookup = true
 	gormLogger.SetAsDefault()
 	db, err := gorm.Open(postgres.Open(fmt.Sprintf(
 		"host=%v port=%v user=%v dbname=%v password=%v sslmode=disable",
