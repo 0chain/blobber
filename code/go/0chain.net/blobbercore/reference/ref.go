@@ -142,7 +142,7 @@ type PaginatedRef struct { //Gorm smart select fields.
 
 // GetReferenceLookup hash(allocationID + ":" + path)
 func GetReferenceLookup(allocationID, path string) string {
-	return encryption.FastHash(allocationID + ":" + path)
+	return encryption.Hash(allocationID + ":" + path)
 }
 
 func NewDirectoryRef() *Ref {
