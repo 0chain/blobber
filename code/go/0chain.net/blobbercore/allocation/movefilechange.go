@@ -83,7 +83,7 @@ func (rf *MoveFileChange) ApplyChange(cctx context.Context,
 	srcRef.CreatedAt = ts
 	srcRef.UpdatedAt = ts
 	srcRef.PathLevel = len(strings.Split(strings.TrimRight(rf.DestPath, "/"), "/"))
-	srcRef.FileMetaHash = encryption.Hash(srcRef.GetFileHashData())
+	srcRef.FileMetaHash = encryption.FastHash(srcRef.GetFileHashData())
 	srcRef.AllocationVersion = allocationVersion
 	collector.CreateRefRecord(srcRef)
 

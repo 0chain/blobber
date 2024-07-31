@@ -415,9 +415,17 @@ type CommitHasher struct {
 	dataSize      int64
 }
 
+var (
+	md5Pool = &sync.Pool{
+		New: func() interface{} {
+			return md5.New()
+		},
+	}
+)
+
 func NewCommitHasher(dataSize int64) *CommitHasher {
 	c := new(CommitHasher)
-	c.md5hasher = md5.New()
+	c.md5hasher = md5Pool.Get().(hash.Hash)
 	c.isInitialized = true
 	c.doneChan = make(chan struct{})
 	c.dataSize = dataSize
@@ -570,5 +578,8 @@ func (c *CommitHasher) GetValidationMerkleRoot() string {
 }
 
 func (c *CommitHasher) GetMd5Hash() string {
-	return hex.EncodeToString(c.md5hasher.Sum(nil))
+	hash := hex.EncodeToString(c.md5hasher.Sum(nil))
+	c.md5hasher.Reset()
+	md5Pool.Put(c.md5hasher)
+	return hash
 }

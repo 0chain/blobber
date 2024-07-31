@@ -142,7 +142,7 @@ type PaginatedRef struct { //Gorm smart select fields.
 
 // GetReferenceLookup hash(allocationID + ":" + path)
 func GetReferenceLookup(allocationID, path string) string {
-	return encryption.Hash(allocationID + ":" + path)
+	return encryption.FastHash(allocationID + ":" + path)
 }
 
 func NewDirectoryRef() *Ref {
@@ -189,17 +189,14 @@ func Mkdir(ctx context.Context, allocationID, destpath string, allocationVersion
 	parentLookupHashes := make([]string, 0, len(fields))
 	var parentRefs []*Ref
 
-	err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-		txn := datastore.GetStore().GetTransaction(ctx)
-		tx := txn.Model(&Ref{}).Select("id", "path", "type")
-		for i := 0; i < len(fields); i++ {
-			parentLookupHashes = append(parentLookupHashes, GetReferenceLookup(allocationID, fields[i]))
-			tx = tx.Or(Ref{LookupHash: parentLookupHashes[i]})
-		}
-		return tx.Order("path").Find(&parentRefs).Error
-	}, &sql.TxOptions{
-		ReadOnly: true,
-	})
+	tx := db.Model(&Ref{}).Select("id", "path", "type")
+	for i := 0; i < len(fields); i++ {
+		parentLookupHashes = append(parentLookupHashes, GetReferenceLookup(allocationID, fields[i]))
+		tx = tx.Or(Ref{LookupHash: parentLookupHashes[i]})
+	}
+	collector.LockTransaction()
+	defer collector.UnlockTransaction()
+	err = tx.Order("path").Find(&parentRefs).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return nil, err
 	}
@@ -225,8 +222,6 @@ func Mkdir(ctx context.Context, allocationID, destpath string, allocationVersion
 		parentLookupHashes = append(parentLookupHashes, destLookupHash)
 	}
 	logging.Logger.Info("mkdir: creating directory")
-	collector.LockTransaction()
-	defer collector.UnlockTransaction()
 	for i := len(parentRefs); i < len(fields); i++ {
 		var parentIDRef *int64
 		if parentID > 0 {
@@ -246,7 +241,7 @@ func Mkdir(ctx context.Context, allocationID, destpath string, allocationVersion
 		newRef.LookupHash = parentLookupHashes[i]
 		newRef.CreatedAt = ts
 		newRef.UpdatedAt = ts
-		newRef.FileMetaHash = encryption.Hash(newRef.GetFileMetaHashData())
+		newRef.FileMetaHash = encryption.FastHash(newRef.GetFileMetaHashData())
 		newRef.AllocationVersion = allocationVersion
 		err = db.Create(newRef).Error
 		if err != nil {

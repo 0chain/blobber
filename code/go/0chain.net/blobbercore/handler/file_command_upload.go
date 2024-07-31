@@ -221,7 +221,7 @@ func (cmd *UploadFileCommand) AddChange(ctx context.Context) error {
 	connectionInput, _ := cmd.fileChanger.Marshal()
 	cmd.allocationChange.LookupHash = reference.GetReferenceLookup(cmd.fileChanger.AllocationID, cmd.fileChanger.Path)
 	cmd.allocationChange.Input = connectionInput
-	logging.Logger.Info("AddChange: ", zap.String("connectionID", cmd.allocationChange.ConnectionID))
+	logging.Logger.Info("AddChange: ", zap.String("connectionID", cmd.allocationChange.ConnectionID), zap.String("lookupHash", cmd.allocationChange.LookupHash))
 	return cmd.allocationChange.Create(ctx)
 }
 

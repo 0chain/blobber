@@ -46,7 +46,7 @@ func (nf *NewDir) ApplyChange(ctx context.Context,
 		newRef.LookupHash = reference.GetReferenceLookup(nf.AllocationID, nf.Path)
 		newRef.CreatedAt = ts
 		newRef.UpdatedAt = ts
-		newRef.FileMetaHash = encryption.Hash(newRef.GetFileMetaHashData())
+		newRef.FileMetaHash = encryption.FastHash(newRef.GetFileMetaHashData())
 		if nf.CustomMeta != "" {
 			newRef.CustomMeta = nf.CustomMeta
 		}

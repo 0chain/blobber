@@ -76,14 +76,17 @@ func (dc *dbCollector) DeleteLookupRefRecord(ref *Ref) {
 func (dc *dbCollector) Finalize(ctx context.Context, allocationID string, allocationVersion int64) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	if len(dc.deletedRefs) > 0 {
-		err := db.Delete(dc.deletedRefs).Error
+		err := db.Delete(&(dc.deletedRefs)).Error
 		if err != nil {
 			return err
 		}
 	}
 	if len(dc.createdRefs) > 0 {
-		err := db.Create(dc.createdRefs).Error
+		err := db.Create(&(dc.createdRefs)).Error
 		if err != nil {
+			for _, ref := range dc.createdRefs {
+				logging.Logger.Error("create_ref_error", zap.String("lookup_hash", ref.LookupHash), zap.String("path", ref.Path))
+			}
 			return err
 		}
 	}

@@ -65,7 +65,7 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 		FilestoreVersion:        filestore.VERSION,
 		AllocationVersion:       allocationVersion,
 	}
-	newFile.FileMetaHash = encryption.Hash(newFile.GetFileMetaHashData())
+	newFile.FileMetaHash = encryption.FastHash(newFile.GetFileMetaHashData())
 	elapsedNewFile := time.Since(now)
 	// find if ref exists
 	var refResult struct {

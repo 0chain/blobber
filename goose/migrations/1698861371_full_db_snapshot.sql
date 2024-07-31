@@ -754,7 +754,7 @@ CREATE INDEX idx_created_at ON reference_objects USING btree (created_at DESC);
 -- Name: idx_lookup_hash; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX idx_lookup_hash ON reference_objects USING btree (lookup_hash) INCLUDE(id,type) where deleted_at IS NULL;
+CREATE UNIQUE INDEX idx_lookup_hash_deleted ON reference_objects USING btree (lookup_hash,(deleted_at IS NULL)) INCLUDE(id,type);
 
 
 --
@@ -862,6 +862,12 @@ ALTER TABLE ONLY allocation_changes
 
 CREATE INDEX connection_id_index ON allocation_changes USING btree (connection_id);
 
+
+ --
+ -- Name: connection_id_lookup_hash_constraint; Type: UNIQUE CONSTRAINT; Schema: public; Owner: blobber_user
+ --   
+
+ALTER TABLE ONLY allocation_changes ADD CONSTRAINT  connection_id_lookup_hash_constraint UNIQUE(connection_id,lookup_hash);
 
 --
 -- Name: file_stats fk_file_stats_ref; Type: FK CONSTRAINT; Schema: public; Owner: blobber_user

@@ -83,7 +83,7 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context,
 	srcRef.ParentPath = filepath.Dir(rf.DestPath)
 	srcRef.Name = filepath.Base(rf.DestPath)
 	srcRef.PathLevel = len(strings.Split(strings.TrimRight(rf.DestPath, "/"), "/"))
-	srcRef.FileMetaHash = encryption.Hash(srcRef.GetFileHashData())
+	srcRef.FileMetaHash = encryption.FastHash(srcRef.GetFileHashData())
 	if rf.CustomMeta != "" {
 		srcRef.CustomMeta = rf.CustomMeta
 	}
