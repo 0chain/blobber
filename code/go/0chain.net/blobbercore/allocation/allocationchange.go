@@ -261,14 +261,19 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context,
 	collector := reference.NewCollector(len(cc.Changes))
 	timeoutctx, cancel := context.WithTimeout(ctx, time.Second*60)
 	defer cancel()
-	eg, _ := errgroup.WithContext(timeoutctx)
+	eg, egCtx := errgroup.WithContext(timeoutctx)
 	eg.SetLimit(10)
 	for idx, change := range cc.Changes {
-		eg.Go(func() error {
-			change.AllocationID = cc.AllocationID
-			changeProcessor := cc.AllocationChanges[idx]
-			return changeProcessor.ApplyChange(ctx, ts, allocationVersion, collector)
-		})
+		select {
+		case <-egCtx.Done():
+			return egCtx.Err()
+		default:
+			eg.Go(func() error {
+				change.AllocationID = cc.AllocationID
+				changeProcessor := cc.AllocationChanges[idx]
+				return changeProcessor.ApplyChange(ctx, ts, allocationVersion, collector)
+			})
+		}
 	}
 	err := eg.Wait()
 	if err != nil {

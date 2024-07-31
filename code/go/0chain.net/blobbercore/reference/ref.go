@@ -187,15 +187,24 @@ func Mkdir(ctx context.Context, allocationID, destpath string, allocationVersion
 		return nil, err
 	}
 	parentLookupHashes := make([]string, 0, len(fields))
+	for i := 0; i < len(fields); i++ {
+		parentLookupHashes = append(parentLookupHashes, GetReferenceLookup(allocationID, fields[i]))
+	}
 	var parentRefs []*Ref
+	collector.LockTransaction()
+	defer collector.UnlockTransaction()
+	cachedRef = collector.GetFromCache(destLookupHash)
+	if cachedRef != nil {
+		if cachedRef.Type != DIRECTORY {
+			return nil, common.NewError("invalid_dir_tree", "parent path is not a directory")
+		}
+		return cachedRef, nil
+	}
 
 	tx := db.Model(&Ref{}).Select("id", "path", "type")
 	for i := 0; i < len(fields); i++ {
-		parentLookupHashes = append(parentLookupHashes, GetReferenceLookup(allocationID, fields[i]))
 		tx = tx.Or(Ref{LookupHash: parentLookupHashes[i]})
 	}
-	collector.LockTransaction()
-	defer collector.UnlockTransaction()
 	err = tx.Order("path").Find(&parentRefs).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return nil, err
@@ -221,8 +230,9 @@ func Mkdir(ctx context.Context, allocationID, destpath string, allocationVersion
 		fields = append(fields, destpath)
 		parentLookupHashes = append(parentLookupHashes, destLookupHash)
 	}
-	logging.Logger.Info("mkdir: creating directory")
+
 	for i := len(parentRefs); i < len(fields); i++ {
+		logging.Logger.Info("mkdir: creating directory", zap.String("path", fields[i]), zap.Int("parentID", int(parentID)))
 		var parentIDRef *int64
 		if parentID > 0 {
 			parentIDRef = &parentID
@@ -247,6 +257,7 @@ func Mkdir(ctx context.Context, allocationID, destpath string, allocationVersion
 		if err != nil {
 			return nil, err
 		}
+		collector.AddToCache(newRef)
 		parentID = newRef.ID
 		parentPath = newRef.Path
 	}
