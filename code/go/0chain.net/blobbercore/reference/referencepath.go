@@ -238,7 +238,7 @@ func GetObjectTree(ctx context.Context, allocationID, path string) (*Ref, error)
 // Might need to consider covering index for efficient search https://blog.crunchydata.com/blog/why-covering-indexes-are-incredibly-helpful
 // To retrieve refs efficiently form pagination index is created in postgresql on path column so it can be used to paginate refs
 // very easily and effectively; Same case for offsetDate.
-func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, level, pageLimit int, parentRef *PaginatedRef) (refs *[]PaginatedRef, totalPages int, newOffsetPath string, err error) {
+func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, level, pageLimit, offsetTime int, parentRef *PaginatedRef) (refs *[]PaginatedRef, totalPages int, newOffsetPath string, err error) {
 	var (
 		pRefs   = make([]PaginatedRef, 0, pageLimit/4)
 		dbError error
@@ -259,6 +259,9 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 			dbQuery = dbQuery.Where("type = ?", _type)
 		}
 		dbQuery = dbQuery.Where("path > ?", offsetPath)
+		if offsetTime != 0 {
+			dbQuery = dbQuery.Where("created_at < ?", offsetTime)
+		}
 		dbQuery = dbQuery.Order("path")
 	} else {
 		dbQuery = tx.Model(&Ref{}).Where("allocation_id = ? AND path LIKE ?", allocationID, path+"%")
@@ -267,6 +270,9 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 		}
 		if level != 0 {
 			dbQuery = dbQuery.Where("level = ?", level)
+		}
+		if offsetTime != 0 {
+			dbQuery = dbQuery.Where("created_at < ?", offsetTime)
 		}
 
 		dbQuery = dbQuery.Where("path > ?", offsetPath)

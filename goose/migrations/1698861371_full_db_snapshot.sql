@@ -795,7 +795,7 @@ CREATE INDEX idx_parent_id ON reference_objects USING btree (parent_id);
 -- Name: idx_path_alloc; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX idx_path_alloc ON reference_objects USING btree (allocation_id, path) include(id,level,type) WHERE deleted_at IS NULL;
+CREATE INDEX idx_path_alloc ON reference_objects USING btree (allocation_id, path)  WHERE deleted_at IS NULL;
 
 
 --

@@ -193,7 +193,6 @@ func Mkdir(ctx context.Context, allocationID, destpath string, allocationVersion
 	var parentRefs []*Ref
 	collector.LockTransaction()
 	defer collector.UnlockTransaction()
-	logging.Logger.Info("checkingCache: ", zap.String("destLookupHash", destLookupHash), zap.String("destpath", destpath))
 	cachedRef = collector.GetFromCache(destLookupHash)
 	if cachedRef != nil {
 		if cachedRef.Type != DIRECTORY {

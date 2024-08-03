@@ -617,13 +617,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			"Invalid connection id. Connection id was not found: %v", err)
 	}
 	if len(connectionObj.Changes) == 0 {
-		logging.Logger.Info("commit_write", zap.String("connection_id", connectionID))
-		if connectionObj.Status == allocation.NewConnection {
-			return nil, common.NewError("invalid_parameters",
-				"Invalid connection id. Connection not found.")
-		}
-		return nil, common.NewError("invalid_parameters",
-			"Invalid connection id. Connection does not have any changes.")
+		logging.Logger.Info("commit_write_empty", zap.String("connection_id", connectionID))
 	}
 
 	elapsedGetConnObj := time.Since(startTime) - elapsedAllocation - elapsedGetLock
@@ -662,12 +656,13 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	elapsedMoveToFilestore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj
-
-	err = connectionObj.ApplyChanges(
-		ctx, common.Now(), versionMarker.Version)
-	if err != nil {
-		Logger.Error("Error applying changes", zap.Error(err))
-		return nil, err
+	if len(connectionObj.Changes) > 0 {
+		err = connectionObj.ApplyChanges(
+			ctx, common.Now(), versionMarker.Version)
+		if err != nil {
+			Logger.Error("Error applying changes", zap.Error(err))
+			return nil, err
+		}
 	}
 
 	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
@@ -683,17 +678,22 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	allocationObj.BlobberSizeUsed += connectionObj.Size
 	allocationObj.UsedSize += connectionObj.Size
 	allocationObj.AllocationVersion = versionMarker.Version
+	if len(connectionObj.Changes) == 0 {
+		allocationObj.IsRedeemRequired = false
+	} else {
+		allocationObj.IsRedeemRequired = true
+	}
 
 	updateMap := map[string]interface{}{
 		"used_size":              allocationObj.UsedSize,
 		"blobber_size_used":      allocationObj.BlobberSizeUsed,
-		"is_redeem_required":     true,
+		"is_redeem_required":     allocationObj.IsRedeemRequired,
 		"allocation_version":     versionMarker.Version,
 		"prev_used_size":         allocationObj.PrevUsedSize,
 		"prev_blobber_size_used": allocationObj.PrevBlobberSizeUsed,
 	}
 	updateOption := func(a *allocation.Allocation) {
-		a.IsRedeemRequired = true
+		a.IsRedeemRequired = allocationObj.IsRedeemRequired
 		a.BlobberSizeUsed = allocationObj.BlobberSizeUsed
 		a.UsedSize = allocationObj.UsedSize
 		a.AllocationVersion = allocationObj.AllocationVersion
@@ -722,8 +722,17 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	result.AllocationRoot = allocationObj.AllocationRoot
 	result.Success = true
 	result.ErrorMessage = ""
-	commitOperation := connectionObj.Changes[0].Operation
-	input := connectionObj.Changes[0].Input
+	var (
+		commitOperation string
+		input           string
+	)
+	if len(connectionObj.Changes) > 0 {
+		commitOperation = connectionObj.Changes[0].Operation
+		input = connectionObj.Changes[0].Input
+	} else {
+		commitOperation = "[commit]empty"
+		input = "[commit]empty"
+	}
 
 	//Delete connection object and its changes
 

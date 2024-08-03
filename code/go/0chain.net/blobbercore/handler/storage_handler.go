@@ -902,13 +902,16 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 			pageLimit = o
 		}
 	}
-
+	var offsetTime int
 	offsetPath := r.FormValue("offsetPath")
 	offsetDate := r.FormValue("offsetDate")
 	updatedDate := r.FormValue("updatedDate")
 	err = checkValidDate(offsetDate, OffsetDateLayout)
 	if err != nil {
-		return nil, err
+		offsetTime, err = strconv.Atoi(offsetDate)
+		if err != nil {
+			return nil, err
+		}
 	}
 	err = checkValidDate(updatedDate, OffsetDateLayout)
 	if err != nil {
@@ -937,7 +940,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 	switch {
 	case refType == "regular":
 		refs, totalPages, newOffsetPath, err = reference.GetRefs(
-			ctx, allocationID, path, offsetPath, fileType, level, pageLimit, pathRef,
+			ctx, allocationID, path, offsetPath, fileType, level, pageLimit, offsetTime, pathRef,
 		)
 
 	case refType == "updated":
