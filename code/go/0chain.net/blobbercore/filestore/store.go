@@ -22,11 +22,10 @@ type FileInputData struct {
 	//Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
 	UploadOffset int64
 	//IsFinal  the request is final chunk
-	IsFinal      bool
-	IsThumbnail  bool
-	FilePathHash string
-	Size         int64
-	Hasher       *CommitHasher
+	IsFinal     bool
+	IsThumbnail bool
+	Size        int64
+	Hasher      *CommitHasher
 }
 
 type FileOutputData struct {

@@ -61,7 +61,11 @@ const (
 )
 
 func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error) {
-	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, fileData.FilePathHash, conID)
+	fileHash := fileData.LookupHash
+	if fileData.IsThumbnail {
+		fileHash = fileData.LookupHash + ThumbnailSuffix
+	}
+	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, fileHash, conID)
 	var (
 		initialSize int64
 	)
@@ -214,7 +218,7 @@ func (fs *FileStore) DeletePreCommitDir(allocID string) error {
 
 func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData) (_ bool, err error) {
 	now := time.Now()
-	logging.Logger.Info("Committing write", zap.String("allocation_id", allocID), zap.Any("file_data", fileData))
+	logging.Logger.Debug("Committing write", zap.String("allocation_id", allocID), zap.Any("file_data", fileData))
 	fileHash := fileData.LookupHash
 	if fileData.IsThumbnail {
 		fileHash = fileData.LookupHash + ThumbnailSuffix
