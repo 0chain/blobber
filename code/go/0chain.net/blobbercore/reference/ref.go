@@ -283,7 +283,7 @@ func GetReferenceByLookupHashForDownload(ctx context.Context, allocationID, path
 func GetReferencesByName(ctx context.Context, allocationID, name string) (refs []*Ref, err error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	err = db.Model(&Ref{}).
-		Where("allocation_id = ? AND name LIKE ?", allocationID, name+"%").
+		Where("allocation_id = ? AND name LIKE ?", allocationID, "%"+name+"%").
 		Limit(20).
 		Find(&refs).Error
 	if err != nil {
