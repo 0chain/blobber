@@ -1439,7 +1439,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		a.FileMetaRoot = alloc.FileMetaRoot
 		a.IsRedeemRequired = alloc.IsRedeemRequired
 	}
-	err = txn.Create(versionMarker).Error
+	err = txn.Create(&versionMarker).Error
 	if err != nil {
 		txn.Rollback()
 		return &result, common.NewError("write_marker_error", "Error persisting the write marker "+err.Error())
