@@ -320,7 +320,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	// 5. Move: It is Copy + Delete. Delete will not delete file if ref exists in database. i.e. copy would create
 	// ref that refers to this file therefore it will be skipped
 	fs.incrDecrAllocFileSizeAndNumber(allocID, fileSize, 1)
-	logging.Logger.Info("Committing write done", zap.String("file_path", fileData.Path), zap.Duration("elapsed_total", time.Since(now)))
+	logging.Logger.Info("Committing write done", zap.String("file_path", fileData.Path), zap.String("lookup_hash", fileData.LookupHash), zap.Duration("elapsed_total", time.Since(now)))
 	return true, nil
 }
 

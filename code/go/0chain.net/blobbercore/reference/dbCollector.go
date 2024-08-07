@@ -92,6 +92,9 @@ func (dc *dbCollector) Finalize(ctx context.Context, allocationID string, alloca
 	}
 	dc.refCache.AllocationVersion = allocationVersion
 	cacheMap[allocationID] = &(dc.refCache)
+	for _, ref := range dc.createdRefs {
+		logging.Logger.Info("createdCache", zap.String("lookup_hash", ref.LookupHash), zap.String("path", ref.Path), zap.Int64("allocation_version", allocationVersion))
+	}
 	logging.Logger.Info("Finalize", zap.Int("created", len(dc.createdRefs)), zap.Int("deleted", len(dc.deletedRefs)), zap.Int64("allocation_version", cacheMap[allocationID].AllocationVersion), zap.String("allocation_id", allocationID), zap.Bool("cache_map", cacheMap[allocationID] != nil))
 	return nil
 }

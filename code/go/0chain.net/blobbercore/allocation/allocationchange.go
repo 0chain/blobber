@@ -355,19 +355,19 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context, allocat
 
 		limitCh <- struct{}{}
 		wg.Add(1)
-
+		refLookupHash := ref.LookupHash
 		go func(lookupHash string) {
 			defer func() {
 				<-limitCh
 				wg.Done()
 			}()
-
+			logging.Logger.Info("Move to filestore", zap.String("lookup_hash", lookupHash))
 			err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.LookupHash, filestore.VERSION)
 			if err != nil {
 				logging.Logger.Error(fmt.Sprintf("Error while moving file: %s", err.Error()))
 			}
 
-		}(ref.LookupHash)
+		}(refLookupHash)
 	}
 
 	wg.Wait()
@@ -397,7 +397,7 @@ func deleteFromFileStore(allocationID string, deletedRefs []*reference.Ref, useR
 		for _, res := range results {
 			limitCh <- struct{}{}
 			wg.Add(1)
-
+			resLookupHash := res.LookupHash
 			go func(lookupHash string) {
 				defer func() {
 					<-limitCh
@@ -410,7 +410,7 @@ func deleteFromFileStore(allocationID string, deletedRefs []*reference.Ref, useR
 					logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
 						zap.String("validation_root", res.LookupHash))
 				}
-			}(res.LookupHash)
+			}(resLookupHash)
 
 		}
 		wg.Wait()
