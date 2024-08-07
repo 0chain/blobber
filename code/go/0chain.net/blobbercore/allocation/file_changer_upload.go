@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"math"
 	"path/filepath"
 	"strings"
 	"time"
@@ -62,6 +63,7 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 		DataHash:                nf.DataHash,
 		DataHashSignature:       nf.DataHashSignature,
 		PathLevel:               len(strings.Split(strings.TrimRight(nf.Path, "/"), "/")),
+		NumBlocks:               int64(math.Ceil(float64(nf.Size*1.0) / float64(nf.ChunkSize))),
 		FilestoreVersion:        filestore.VERSION,
 		AllocationVersion:       allocationVersion,
 	}
