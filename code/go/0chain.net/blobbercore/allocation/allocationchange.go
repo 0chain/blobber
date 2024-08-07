@@ -356,18 +356,18 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context, allocat
 		limitCh <- struct{}{}
 		wg.Add(1)
 		refLookupHash := ref.LookupHash
-		go func(lookupHash string) {
+		go func() {
 			defer func() {
 				<-limitCh
 				wg.Done()
 			}()
-			logging.Logger.Info("Move to filestore", zap.String("lookup_hash", lookupHash))
-			err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, ref.LookupHash, filestore.VERSION)
+			logging.Logger.Info("Move to filestore", zap.String("lookup_hash", refLookupHash))
+			err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, refLookupHash, filestore.VERSION)
 			if err != nil {
 				logging.Logger.Error(fmt.Sprintf("Error while moving file: %s", err.Error()))
 			}
 
-		}(refLookupHash)
+		}()
 	}
 
 	wg.Wait()
@@ -398,19 +398,19 @@ func deleteFromFileStore(allocationID string, deletedRefs []*reference.Ref, useR
 			limitCh <- struct{}{}
 			wg.Add(1)
 			resLookupHash := res.LookupHash
-			go func(lookupHash string) {
+			go func() {
 				defer func() {
 					<-limitCh
 					wg.Done()
 				}()
 
-				err := filestore.GetFileStore().DeleteFromFilestore(allocationID, lookupHash,
+				err := filestore.GetFileStore().DeleteFromFilestore(allocationID, resLookupHash,
 					filestore.VERSION)
 				if err != nil {
 					logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
 						zap.String("validation_root", res.LookupHash))
 				}
-			}(resLookupHash)
+			}()
 
 		}
 		wg.Wait()
