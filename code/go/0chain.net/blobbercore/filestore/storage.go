@@ -345,6 +345,10 @@ func (fs *FileStore) CopyFile(allocationID, oldFileLookupHash, newFileLookupHash
 	size := stat.Size()
 
 	newObjectPath := fs.getPreCommitPathForFile(allocationID, newFileLookupHash, VERSION)
+	err = createDirs(filepath.Dir(newObjectPath))
+	if err != nil {
+		return common.NewError("blob_object_precommit_dir_creation_error", err.Error())
+	}
 	newFile, err := os.Create(newObjectPath)
 	if err != nil {
 		return common.NewError("file_create_error", err.Error())
