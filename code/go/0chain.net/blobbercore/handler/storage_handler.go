@@ -103,7 +103,7 @@ func (fsh *StorageHandler) GetAllocationUpdateTicket(ctx context.Context, r *htt
 }
 
 func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocationID, path string) (*reference.Ref, error) {
-	return reference.GetLimitedRefFieldsByPath(ctx, allocationID, path, []string{"id", "type"})
+	return reference.GetLimitedRefFieldsByPath(ctx, allocationID, path, []string{"id", "type", "custom_meta"})
 }
 
 func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -276,7 +276,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 
 // swagger:route GET /v1/file/list/{allocation} GetListFiles
 // List files.
-// ListHandler is the handler to respond to list requests from clients, 
+// ListHandler is the handler to respond to list requests from clients,
 // it returns a list of files in the allocation,
 // along with the metadata of the files.
 //
@@ -344,7 +344,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 // responses:
 //
 //   200: ListResult
-//   400: 
+//   400:
 
 func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*blobberhttp.ListResult, error) {
 	clientID := ctx.Value(constants.ContextKeyClient).(string)

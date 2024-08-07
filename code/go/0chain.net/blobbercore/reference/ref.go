@@ -60,7 +60,7 @@ type Ref struct {
 	PathHash                string `gorm:"column:path_hash;size:64;not null" dirlist:"path_hash" filelist:"path_hash"`
 	ParentPath              string `gorm:"column:parent_path;size:999;index:idx_parent_path_alloc,priority:2"`
 	PathLevel               int    `gorm:"column:level;not null;default:0"`
-	CustomMeta              string `gorm:"column:custom_meta;not null" filelist:"custom_meta"`
+	CustomMeta              string `gorm:"column:custom_meta;not null" filelist:"custom_meta" dirlist:"custom_meta"`
 	ValidationRoot          string `gorm:"column:validation_root;size:64;not null;index:idx_validation_alloc,priority:2" filelist:"validation_root"`
 	PrevValidationRoot      string `gorm:"column:prev_validation_root" filelist:"prev_validation_root" json:"prev_validation_root"`
 	ValidationRootSignature string `gorm:"column:validation_root_signature;size:64" filelist:"validation_root_signature" json:"validation_root_signature,omitempty"`
@@ -144,6 +144,7 @@ type PaginatedRef struct { //Gorm smart select fields.
 	ActualThumbnailHash     string `gorm:"column:actual_thumbnail_hash" json:"actual_thumbnail_hash,omitempty"`
 	EncryptedKey            string `gorm:"column:encrypted_key" json:"encrypted_key,omitempty"`
 	EncryptedKeyPoint       string `gorm:"column:encrypted_key_point" json:"encrypted_key_point,omitempty"`
+	FileMetaHash            string `gorm:"column:file_meta_hash;size:64;not null" dirlist:"file_meta_hash" filelist:"file_meta_hash"`
 
 	CreatedAt common.Timestamp `gorm:"column:created_at" json:"created_at,omitempty"`
 	UpdatedAt common.Timestamp `gorm:"column:updated_at" json:"updated_at,omitempty"`
@@ -282,8 +283,8 @@ func GetReferenceByLookupHashForDownload(ctx context.Context, allocationID, path
 func GetReferencesByName(ctx context.Context, allocationID, name string) (refs []*Ref, err error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	err = db.Model(&Ref{}).
-		Where("allocation_id = ? AND name @@ plainto_tsquery(?)", allocationID, name).
-		Order("ts_rank_cd(to_tsvector('english', name), plainto_tsquery(?)) DESC").
+		Where("allocation_id = ? AND name LIKE ?", allocationID, "%"+name+"%").
+		Limit(20).
 		Find(&refs).Error
 	if err != nil {
 		return nil, err
@@ -668,4 +669,9 @@ func GetListingFieldsMap(refEntity interface{}, tagName string) map[string]inter
 		}
 	}
 	return result
+}
+
+func UpdateCustomMeta(ctx context.Context, ref *Ref, customMeta string) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+	return db.Exec("UPDATE reference_objects SET custom_meta = ? WHERE id = ?", customMeta, ref.ID).Error
 }

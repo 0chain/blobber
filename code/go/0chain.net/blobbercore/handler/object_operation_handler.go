@@ -656,11 +656,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
-	if allocationObj.BlobberSizeUsed+connectionObj.Size > allocationObj.BlobberSize {
-		return nil, common.NewError("max_allocation_size",
-			"Max size reached for the allocation with this blobber")
-	}
-
 	writeMarkerString := r.FormValue("write_marker")
 	if writeMarkerString == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid write marker passed")
@@ -687,11 +682,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		if latestWriteMarkerEntity.Status == writemarker.Failed {
 			return nil, common.NewError("latest_write_marker_failed",
 				"Latest write marker is in failed state")
-		}
-
-		if latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size != writeMarker.ChainSize {
-			return nil, common.NewErrorf("invalid_chain_size",
-				"Invalid chain size. expected:%v got %v", latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size, writeMarker.ChainSize)
 		}
 
 		if latestWriteMarkerEntity.Status != writemarker.Committed {
@@ -757,6 +747,24 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 	if !rootRef.IsPrecommit {
 		return nil, common.NewError("no_root_change", "No change in root ref")
+	}
+	connectionObj.Size = rootRef.Size - allocationObj.BlobberSizeUsed
+
+	if writemarkerEntity.WM.Size != connectionObj.Size {
+		return nil, common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker size %v does not match the connection size %v", writemarkerEntity.WM.Size, connectionObj.Size))
+	}
+
+	if allocationObj.BlobberSizeUsed+connectionObj.Size > allocationObj.BlobberSize {
+		return nil, common.NewError("max_allocation_size",
+			"Max size reached for the allocation with this blobber")
+	}
+
+	if latestWriteMarkerEntity != nil && latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size != writeMarker.ChainSize {
+		return nil, common.NewErrorf("invalid_chain_size",
+			"Invalid chain size. expected:%v got %v", latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size, writeMarker.ChainSize)
+	} else if latestWriteMarkerEntity == nil && connectionObj.Size != writeMarker.ChainSize {
+		return nil, common.NewErrorf("invalid_chain_size",
+			"Invalid chain size. expected:%v got %v", connectionObj.Size, writeMarker.ChainSize)
 	}
 
 	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
@@ -1245,6 +1253,8 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*all
 		return nil, common.NewError("invalid_parameters", "Invalid dir path passed")
 	}
 
+	customMeta := r.FormValue("custom_meta")
+
 	exisitingRef, err := fsh.checkIfFileAlreadyExists(ctx, allocationID, dirPath)
 	if err != nil {
 		Logger.Error("Error file reference", zap.Error(err))
@@ -1257,6 +1267,16 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*all
 	if exisitingRef != nil {
 		// target directory exists, return StatusOK
 		if exisitingRef.Type == reference.DIRECTORY {
+
+			if exisitingRef.CustomMeta != customMeta {
+				_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+					err := reference.UpdateCustomMeta(ctx, exisitingRef, customMeta)
+					if err != nil {
+						logging.Logger.Error("Error updating custom meta", zap.Error(err))
+					}
+					return err
+				})
+			}
 			return nil, common.NewError("directory_exists", "Directory already exists`")
 		}
 
@@ -1293,6 +1313,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*all
 	newDir.ConnectionID = connectionID
 	newDir.Path = dirPath
 	newDir.AllocationID = allocationID
+	newDir.CustomMeta = customMeta
 
 	connectionObj.AddChange(allocationChange, &newDir)
 
