@@ -784,7 +784,9 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	if new_name == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid name")
 	}
-
+	if filepath.Base(new_name) != new_name {
+		return nil, common.NewError("invalid_parameters", "Invalid name")
+	}
 	pathHash, err := pathHashFromReq(r, allocationID)
 	if err != nil {
 		return nil, err
@@ -878,7 +880,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	if destPath == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid destination for operation")
 	}
-
+	destPath = filepath.Clean(destPath)
 	pathHash, err := pathHashFromReq(r, allocationID)
 	if err != nil {
 		return nil, err
@@ -916,6 +918,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		}
 	}
 	newPath := filepath.Join(destPath, objectRef.Name)
+	newPath = filepath.Clean(newPath)
 	paths, err := common.GetParentPaths(newPath)
 	if err != nil {
 		return nil, err
@@ -946,7 +949,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	allocationChange.LookupHash = pathHash
 	allocationChange.Operation = constants.FileOperationCopy
 	dfc := &allocation.CopyFileChange{ConnectionID: connectionObj.ID,
-		AllocationID: connectionObj.AllocationID, DestPath: destPath, Type: objectRef.Type, SrcPath: objectRef.Path}
+		AllocationID: connectionObj.AllocationID, DestPath: newPath, Type: objectRef.Type, SrcPath: objectRef.Path}
 	allocation.UpdateConnectionObjSize(connectionID, allocationChange.Size)
 	connectionObj.AddChange(allocationChange, dfc)
 
@@ -993,6 +996,7 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 	if destPath == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid destination for operation")
 	}
+	destPath = filepath.Clean(destPath)
 
 	pathHash, err := pathHashFromReq(r, allocationID)
 	if err != nil {
@@ -1033,6 +1037,7 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 		}
 	}
 	newPath := filepath.Join(destPath, objectRef.Name)
+	newPath = filepath.Clean(newPath)
 	paths, err := common.GetParentPaths(newPath)
 	if err != nil {
 		return nil, err
@@ -1066,7 +1071,7 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 		ConnectionID: connectionObj.ID,
 		AllocationID: connectionObj.AllocationID,
 		SrcPath:      objectRef.Path,
-		DestPath:     destPath,
+		DestPath:     newPath,
 		Type:         objectRef.Type,
 	}
 	dfc.SrcPath = objectRef.Path

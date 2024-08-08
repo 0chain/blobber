@@ -76,6 +76,10 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 		return common.NewError("invalid_path", fmt.Sprintf("%v is not absolute path", fileChanger.Path))
 	}
 
+	if filepath.Clean(fileChanger.Path) != fileChanger.Path {
+		return common.NewError("invalid_path", fmt.Sprintf("%v is not a clean path", fileChanger.Path))
+	}
+
 	if fileChanger.ConnectionID == "" {
 		return common.NewError("invalid_connection", "Invalid connection id")
 	}
