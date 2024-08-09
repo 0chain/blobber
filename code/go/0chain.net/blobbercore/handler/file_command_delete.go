@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"path/filepath"
 
 	"github.com/0chain/gosdk/constants"
 	"gorm.io/gorm"
@@ -38,6 +39,10 @@ func (cmd *DeleteFileCommand) IsValidated(ctx context.Context, req *http.Request
 
 	path, ok := common.GetField(req, "path")
 	if !ok {
+		return common.NewError("invalid_parameters", "Invalid path")
+	}
+
+	if filepath.Clean(path) != path {
 		return common.NewError("invalid_parameters", "Invalid path")
 	}
 

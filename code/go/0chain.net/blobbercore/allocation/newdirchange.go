@@ -23,15 +23,15 @@ type NewDir struct {
 }
 
 func (nf *NewDir) ApplyChange(ctx context.Context,
-	ts common.Timestamp, _ map[string]string, collector reference.QueryCollector) error {
+	ts common.Timestamp, allocationVersion int64, collector reference.QueryCollector) error {
 	parentPath := filepath.Dir(nf.Path)
 	parentPathLookup := reference.GetReferenceLookup(nf.AllocationID, parentPath)
-	parentRef, err := reference.GetReferenceByLookupHash(ctx, nf.AllocationID, parentPathLookup)
+	parentRef, err := reference.GetFullReferenceByLookupHashWithNewTransaction(parentPathLookup)
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return err
 	}
 	if parentRef == nil || parentRef.ID == 0 {
-		_, err = reference.Mkdir(ctx, nf.AllocationID, nf.Path, ts, collector)
+		_, err = reference.Mkdir(ctx, nf.AllocationID, nf.Path, allocationVersion, ts, collector)
 	} else {
 		parentIDRef := &parentRef.ID
 		newRef := reference.NewDirectoryRef()
@@ -46,13 +46,14 @@ func (nf *NewDir) ApplyChange(ctx context.Context,
 		newRef.LookupHash = reference.GetReferenceLookup(nf.AllocationID, nf.Path)
 		newRef.CreatedAt = ts
 		newRef.UpdatedAt = ts
-		newRef.FileMetaHash = encryption.Hash(newRef.GetFileMetaHashData())
+		newRef.FileMetaHash = encryption.FastHash(newRef.GetFileMetaHashData())
 		if nf.CustomMeta != "" {
 			newRef.CustomMeta = nf.CustomMeta
 		}
 		if nf.MimeType != "" {
 			newRef.MimeType = nf.MimeType
 		}
+		newRef.AllocationVersion = allocationVersion
 		collector.CreateRefRecord(newRef)
 	}
 	return err

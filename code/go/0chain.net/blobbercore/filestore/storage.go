@@ -61,7 +61,11 @@ const (
 )
 
 func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error) {
-	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, fileData.FilePathHash, conID)
+	fileHash := fileData.LookupHash
+	if fileData.IsThumbnail {
+		fileHash = fileData.LookupHash + ThumbnailSuffix
+	}
+	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, fileHash, conID)
 	var (
 		initialSize int64
 	)
@@ -214,7 +218,7 @@ func (fs *FileStore) DeletePreCommitDir(allocID string) error {
 
 func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData) (_ bool, err error) {
 	now := time.Now()
-	logging.Logger.Info("Committing write", zap.String("allocation_id", allocID), zap.Any("file_data", fileData))
+	logging.Logger.Debug("Committing write", zap.String("allocation_id", allocID), zap.Any("file_data", fileData))
 	fileHash := fileData.LookupHash
 	if fileData.IsThumbnail {
 		fileHash = fileData.LookupHash + ThumbnailSuffix
@@ -316,7 +320,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	// 5. Move: It is Copy + Delete. Delete will not delete file if ref exists in database. i.e. copy would create
 	// ref that refers to this file therefore it will be skipped
 	fs.incrDecrAllocFileSizeAndNumber(allocID, fileSize, 1)
-	logging.Logger.Info("Committing write done", zap.String("file_path", fileData.Path), zap.Duration("elapsed_total", time.Since(now)))
+	logging.Logger.Info("Committing write done", zap.String("file_path", fileData.Path), zap.String("lookup_hash", fileData.LookupHash), zap.Duration("elapsed_total", time.Since(now)))
 	return true, nil
 }
 
@@ -341,6 +345,10 @@ func (fs *FileStore) CopyFile(allocationID, oldFileLookupHash, newFileLookupHash
 	size := stat.Size()
 
 	newObjectPath := fs.getPreCommitPathForFile(allocationID, newFileLookupHash, VERSION)
+	err = createDirs(filepath.Dir(newObjectPath))
+	if err != nil {
+		return common.NewError("blob_object_precommit_dir_creation_error", err.Error())
+	}
 	newFile, err := os.Create(newObjectPath)
 	if err != nil {
 		return common.NewError("file_create_error", err.Error())

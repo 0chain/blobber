@@ -79,6 +79,8 @@ rate_limiters:
   commit_limit_daily: 1600
   # Max commit limit with size zero or less in a day for a client. Default is 400
   commit_zero_limit_daily: 400
+  # Max connection changes in a batch. Default is 100
+  max_connection_changes: 100
   
 server_chain:
   id: "0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe"

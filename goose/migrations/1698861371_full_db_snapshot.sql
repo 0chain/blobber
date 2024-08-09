@@ -357,13 +357,13 @@ CREATE TABLE reference_objects (
     created_at bigint,
     updated_at bigint,
     deleted_at timestamp with time zone,
-    is_precommit boolean DEFAULT false NOT NULL,
     chunk_size bigint DEFAULT 65536 NOT NULL,
     num_of_updates bigint,
     num_of_block_downloads bigint,
     data_hash character varying(64),
     data_hash_signature character varying(64),
-    parent_id bigint DEFAULT NULL
+    parent_id bigint DEFAULT NULL,
+    allocation_version bigint DEFAULT 0 NOT NULL
 );
 
 
@@ -572,8 +572,6 @@ ALTER TABLE ONLY marketplace_share_info ALTER COLUMN id SET DEFAULT nextval('mar
 ALTER TABLE ONLY reference_objects ALTER COLUMN id SET DEFAULT nextval('reference_objects_id_seq'::regclass);
 
 
--- ALTER TABLE ONLY reference_objects ADD CONSTRAINT path_commit UNIQUE(lookup_hash,is_precommit);
-
 --
 -- Name: terms id; Type: DEFAULT; Schema: public; Owner: blobber_user
 --
@@ -756,7 +754,7 @@ CREATE INDEX idx_created_at ON reference_objects USING btree (created_at DESC);
 -- Name: idx_lookup_hash; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX idx_lookup_hash ON reference_objects USING btree (lookup_hash) INCLUDE(id,type) where deleted_at IS NULL;
+CREATE UNIQUE INDEX idx_lookup_hash_deleted ON reference_objects USING btree (lookup_hash,(deleted_at IS NULL)) INCLUDE(id,type,num_of_updates);
 
 
 --
@@ -787,17 +785,17 @@ CREATE INDEX idx_name_gin ON reference_objects USING gin (to_tsvector('english':
 -- CREATE INDEX idx_parent_path_alloc ON reference_objects USING btree (allocation_id, parent_path) WHERE deleted_at IS NULL;
 
 --
--- Name: idx_parent_id_alloc; Type: INDEX; Schema: public; Owner: blobber_user
+-- Name: idx_parent_id; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX idx_parent_id_alloc ON reference_objects USING btree (parent_id) where deleted_at is NULL;
+CREATE INDEX idx_parent_id ON reference_objects USING btree (parent_id);
 
 
 --
 -- Name: idx_path_alloc; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX idx_path_alloc ON reference_objects USING btree (allocation_id, path) include(id,level,type) WHERE deleted_at IS NULL;
+CREATE INDEX idx_path_alloc ON reference_objects USING btree (allocation_id, path)  WHERE deleted_at IS NULL;
 
 
 --
@@ -863,14 +861,6 @@ ALTER TABLE ONLY allocation_changes
  --   
 
 CREATE INDEX connection_id_index ON allocation_changes USING btree (connection_id);
-
-
---
--- Name: file_stats fk_file_stats_ref; Type: FK CONSTRAINT; Schema: public; Owner: blobber_user
---
-
-ALTER TABLE ONLY file_stats
-    ADD CONSTRAINT fk_file_stats_ref FOREIGN KEY (ref_id) REFERENCES reference_objects(id) ON DELETE CASCADE;
 
 
 --

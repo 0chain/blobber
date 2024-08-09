@@ -32,8 +32,9 @@ func (rf *RenameFileChange) DeleteTempFile() error {
 }
 
 func (rf *RenameFileChange) applyChange(ctx context.Context,
-	ts common.Timestamp, fileIDMeta map[string]string, collector reference.QueryCollector) error {
-
+	ts common.Timestamp, allocationVersion int64, collector reference.QueryCollector) error {
+	collector.LockTransaction()
+	defer collector.UnlockTransaction()
 	if rf.Path == "/" {
 		return common.NewError("invalid_operation", "cannot rename root path")
 	}
@@ -47,8 +48,8 @@ func (rf *RenameFileChange) applyChange(ctx context.Context,
 	if isFilePresent {
 		return common.NewError("invalid_reference_path", "file already exists")
 	}
-
-	ref, err := reference.GetReference(ctx, rf.AllocationID, rf.Path)
+	oldFileLookupHash := reference.GetReferenceLookup(rf.AllocationID, rf.Path)
+	ref, err := reference.GetReferenceByLookupHash(ctx, rf.AllocationID, oldFileLookupHash)
 	if err != nil {
 		return common.NewError("invalid_reference_path", err.Error())
 	}
@@ -63,7 +64,9 @@ func (rf *RenameFileChange) applyChange(ctx context.Context,
 	}
 	rf.Type = ref.Type
 	deleteRef := &reference.Ref{
-		ID: ref.ID,
+		ID:         ref.ID,
+		LookupHash: oldFileLookupHash,
+		Type:       ref.Type,
 	}
 	collector.DeleteRefRecord(deleteRef)
 	ref.Name = rf.NewName
@@ -78,7 +81,7 @@ func (rf *RenameFileChange) applyChange(ctx context.Context,
 	if rf.MimeType != "" {
 		ref.MimeType = rf.MimeType
 	}
-	ref.IsPrecommit = true
+	ref.AllocationVersion = allocationVersion
 	collector.CreateRefRecord(ref)
 	rf.newLookupHash = ref.LookupHash
 	return nil

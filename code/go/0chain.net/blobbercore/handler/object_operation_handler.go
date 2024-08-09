@@ -454,7 +454,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		return nil, common.NewErrorf("download_file", "BlockNum or NumBlocks is too large to convert to int")
 	}
 
-	fromPreCommit := fileref.IsPrecommit
+	fromPreCommit := alloc.AllocationVersion == fileref.AllocationVersion
 	if downloadMode == DownloadContentThumb {
 		rbi := &filestore.ReadBlockInput{
 			AllocationID:     alloc.ID,
@@ -464,7 +464,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			NumBlocks:        int(dr.NumBlocks),
 			IsThumbnail:      true,
 			IsPrecommit:      fromPreCommit,
-			FilestoreVersion: fileref.FilestoreVersion,
+			FilestoreVersion: filestore.VERSION,
 		}
 
 		logging.Logger.Info("calling GetFileBlock for thumb", zap.Any("rbi", rbi))
@@ -481,7 +481,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			NumBlocks:        int(dr.NumBlocks),
 			VerifyDownload:   dr.VerifyDownload,
 			IsPrecommit:      fromPreCommit,
-			FilestoreVersion: fileref.FilestoreVersion,
+			FilestoreVersion: filestore.VERSION,
 		}
 		logging.Logger.Info("calling GetFileBlock", zap.Any("rbi", rbi))
 		fileDownloadResponse, err = filestore.GetFileStore().GetFileBlock(rbi)
@@ -617,13 +617,12 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			"Invalid connection id. Connection id was not found: %v", err)
 	}
 	if len(connectionObj.Changes) == 0 {
-		logging.Logger.Info("commit_write", zap.String("connection_id", connectionID))
-		if connectionObj.Status == allocation.NewConnection {
-			return nil, common.NewError("invalid_parameters",
-				"Invalid connection id. Connection not found.")
-		}
-		return nil, common.NewError("invalid_parameters",
-			"Invalid connection id. Connection does not have any changes.")
+		logging.Logger.Info("commit_write_empty", zap.String("connection_id", connectionID))
+	}
+
+	if len(connectionObj.Changes) > config.Configuration.MaxConnectionChanges {
+		return nil, common.NewError("max_connection_changes",
+			"Max connection changes reached. A connection can only have "+fmt.Sprintf("%v", config.Configuration.MaxConnectionChanges)+" changes")
 	}
 
 	elapsedGetConnObj := time.Since(startTime) - elapsedAllocation - elapsedGetLock
@@ -638,7 +637,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	var result blobberhttp.CommitResult
-	fileIDMeta := make(map[string]string, 0)
 	versionMarkerStr := r.FormValue("version_marker")
 	if versionMarkerStr == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid version marker passed")
@@ -655,22 +653,25 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	// Move preCommitDir to finalDir
-	err = connectionObj.MoveToFilestore(ctx)
-	if err != nil {
-		return nil, common.NewError("move_to_filestore_error", fmt.Sprintf("Error while moving to filestore: %s", err.Error()))
+	if allocationObj.IsRedeemRequired {
+		err = connectionObj.MoveToFilestore(ctx, allocationObj.AllocationVersion)
+		if err != nil {
+			return nil, common.NewError("move_to_filestore_error", fmt.Sprintf("Error while moving to filestore: %s", err.Error()))
+		}
 	}
 
 	elapsedMoveToFilestore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj
-
-	err = connectionObj.ApplyChanges(
-		ctx, common.Now(), fileIDMeta)
-	if err != nil {
-		Logger.Error("Error applying changes", zap.Error(err))
-		return nil, err
+	if len(connectionObj.Changes) > 0 {
+		err = connectionObj.ApplyChanges(
+			ctx, common.Now(), versionMarker.Version)
+		if err != nil {
+			Logger.Error("Error applying changes", zap.Error(err))
+			return nil, err
+		}
 	}
 
 	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
-		elapsedGetConnObj
+		elapsedGetConnObj - elapsedMoveToFilestore
 
 	db := datastore.GetStore().GetTransaction(ctx)
 	err = db.Create(&versionMarker).Error
@@ -682,17 +683,22 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	allocationObj.BlobberSizeUsed += connectionObj.Size
 	allocationObj.UsedSize += connectionObj.Size
 	allocationObj.AllocationVersion = versionMarker.Version
+	if len(connectionObj.Changes) == 0 {
+		allocationObj.IsRedeemRequired = false
+	} else {
+		allocationObj.IsRedeemRequired = true
+	}
 
 	updateMap := map[string]interface{}{
 		"used_size":              allocationObj.UsedSize,
 		"blobber_size_used":      allocationObj.BlobberSizeUsed,
-		"is_redeem_required":     true,
+		"is_redeem_required":     allocationObj.IsRedeemRequired,
 		"allocation_version":     versionMarker.Version,
 		"prev_used_size":         allocationObj.PrevUsedSize,
 		"prev_blobber_size_used": allocationObj.PrevBlobberSizeUsed,
 	}
 	updateOption := func(a *allocation.Allocation) {
-		a.IsRedeemRequired = true
+		a.IsRedeemRequired = allocationObj.IsRedeemRequired
 		a.BlobberSizeUsed = allocationObj.BlobberSizeUsed
 		a.UsedSize = allocationObj.UsedSize
 		a.AllocationVersion = allocationObj.AllocationVersion
@@ -721,8 +727,17 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	result.AllocationRoot = allocationObj.AllocationRoot
 	result.Success = true
 	result.ErrorMessage = ""
-	commitOperation := connectionObj.Changes[0].Operation
-	input := connectionObj.Changes[0].Input
+	var (
+		commitOperation string
+		input           string
+	)
+	if len(connectionObj.Changes) > 0 {
+		commitOperation = connectionObj.Changes[0].Operation
+		input = connectionObj.Changes[0].Input
+	} else {
+		commitOperation = "[commit]empty"
+		input = "[commit]empty"
+	}
 
 	//Delete connection object and its changes
 
@@ -774,7 +789,10 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	if new_name == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid name")
 	}
-
+	if filepath.Base(new_name) != new_name {
+		logging.Logger.Error("invalid_parameters", zap.String("new_name", new_name), zap.String("base", filepath.Base(new_name)))
+		return nil, common.NewError("invalid_parameters", "Invalid name")
+	}
 	pathHash, err := pathHashFromReq(r, allocationID)
 	if err != nil {
 		return nil, err
@@ -868,7 +886,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	if destPath == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid destination for operation")
 	}
-
+	destPath = filepath.Clean(destPath)
 	pathHash, err := pathHashFromReq(r, allocationID)
 	if err != nil {
 		return nil, err
@@ -888,7 +906,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("meta_error", "Error reading metadata for connection")
 	}
 
-	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "name", "path", "hash", "size", "type"})
+	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "name", "path", "size", "type"})
 
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
@@ -906,6 +924,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		}
 	}
 	newPath := filepath.Join(destPath, objectRef.Name)
+	newPath = filepath.Clean(newPath)
 	paths, err := common.GetParentPaths(newPath)
 	if err != nil {
 		return nil, err
@@ -936,7 +955,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	allocationChange.LookupHash = pathHash
 	allocationChange.Operation = constants.FileOperationCopy
 	dfc := &allocation.CopyFileChange{ConnectionID: connectionObj.ID,
-		AllocationID: connectionObj.AllocationID, DestPath: destPath, Type: objectRef.Type, SrcPath: objectRef.Path}
+		AllocationID: connectionObj.AllocationID, DestPath: newPath, Type: objectRef.Type, SrcPath: objectRef.Path}
 	allocation.UpdateConnectionObjSize(connectionID, allocationChange.Size)
 	connectionObj.AddChange(allocationChange, dfc)
 
@@ -983,6 +1002,7 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 	if destPath == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid destination for operation")
 	}
+	destPath = filepath.Clean(destPath)
 
 	pathHash, err := pathHashFromReq(r, allocationID)
 	if err != nil {
@@ -1023,6 +1043,7 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 		}
 	}
 	newPath := filepath.Join(destPath, objectRef.Name)
+	newPath = filepath.Clean(newPath)
 	paths, err := common.GetParentPaths(newPath)
 	if err != nil {
 		return nil, err
@@ -1056,7 +1077,7 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (int
 		ConnectionID: connectionObj.ID,
 		AllocationID: connectionObj.AllocationID,
 		SrcPath:      objectRef.Path,
-		DestPath:     destPath,
+		DestPath:     newPath,
 		Type:         objectRef.Type,
 	}
 	dfc.SrcPath = objectRef.Path
@@ -1354,6 +1375,10 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
+	if !allocationObj.IsRedeemRequired {
+		return nil, common.NewError("invalid_operation", "Last commit is rollback")
+	}
+
 	versionMarkerString := r.FormValue("version_marker")
 	versionMarker := writemarker.VersionMarker{}
 	err = json.Unmarshal([]byte(versionMarkerString), &versionMarker)
@@ -1361,6 +1386,10 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return nil, common.NewErrorf("invalid_parameters",
 			"Invalid parameters. Error parsing the writemarker for commit: %v",
 			err)
+	}
+
+	if versionMarker.IsRepair {
+		return nil, common.NewError("invalid_parameters", "Invalid version marker passed. Rollback marker cannot be a repair marker")
 	}
 
 	var result blobberhttp.CommitResult
@@ -1373,12 +1402,23 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return nil, common.NewError("invalid_parameters", "Invalid version marker passed. Version marker is same as the current version")
 	}
 
+	currentVersionMarker, err := writemarker.GetCurrentVersion(ctx, allocationID)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Error getting the current version marker")
+	}
+	if currentVersionMarker.IsRepair {
+		return nil, common.NewError("invalid_parameters", "Invalid version marker passed. Allocation is in repair mode")
+	}
+	if versionMarker.Version != currentVersionMarker.Version-1 {
+		return nil, common.NewError("invalid_parameters", "Invalid version marker passed. Version marker is not the previous version")
+	}
+
 	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock
 	timeoutCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	defer cancel()
 	c := datastore.GetStore().CreateTransaction(timeoutCtx)
 	txn := datastore.GetStore().GetTransaction(c)
-	err = allocation.ApplyRollback(c, allocationID)
+	err = allocation.ApplyRollback(c, allocationID, allocationObj.AllocationVersion)
 	if err != nil {
 		txn.Rollback()
 		return nil, common.NewError("allocation_rollback_error", "Error applying the rollback for allocation: "+err.Error())
@@ -1394,12 +1434,12 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 
 	alloc.BlobberSizeUsed = alloc.PrevBlobberSizeUsed
 	alloc.UsedSize = alloc.PrevUsedSize
-	alloc.IsRedeemRequired = true
+	alloc.IsRedeemRequired = false
 	alloc.AllocationVersion = versionMarker.Version
 	updateMap := map[string]interface{}{
 		"blobber_size_used":  alloc.BlobberSizeUsed,
 		"used_size":          alloc.UsedSize,
-		"is_redeem_required": true,
+		"is_redeem_required": false,
 		"allocation_version": versionMarker.Version,
 	}
 
@@ -1410,7 +1450,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		a.FileMetaRoot = alloc.FileMetaRoot
 		a.IsRedeemRequired = alloc.IsRedeemRequired
 	}
-	err = txn.Create(versionMarker).Error
+	err = txn.Create(&versionMarker).Error
 	if err != nil {
 		txn.Rollback()
 		return &result, common.NewError("write_marker_error", "Error persisting the write marker "+err.Error())

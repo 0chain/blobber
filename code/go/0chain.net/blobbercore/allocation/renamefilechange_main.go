@@ -11,7 +11,7 @@ import (
 )
 
 func (rf *RenameFileChange) ApplyChange(ctx context.Context,
-	ts common.Timestamp, fileIDMeta map[string]string, collector reference.QueryCollector) error {
+	ts common.Timestamp, allocationVersion int64, collector reference.QueryCollector) error {
 
-	return rf.applyChange(ctx, ts, fileIDMeta, collector)
+	return rf.applyChange(ctx, ts, allocationVersion, collector)
 }

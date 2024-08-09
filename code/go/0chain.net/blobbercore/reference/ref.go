@@ -2,6 +2,7 @@ package reference
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"math"
 	"path/filepath"
@@ -75,15 +76,14 @@ type Ref struct {
 	UpdatedAt               common.Timestamp `gorm:"column:updated_at;index:idx_updated_at,sort:desc;" dirlist:"updated_at" filelist:"updated_at"`
 
 	DeletedAt         gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
-	IsPrecommit       bool           `gorm:"column:is_precommit;not null;default:false" filelist:"is_precommit" dirlist:"is_precommit"`
 	ChunkSize         int64          `gorm:"column:chunk_size;not null;default:65536" dirlist:"chunk_size" filelist:"chunk_size"`
 	NumUpdates        int64          `gorm:"column:num_of_updates" json:"num_of_updates"`
 	NumBlockDownloads int64          `gorm:"column:num_of_block_downloads" json:"num_of_block_downloads"`
 	FilestoreVersion  int            `gorm:"column:filestore_version" json:"-"`
 	DataHash          string         `gorm:"column:data_hash" filelist:"data_hash"`
 	DataHashSignature string         `gorm:"column:data_hash_signature" filelist:"data_hash_signature"`
+	AllocationVersion int64          `gorm:"allocation_version" dirlist:"allocation_version" filelist:"allocation_version"`
 	IsEmpty           bool           `gorm:"-" dirlist:"is_empty"`
-	AllocationVersion int64          `gorm:"-" dirlist:"allocation_version" filelist:"allocation_version"`
 	HashToBeComputed  bool           `gorm:"-"`
 	prevID            int64          `gorm:"-"`
 }
@@ -146,53 +146,67 @@ func GetReferenceLookup(allocationID, path string) string {
 }
 
 func NewDirectoryRef() *Ref {
-	return &Ref{Type: DIRECTORY, IsPrecommit: true}
+	return &Ref{Type: DIRECTORY}
 }
 
 func NewFileRef() *Ref {
-	return &Ref{Type: FILE, IsPrecommit: true}
+	return &Ref{Type: FILE}
 }
 
 // Mkdir create dirs if they don't exits. do nothing if dir exists. last dir will be return without child
-func Mkdir(ctx context.Context, allocationID, destpath string, ts common.Timestamp, collector QueryCollector) (*Ref, error) {
+func Mkdir(ctx context.Context, allocationID, destpath string, allocationVersion int64, ts common.Timestamp, collector QueryCollector) (*Ref, error) {
+	var err error
 	db := datastore.GetStore().GetTransaction(ctx)
 	if destpath != "/" {
 		destpath = strings.TrimSuffix(filepath.Clean("/"+destpath), "/")
 	}
 	destLookupHash := GetReferenceLookup(allocationID, destpath)
-	var destRef Ref
+	var destRef *Ref
 	cachedRef := collector.GetFromCache(destLookupHash)
 	if cachedRef != nil {
-		destRef = *cachedRef
+		destRef = cachedRef
 	} else {
-		err := db.Select("id", "type").Where(&Ref{LookupHash: destLookupHash}).Take(&destRef).Error
+		destRef, err = GetReferenceByLookupHashWithNewTransaction(destLookupHash)
 		if err != nil && err != gorm.ErrRecordNotFound {
 			return nil, err
 		}
-		destRef.LookupHash = destLookupHash
-		if destRef.ID > 0 {
-			defer collector.AddToCache(&destRef)
+		if destRef != nil {
+			destRef.LookupHash = destLookupHash
+			defer collector.AddToCache(destRef)
 		}
 	}
-	if destRef.ID > 0 {
+	if destRef != nil {
 		if destRef.Type != DIRECTORY {
 			return nil, common.NewError("invalid_dir_tree", "parent path is not a directory")
 		}
-		return &destRef, nil
+		return destRef, nil
 	}
 	fields, err := common.GetAllParentPaths(destpath)
 	if err != nil {
 		logging.Logger.Error("mkdir: failed to get all parent paths", zap.Error(err), zap.String("destpath", destpath))
 		return nil, err
 	}
-	tx := db.Model(&Ref{}).Select("id", "path", "type")
 	parentLookupHashes := make([]string, 0, len(fields))
 	for i := 0; i < len(fields); i++ {
 		parentLookupHashes = append(parentLookupHashes, GetReferenceLookup(allocationID, fields[i]))
-		tx = tx.Or(Ref{LookupHash: parentLookupHashes[i]})
+	}
+	var parentRefs []*Ref
+	collector.LockTransaction()
+	defer collector.UnlockTransaction()
+	cachedRef = collector.GetFromCache(destLookupHash)
+	if cachedRef != nil {
+		if cachedRef.Type != DIRECTORY {
+			return nil, common.NewError("invalid_dir_tree", "parent path is not a directory")
+		}
+		return cachedRef, nil
+	} else {
+		logging.Logger.Info("noEntryFound: ", zap.String("destLookupHash", destLookupHash), zap.String("destpath", destpath))
 	}
 
-	var parentRefs []*Ref
+	tx := db.Model(&Ref{}).Select("id", "path", "type")
+	for i := 0; i < len(fields); i++ {
+		tx = tx.Or(Ref{LookupHash: parentLookupHashes[i]})
+	}
 	err = tx.Order("path").Find(&parentRefs).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return nil, err
@@ -202,7 +216,6 @@ func Mkdir(ctx context.Context, allocationID, destpath string, ts common.Timesta
 		parentPath = "/"
 	)
 	if len(parentRefs) > 0 {
-		logging.Logger.Info("mkdir:parentRefs: ", zap.Any("parentRefs", parentRefs))
 		parentID = parentRefs[len(parentRefs)-1].ID
 		parentPath = parentRefs[len(parentRefs)-1].Path
 		for i := 0; i < len(parentRefs); i++ {
@@ -218,8 +231,9 @@ func Mkdir(ctx context.Context, allocationID, destpath string, ts common.Timesta
 		fields = append(fields, destpath)
 		parentLookupHashes = append(parentLookupHashes, destLookupHash)
 	}
+
 	for i := len(parentRefs); i < len(fields); i++ {
-		logging.Logger.Info("mkdir: creating directory", zap.String("path", fields[i]), zap.Any("parentID", parentID), zap.Int("pathLevel", i+1))
+		logging.Logger.Info("mkdir: creating directory", zap.String("path", fields[i]), zap.Int("parentID", int(parentID)))
 		var parentIDRef *int64
 		if parentID > 0 {
 			parentIDRef = &parentID
@@ -238,11 +252,13 @@ func Mkdir(ctx context.Context, allocationID, destpath string, ts common.Timesta
 		newRef.LookupHash = parentLookupHashes[i]
 		newRef.CreatedAt = ts
 		newRef.UpdatedAt = ts
-		newRef.FileMetaHash = encryption.Hash(newRef.GetFileMetaHashData())
+		newRef.FileMetaHash = encryption.FastHash(newRef.GetFileMetaHashData())
+		newRef.AllocationVersion = allocationVersion
 		err = db.Create(newRef).Error
 		if err != nil {
 			return nil, err
 		}
+		collector.AddToCache(newRef)
 		parentID = newRef.ID
 		parentPath = newRef.Path
 	}
@@ -614,17 +630,8 @@ func (r *Ref) UpdatePath(newPath, parentPath string) {
 	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
 }
 
-func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
-	if refID <= 0 {
-		return common.NewError("invalid_ref_id", "Invalid reference ID to delete")
-	}
-	db := datastore.GetStore().GetTransaction(ctx)
-	return db.Where("path_hash = ?", pathHash).Delete(&Ref{ID: refID}).Error
-}
-
 func (r *Ref) SaveFileRef(ctx context.Context, collector QueryCollector) error {
 	r.prevID = r.ID
-	r.IsPrecommit = true
 	r.NumUpdates += 1
 	if r.ID > 0 {
 		deleteRef := &Ref{ID: r.ID}
@@ -638,7 +645,6 @@ func (r *Ref) SaveFileRef(ctx context.Context, collector QueryCollector) error {
 
 func (r *Ref) SaveDirRef(ctx context.Context, collector QueryCollector) error {
 	r.prevID = r.ID
-	r.IsPrecommit = true
 	r.NumUpdates += 1
 	if r.ID > 0 {
 		deleteRef := &Ref{ID: r.ID}
@@ -751,4 +757,32 @@ func IsDirectoryEmpty(ctx context.Context, id int64) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func GetReferenceByLookupHashWithNewTransaction(lookupHash string) (*Ref, error) {
+	var ref *Ref
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		txn := datastore.GetStore().GetTransaction(ctx)
+		return txn.Model(&Ref{}).Select("id", "type").Where("lookup_hash = ?", lookupHash).Take(&ref).Error
+	}, &sql.TxOptions{
+		ReadOnly: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return ref, nil
+}
+
+func GetFullReferenceByLookupHashWithNewTransaction(lookupHash string) (*Ref, error) {
+	var ref *Ref
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		txn := datastore.GetStore().GetTransaction(ctx)
+		return txn.Model(&Ref{}).Where("lookup_hash = ?", lookupHash).Take(&ref).Error
+	}, &sql.TxOptions{
+		ReadOnly: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return ref, nil
 }
