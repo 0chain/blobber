@@ -104,7 +104,7 @@ func (fsh *StorageHandler) GetAllocationUpdateTicket(ctx context.Context, r *htt
 }
 
 func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocationID, path string) (*reference.Ref, error) {
-	return reference.GetLimitedRefFieldsByPath(ctx, allocationID, path, []string{"id", "type"})
+	return reference.GetLimitedRefFieldsByPath(ctx, allocationID, path, []string{"id", "type", "custom_meta"})
 }
 
 func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error) {

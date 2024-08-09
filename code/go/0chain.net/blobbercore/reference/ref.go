@@ -58,7 +58,7 @@ type Ref struct {
 	NumBlocks               int64  `gorm:"column:num_of_blocks;not null;default:0" dirlist:"num_of_blocks" filelist:"num_of_blocks"`
 	ParentPath              string `gorm:"column:parent_path;size:999;index:idx_parent_path_alloc,priority:2"`
 	PathLevel               int    `gorm:"column:level;not null;default:0"`
-	CustomMeta              string `gorm:"column:custom_meta;not null" filelist:"custom_meta"`
+	CustomMeta              string `gorm:"column:custom_meta;not null" filelist:"custom_meta" dirlist:"custom_meta"`
 	Size                    int64  `gorm:"column:size;not null;default:0" dirlist:"size" filelist:"size"`
 	ActualFileSize          int64  `gorm:"column:actual_file_size;not null;default:0" dirlist:"actual_file_size" filelist:"actual_file_size"`
 	ActualFileHashSignature string `gorm:"column:actual_file_hash_signature;size:64" filelist:"actual_file_hash_signature"  json:"actual_file_hash_signature,omitempty"`
@@ -740,6 +740,11 @@ func GetListingFieldsMap(refEntity interface{}, tagName string) map[string]inter
 		}
 	}
 	return result
+}
+
+func UpdateCustomMeta(ctx context.Context, ref *Ref, customMeta string) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+	return db.Exec("UPDATE reference_objects SET custom_meta = ? WHERE id = ?", customMeta, ref.ID).Error
 }
 
 func IsDirectoryEmpty(ctx context.Context, id int64) (bool, error) {
