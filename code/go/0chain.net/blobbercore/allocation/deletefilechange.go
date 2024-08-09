@@ -24,8 +24,10 @@ type DeleteFileChange struct {
 }
 
 func (nf *DeleteFileChange) ApplyChange(ctx context.Context,
-	ts common.Timestamp, _ map[string]string, collector reference.QueryCollector) error {
-	return reference.DeleteObject(ctx, nf.AllocationID, nf.LookupHash, nf.Type, ts)
+	ts common.Timestamp, allocationVersion int64, collector reference.QueryCollector) error {
+	collector.LockTransaction()
+	defer collector.UnlockTransaction()
+	return reference.DeleteObject(ctx, nf.AllocationID, nf.LookupHash, nf.Type, ts, allocationVersion, collector)
 }
 
 func (nf *DeleteFileChange) Marshal() (string, error) {

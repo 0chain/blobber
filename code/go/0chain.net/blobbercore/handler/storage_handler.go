@@ -104,7 +104,7 @@ func (fsh *StorageHandler) GetAllocationUpdateTicket(ctx context.Context, r *htt
 }
 
 func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocationID, path string) (*reference.Ref, error) {
-	return reference.GetLimitedRefFieldsByPath(ctx, allocationID, path, []string{"id", "type"})
+	return reference.GetLimitedRefFieldsByPath(ctx, allocationID, path, []string{"id", "type", "custom_meta"})
 }
 
 func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -262,11 +262,6 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	fileStats, err := reference.GetFileStats(ctx, fileref)
 	if err != nil {
 		return nil, common.NewError("bad_db_operation", "Error retrieving file stats. "+err.Error())
-	}
-	wm, _ := writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
-	if wm != nil && fileStats != nil {
-		fileStats.WriteMarkerRedeemTxn = wm.CloseTxnID
-		fileStats.OnChain = wm.OnChain()
 	}
 	statsMap := make(map[string]interface{})
 	statsBytes, err := json.Marshal(fileStats)
@@ -902,13 +897,16 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 			pageLimit = o
 		}
 	}
-
+	var offsetTime int
 	offsetPath := r.FormValue("offsetPath")
 	offsetDate := r.FormValue("offsetDate")
 	updatedDate := r.FormValue("updatedDate")
 	err = checkValidDate(offsetDate, OffsetDateLayout)
 	if err != nil {
-		return nil, err
+		offsetTime, err = strconv.Atoi(offsetDate)
+		if err != nil {
+			return nil, err
+		}
 	}
 	err = checkValidDate(updatedDate, OffsetDateLayout)
 	if err != nil {
@@ -937,7 +935,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 	switch {
 	case refType == "regular":
 		refs, totalPages, newOffsetPath, err = reference.GetRefs(
-			ctx, allocationID, path, offsetPath, fileType, level, pageLimit, pathRef,
+			ctx, allocationID, path, offsetPath, fileType, level, pageLimit, offsetTime, pathRef,
 		)
 
 	case refType == "updated":

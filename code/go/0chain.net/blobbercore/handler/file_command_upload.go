@@ -76,6 +76,10 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 		return common.NewError("invalid_path", fmt.Sprintf("%v is not absolute path", fileChanger.Path))
 	}
 
+	if filepath.Clean(fileChanger.Path) != fileChanger.Path {
+		return common.NewError("invalid_path", fmt.Sprintf("%v is not a clean path", fileChanger.Path))
+	}
+
 	if fileChanger.ConnectionID == "" {
 		return common.NewError("invalid_connection", "Invalid connection id")
 	}
@@ -123,7 +127,7 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, allocationObj 
 		ChunkSize:    cmd.fileChanger.ChunkSize,
 		UploadOffset: cmd.fileChanger.UploadOffset,
 		IsFinal:      cmd.fileChanger.IsFinal,
-		FilePathHash: cmd.fileChanger.LookupHash,
+		LookupHash:   cmd.fileChanger.LookupHash,
 		Size:         cmd.fileChanger.Size,
 	}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionID, fileInputData, cmd.contentFile)
@@ -187,7 +191,7 @@ func (cmd *UploadFileCommand) ProcessThumbnail(allocationObj *allocation.Allocat
 	if cmd.thumbHeader != nil {
 		defer cmd.thumbFile.Close()
 
-		thumbInputData := &filestore.FileInputData{Name: cmd.thumbHeader.Filename, Path: cmd.fileChanger.Path, IsThumbnail: true, FilePathHash: cmd.fileChanger.LookupHash}
+		thumbInputData := &filestore.FileInputData{Name: cmd.thumbHeader.Filename, Path: cmd.fileChanger.Path, IsThumbnail: true, LookupHash: cmd.fileChanger.LookupHash}
 		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionID, thumbInputData, cmd.thumbFile)
 		if err != nil {
 			return common.NewError("upload_error", "Failed to upload the thumbnail. "+err.Error())
@@ -221,7 +225,7 @@ func (cmd *UploadFileCommand) AddChange(ctx context.Context) error {
 	connectionInput, _ := cmd.fileChanger.Marshal()
 	cmd.allocationChange.LookupHash = reference.GetReferenceLookup(cmd.fileChanger.AllocationID, cmd.fileChanger.Path)
 	cmd.allocationChange.Input = connectionInput
-	logging.Logger.Info("AddChange: ", zap.String("connectionID", cmd.allocationChange.ConnectionID))
+	logging.Logger.Info("AddChange: ", zap.String("connectionID", cmd.allocationChange.ConnectionID), zap.String("lookupHash", cmd.allocationChange.LookupHash))
 	return cmd.allocationChange.Create(ctx)
 }
 

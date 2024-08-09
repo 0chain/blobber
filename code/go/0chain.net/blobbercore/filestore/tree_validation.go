@@ -415,9 +415,17 @@ type CommitHasher struct {
 	dataSize      int64
 }
 
+var (
+	md5Pool = &sync.Pool{
+		New: func() interface{} {
+			return md5.New()
+		},
+	}
+)
+
 func NewCommitHasher(dataSize int64) *CommitHasher {
 	c := new(CommitHasher)
-	c.md5hasher = md5.New()
+	c.md5hasher = md5Pool.Get().(hash.Hash)
 	c.isInitialized = true
 	c.doneChan = make(chan struct{})
 	c.dataSize = dataSize
@@ -436,7 +444,7 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 	defer f.Close()
 	var toFinalize bool
 	var totalWritten int64
-
+	logging.Logger.Info("hasher_start", zap.String("fileHash", filePathHash), zap.String("fileName", fileName), zap.String("tempFilePath", tempFilePath))
 	for {
 		select {
 		case <-ctx.Done():
@@ -458,7 +466,6 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 		} else if pq.DataBytes == 0 {
 			continue
 		}
-		logging.Logger.Info("hasher_pop", zap.Int64("offset", pq.Offset), zap.Int64("dataBytes", pq.DataBytes), zap.Any("toFinalize", toFinalize), zap.Int64("dataSize", c.dataSize), zap.String("filename", fileName), zap.Int64("totalWritten", totalWritten))
 		bufSize := 2 * BufferSize
 		if pq.DataBytes < int64(bufSize) {
 			bufSize = int(pq.DataBytes)
@@ -571,5 +578,8 @@ func (c *CommitHasher) GetValidationMerkleRoot() string {
 }
 
 func (c *CommitHasher) GetMd5Hash() string {
-	return hex.EncodeToString(c.md5hasher.Sum(nil))
+	hash := hex.EncodeToString(c.md5hasher.Sum(nil))
+	c.md5hasher.Reset()
+	md5Pool.Put(c.md5hasher)
+	return hash
 }

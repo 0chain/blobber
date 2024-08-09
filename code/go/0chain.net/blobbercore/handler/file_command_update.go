@@ -119,7 +119,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, allocationObj 
 		Path:         cmd.fileChanger.Path,
 		UploadOffset: cmd.fileChanger.UploadOffset,
 		IsFinal:      cmd.fileChanger.IsFinal,
-		FilePathHash: filePathHash,
+		LookupHash:   filePathHash,
 		Size:         cmd.fileChanger.Size,
 	}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connID, fileInputData, cmd.contentFile)
@@ -179,7 +179,7 @@ func (cmd *UpdateFileCommand) ProcessThumbnail(allocationObj *allocation.Allocat
 	connectionID := cmd.fileChanger.ConnectionID
 	if cmd.thumbHeader != nil {
 		defer cmd.thumbFile.Close()
-		thumbInputData := &filestore.FileInputData{Name: cmd.thumbHeader.Filename, Path: cmd.fileChanger.Path, IsThumbnail: true, FilePathHash: cmd.fileChanger.LookupHash}
+		thumbInputData := &filestore.FileInputData{Name: cmd.thumbHeader.Filename, Path: cmd.fileChanger.Path, IsThumbnail: true, LookupHash: cmd.fileChanger.LookupHash}
 		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionID, thumbInputData, cmd.thumbFile)
 		if err != nil {
 			return common.NewError("upload_error", "Failed to upload the thumbnail. "+err.Error())
