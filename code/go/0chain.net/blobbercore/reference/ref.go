@@ -630,14 +630,6 @@ func (r *Ref) UpdatePath(newPath, parentPath string) {
 	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
 }
 
-func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
-	if refID <= 0 {
-		return common.NewError("invalid_ref_id", "Invalid reference ID to delete")
-	}
-	db := datastore.GetStore().GetTransaction(ctx)
-	return db.Where("path_hash = ?", pathHash).Delete(&Ref{ID: refID}).Error
-}
-
 func (r *Ref) SaveFileRef(ctx context.Context, collector QueryCollector) error {
 	r.prevID = r.ID
 	r.NumUpdates += 1
