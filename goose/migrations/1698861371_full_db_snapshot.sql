@@ -754,7 +754,7 @@ CREATE INDEX idx_created_at ON reference_objects USING btree (created_at DESC);
 -- Name: idx_lookup_hash; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE UNIQUE INDEX idx_lookup_hash_deleted ON reference_objects USING btree (lookup_hash,(deleted_at IS NULL)) INCLUDE(id,type);
+CREATE UNIQUE INDEX idx_lookup_hash_deleted ON reference_objects USING btree (lookup_hash,(deleted_at IS NULL)) INCLUDE(id,type,num_of_updates);
 
 
 --
@@ -861,14 +861,6 @@ ALTER TABLE ONLY allocation_changes
  --   
 
 CREATE INDEX connection_id_index ON allocation_changes USING btree (connection_id);
-
-
---
--- Name: file_stats fk_file_stats_ref; Type: FK CONSTRAINT; Schema: public; Owner: blobber_user
---
-
-ALTER TABLE ONLY file_stats
-    ADD CONSTRAINT fk_file_stats_ref FOREIGN KEY (ref_id) REFERENCES reference_objects(id) ON DELETE CASCADE;
 
 
 --

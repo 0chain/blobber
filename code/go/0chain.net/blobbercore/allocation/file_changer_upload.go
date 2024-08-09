@@ -66,19 +66,20 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 		NumBlocks:               int64(math.Ceil(float64(nf.Size*1.0) / float64(nf.ChunkSize))),
 		FilestoreVersion:        filestore.VERSION,
 		AllocationVersion:       allocationVersion,
+		NumUpdates:              1,
 	}
 	newFile.FileMetaHash = encryption.FastHash(newFile.GetFileMetaHashData())
 	elapsedNewFile := time.Since(now)
 	// find if ref exists
 	var refResult struct {
-		ID   int64
-		Type string
+		ID         int64
+		Type       string
+		NumUpdates int64 `gorm:"column:num_of_updates" json:"num_of_updates"`
 	}
-	logging.Logger.Info("FileUpload: ", zap.String("path", nf.Path), zap.String("lookup_hash", newFile.LookupHash), zap.Int64("allocation_version", allocationVersion))
 
 	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		tx := datastore.GetStore().GetTransaction(ctx)
-		return tx.Model(&reference.Ref{}).Select("id", "type").Where("lookup_hash = ?", newFile.LookupHash).Take(&refResult).Error
+		return tx.Model(&reference.Ref{}).Select("id", "type", "num_of_updates").Where("lookup_hash = ?", newFile.LookupHash).Take(&refResult).Error
 	}, &sql.TxOptions{
 		ReadOnly: true,
 	})
@@ -99,6 +100,7 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context,
 			Type:       refResult.Type,
 		}
 		collector.DeleteRefRecord(deleteRecord)
+		newFile.NumUpdates = refResult.NumUpdates + 1
 	}
 	elapsedNewFileRecord := time.Since(now) - elapsedNewFile
 	// get parent id
