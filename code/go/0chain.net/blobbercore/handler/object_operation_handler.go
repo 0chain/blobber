@@ -620,6 +620,11 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		logging.Logger.Info("commit_write_empty", zap.String("connection_id", connectionID))
 	}
 
+	if len(connectionObj.Changes) > config.Configuration.MaxConnectionChanges {
+		return nil, common.NewError("max_connection_changes",
+			"Max connection changes reached. A connection can only have "+fmt.Sprintf("%v", config.Configuration.MaxConnectionChanges)+" changes")
+	}
+
 	elapsedGetConnObj := time.Since(startTime) - elapsedAllocation - elapsedGetLock
 
 	if allocationObj.OwnerID != clientID || encryption.Hash(clientKeyBytes) != clientID {
@@ -785,6 +790,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("invalid_parameters", "Invalid name")
 	}
 	if filepath.Base(new_name) != new_name {
+		logging.Logger.Error("invalid_parameters", zap.String("new_name", new_name), zap.String("base", filepath.Base(new_name)))
 		return nil, common.NewError("invalid_parameters", "Invalid name")
 	}
 	pathHash, err := pathHashFromReq(r, allocationID)

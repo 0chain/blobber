@@ -153,7 +153,6 @@ func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clien
 	).Preload("Changes").Take(cc).Error
 
 	if err == nil {
-		logging.Logger.Info("getAllocationChanges", zap.String("connection_id", connectionID), zap.Int("changes", len(cc.Changes)))
 		cc.ComputeProperties()
 		// Load connection Obj size from memory
 		cc.Size = GetConnectionObjSize(connectionID)
@@ -361,7 +360,6 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context, allocat
 				<-limitCh
 				wg.Done()
 			}()
-			logging.Logger.Info("Move to filestore", zap.String("lookup_hash", refLookupHash))
 			err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, refLookupHash, filestore.VERSION)
 			if err != nil {
 				logging.Logger.Error(fmt.Sprintf("Error while moving file: %s", err.Error()))
