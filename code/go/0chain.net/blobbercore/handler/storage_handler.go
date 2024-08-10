@@ -405,6 +405,9 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 			}
 			fileref = parent
 		}
+		if path == "/" {
+			fileref.Size = allocationObj.BlobberSizeUsed
+		}
 		listResult.Meta = fileref.GetListingData(ctx)
 		if clientID != allocationObj.OwnerID {
 			delete(listResult.Meta, "path")
@@ -473,6 +476,9 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 		}
 
 		dirref = r
+		if path == "/" {
+			dirref.Size = allocationObj.BlobberSizeUsed
+		}
 	}
 
 	var result blobberhttp.ListResult
