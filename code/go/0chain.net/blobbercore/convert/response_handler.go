@@ -42,9 +42,8 @@ func ListEntitesResponseHandler(resp *blobbergrpc.ListEntitiesResponse) *blobber
 	}
 
 	return &blobberhttp.ListResult{
-		AllocationRoot: resp.AllocationRoot,
-		Meta:           FileRefGRPCToFileRef(resp.MetaData).GetListingData(ctx),
-		Entities:       entities,
+		Meta:     FileRefGRPCToFileRef(resp.MetaData).GetListingData(ctx),
+		Entities: entities,
 	}
 }
 
@@ -119,11 +118,9 @@ func GetCommitMetaTxnHandlerResponse(response *blobbergrpc.CommitMetaTxnResponse
 
 func CopyObjectResponseHandler(copyObjectResponse *blobbergrpc.CopyObjectResponse) *allocation.UploadResult {
 	return &allocation.UploadResult{
-		Filename:        copyObjectResponse.Filename,
-		Size:            copyObjectResponse.Size,
-		ValidationRoot:  copyObjectResponse.ValidationRoot,
-		FixedMerkleRoot: copyObjectResponse.FixedMerkleRoot,
-		UploadLength:    copyObjectResponse.UploadLength,
-		UploadOffset:    copyObjectResponse.UploadOffset,
+		Filename:     copyObjectResponse.Filename,
+		Size:         copyObjectResponse.Size,
+		UploadLength: copyObjectResponse.UploadLength,
+		UploadOffset: copyObjectResponse.UploadOffset,
 	}
 }

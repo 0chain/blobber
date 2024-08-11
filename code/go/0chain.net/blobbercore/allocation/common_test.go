@@ -21,11 +21,9 @@ func (mfs *MockFileStore) WriteFile(allocID, connID string,
 	b := bytes.NewBuffer(make([]byte, 0))
 	n, _ := io.Copy(b, infile)
 	return &filestore.FileOutputData{
-		Name:            fileData.Name,
-		Path:            fileData.Path,
-		FixedMerkleRoot: "",
-		ValidationRoot:  fileData.ValidationRoot,
-		Size:            n,
+		Name: fileData.Name,
+		Path: fileData.Path,
+		Size: n,
 	}, nil
 }
 

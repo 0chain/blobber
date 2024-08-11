@@ -2,74 +2,45 @@ package reference
 
 import (
 	"context"
-	"path/filepath"
+	"database/sql"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 )
 
-func DeleteObject(ctx context.Context, rootRef *Ref, allocationID, objPath string, ts common.Timestamp) error {
-	likePath := objPath + "/%"
-	if objPath == "/" {
-		likePath = "/%"
-	}
-
+func DeleteObject(ctx context.Context, allocationID, lookupHash, _type string, ts common.Timestamp, allocationVersion int64, collector QueryCollector) error {
 	db := datastore.GetStore().GetTransaction(ctx)
-
-	err := db.Exec("UPDATE reference_objects SET is_precommit=? WHERE allocation_id=? AND path != ? AND (path=? OR path LIKE ?)", true, allocationID, "/", objPath, likePath).Error
+	if _type == DIRECTORY {
+		ref, err := GetLimitedRefFieldsByLookupHashWith(ctx, allocationID, lookupHash, []string{"id", "type"})
+		if err != nil {
+			logging.Logger.Error("delete_object_error", zap.Error(err))
+			return err
+		}
+		isEmpty, err := IsDirectoryEmpty(ctx, ref.ID)
+		if err != nil {
+			logging.Logger.Error("delete_object_error", zap.Error(err))
+			return err
+		}
+		if !isEmpty {
+			return common.NewError("invalid_operation", "Directory is not empty")
+		}
+		_type = ref.Type
+	}
+	err := db.Exec("UPDATE reference_objects SET deleted_at=? WHERE lookup_hash=?", sql.NullTime{
+		Time:  common.ToTime(ts),
+		Valid: true,
+	}, lookupHash).Error
 	if err != nil {
+		logging.Logger.Error("delete_object_error", zap.Error(err))
 		return err
 	}
-
-	err = db.Delete(&Ref{}, "allocation_id=? AND path != ? AND (path=? OR path LIKE ?)",
-		allocationID, "/", objPath, likePath).Error
-
-	if err != nil {
-		return err
-	}
-	if objPath == "/" {
-		rootRef.Children = nil
-		rootRef.HashToBeComputed = true
-		rootRef.childrenLoaded = true
-		rootRef.UpdatedAt = ts
-		return nil
-	}
-	parentPath, deleteFileName := filepath.Split(objPath)
-	rootRef.UpdatedAt = ts
-	fields, err := common.GetPathFields(parentPath)
-	if err != nil {
-		return err
-	}
-
-	dirRef := rootRef
-
-	for _, name := range fields {
-		var found bool
-		for _, ref := range dirRef.Children {
-			if ref.Name == name {
-				ref.HashToBeComputed = true
-				ref.childrenLoaded = true
-				ref.UpdatedAt = ts
-				found = true
-				dirRef = ref
-				break
-			}
+	if _type == FILE {
+		deletedRef := &Ref{
+			LookupHash: lookupHash,
 		}
-
-		if !found {
-			return common.NewError("invalid_reference_path", "Reference path has invalid references")
-		}
+		collector.DeleteLookupRefRecord(deletedRef)
 	}
-
-	for i, child := range dirRef.Children {
-		basePath := filepath.Base(child.Path)
-		if basePath == deleteFileName || child.Path == objPath {
-			dirRef.RemoveChild(i)
-			break
-		}
-	}
-
-	rootRef.HashToBeComputed = true
-	rootRef.childrenLoaded = true
-	return nil
+	return err
 }

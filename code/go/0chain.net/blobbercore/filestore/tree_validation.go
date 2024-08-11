@@ -5,9 +5,11 @@ package filestore
 
 import (
 	"context"
+	"crypto/md5"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash"
 	"io"
 	"math"
 	"os"
@@ -406,16 +408,24 @@ func getNewValidationTree(dataSize int64) *validationTree {
 type CommitHasher struct {
 	fmt           *fixedMerkleTree
 	vt            *validationTree
+	md5hasher     hash.Hash
 	isInitialized bool
 	doneChan      chan struct{}
 	hashErr       error
 	dataSize      int64
 }
 
-func GetNewCommitHasher(dataSize int64) *CommitHasher {
+var (
+	md5Pool = &sync.Pool{
+		New: func() interface{} {
+			return md5.New()
+		},
+	}
+)
+
+func NewCommitHasher(dataSize int64) *CommitHasher {
 	c := new(CommitHasher)
-	c.fmt = getNewFixedMerkleTree()
-	c.vt = getNewValidationTree(dataSize)
+	c.md5hasher = md5Pool.Get().(hash.Hash)
 	c.isInitialized = true
 	c.doneChan = make(chan struct{})
 	c.dataSize = dataSize
@@ -434,7 +444,7 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 	defer f.Close()
 	var toFinalize bool
 	var totalWritten int64
-
+	logging.Logger.Info("hasher_start", zap.String("fileHash", filePathHash), zap.String("fileName", fileName), zap.String("tempFilePath", tempFilePath))
 	for {
 		select {
 		case <-ctx.Done():
@@ -456,7 +466,6 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 		} else if pq.DataBytes == 0 {
 			continue
 		}
-		logging.Logger.Info("hasher_pop", zap.Int64("offset", pq.Offset), zap.Int64("dataBytes", pq.DataBytes), zap.Any("toFinalize", toFinalize), zap.Int64("dataSize", c.dataSize), zap.String("filename", fileName), zap.Int64("totalWritten", totalWritten))
 		bufSize := 2 * BufferSize
 		if pq.DataBytes < int64(bufSize) {
 			bufSize = int(pq.DataBytes)
@@ -474,7 +483,7 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 			pq.DataBytes -= int64(n)
 			pq.Offset += int64(n)
 			totalWritten += int64(n)
-			_, err = c.Write(buf[:n])
+			_, err = c.md5hasher.Write(buf[:n])
 			if err != nil {
 				logging.Logger.Error("hasher_write", zap.Error(err), zap.Int("n", n), zap.Int64("offset", pq.Offset), zap.Int64("dataBytes", pq.DataBytes), zap.Int64("dataSize", c.dataSize), zap.String("filename", fileName), zap.Int64("totalWritten", totalWritten))
 				c.hashErr = err
@@ -483,13 +492,12 @@ func (c *CommitHasher) Start(ctx context.Context, connID, allocID, fileName, fil
 		}
 		buf = nil
 		if toFinalize {
-			c.hashErr = c.Finalize()
 			return
 		}
 	}
 }
 
-func (c *CommitHasher) Wait(ctx context.Context, connID, allocID, fileName, filePathHash string) error {
+func (c *CommitHasher) Wait(ctx context.Context) error {
 	select {
 	case <-c.doneChan:
 		return c.hashErr
@@ -567,4 +575,11 @@ func (c *CommitHasher) GetFixedMerkleRoot() string {
 
 func (c *CommitHasher) GetValidationMerkleRoot() string {
 	return hex.EncodeToString(c.vt.GetValidationRoot())
+}
+
+func (c *CommitHasher) GetMd5Hash() string {
+	hash := hex.EncodeToString(c.md5hasher.Sum(nil))
+	c.md5hasher.Reset()
+	md5Pool.Put(c.md5hasher)
+	return hash
 }

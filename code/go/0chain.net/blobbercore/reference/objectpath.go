@@ -31,7 +31,7 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 
 	if rootRef.NumBlocks == 0 {
 		var retObj ObjectPath
-		retObj.RootHash = rootRef.Hash
+		// retObj.RootHash = rootRef.Hash
 		retObj.FileBlockNum = 0
 		result := rootRef.GetListingData(ctx)
 		list := make([]map[string]interface{}, len(rootRef.Children))
@@ -68,7 +68,7 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 				break
 			}
 			curRef, err = GetRefWithSortedChildren(ctx, allocationID, child.Path)
-			if err != nil || curRef.Hash == "" {
+			if err != nil {
 				return nil, common.NewError("failed_object_path", "Failed to get the object path")
 			}
 			curResult = list[idx]
@@ -80,7 +80,6 @@ func GetObjectPath(ctx context.Context, allocationID string, blockNum int64) (*O
 	}
 
 	var retObj ObjectPath
-	retObj.RootHash = rootRef.Hash
 	retObj.Meta = curRef.GetListingData(ctx)
 	retObj.Path = result
 	retObj.FileBlockNum = remainingBlocks
