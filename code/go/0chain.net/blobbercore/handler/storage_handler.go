@@ -21,6 +21,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 )
@@ -103,7 +104,7 @@ func (fsh *StorageHandler) GetAllocationUpdateTicket(ctx context.Context, r *htt
 }
 
 func (fsh *StorageHandler) checkIfFileAlreadyExists(ctx context.Context, allocationID, path string) (*reference.Ref, error) {
-	return reference.GetLimitedRefFieldsByPath(ctx, allocationID, path, []string{"id", "type"})
+	return reference.GetLimitedRefFieldsByPath(ctx, allocationID, path, []string{"id", "type", "custom_meta"})
 }
 
 func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -142,8 +143,15 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 			return nil, common.NewError("invalid_signature", "Invalid signature")
 		}
 	}
-
+	if fileref.Type == reference.DIRECTORY {
+		fileref.IsEmpty, err = reference.IsDirectoryEmpty(ctx, fileref.ID)
+		if err != nil {
+			return nil, common.NewError("bad_db_operation", "Error checking if directory is empty. "+err.Error())
+		}
+	}
+	fileref.AllocationVersion = alloc.AllocationVersion
 	result := fileref.GetListingData(ctx)
+	Logger.Info("GetFileMeta", zap.Any("allocationResultVersion", result["allocation_version"]), zap.Int64("allocationVersion", alloc.AllocationVersion), zap.Any("path", result["path"]))
 
 	if !isOwner && !isRepairer {
 		var authTokenString = r.FormValue("auth_token")
@@ -255,11 +263,6 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 	if err != nil {
 		return nil, common.NewError("bad_db_operation", "Error retrieving file stats. "+err.Error())
 	}
-	wm, _ := writemarker.GetWriteMarkerEntity(ctx, fileref.AllocationRoot)
-	if wm != nil && fileStats != nil {
-		fileStats.WriteMarkerRedeemTxn = wm.CloseTxnID
-		fileStats.OnChain = wm.OnChain()
-	}
 	statsMap := make(map[string]interface{})
 	statsBytes, err := json.Marshal(fileStats)
 	if err != nil {
@@ -276,7 +279,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 
 // swagger:route GET /v1/file/list/{allocation} GetListFiles
 // List files.
-// ListHandler is the handler to respond to list requests from clients, 
+// ListHandler is the handler to respond to list requests from clients,
 // it returns a list of files in the allocation,
 // along with the metadata of the files.
 //
@@ -344,7 +347,7 @@ func (fsh *StorageHandler) GetFileStats(ctx context.Context, r *http.Request) (i
 // responses:
 //
 //   200: ListResult
-//   400: 
+//   400:
 
 func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*blobberhttp.ListResult, error) {
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
@@ -391,7 +394,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 
 	if !ok {
 		var listResult blobberhttp.ListResult
-		listResult.AllocationRoot = allocationObj.AllocationRoot
+		listResult.AllocationVersion = allocationObj.AllocationVersion
 		if fileref == nil {
 			fileref = &reference.Ref{Type: reference.DIRECTORY, Path: path, AllocationID: allocationID}
 		}
@@ -461,6 +464,9 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 
 		dirref = parent
 	} else {
+		if fileref == nil {
+			fileref = &reference.Ref{Type: reference.DIRECTORY, Path: path, AllocationID: allocationID}
+		}
 		r, err := reference.GetRefWithChildren(ctx, fileref, allocationID, filePath, offset, pageLimit)
 		if err != nil {
 			return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
@@ -470,7 +476,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 	}
 
 	var result blobberhttp.ListResult
-	result.AllocationRoot = allocationObj.AllocationRoot
+	result.AllocationVersion = allocationObj.AllocationVersion
 	result.Meta = dirref.GetListingData(ctx)
 	if clientID != allocationObj.OwnerID {
 		delete(result.Meta, "path")
@@ -490,7 +496,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 	return &result, nil
 }
 
-func (fsh *StorageHandler) GetLatestWriteMarker(ctx context.Context, r *http.Request) (*blobberhttp.LatestWriteMarkerResult, error) {
+func (fsh *StorageHandler) GetLatestWriteMarker(ctx context.Context, r *http.Request) (*blobberhttp.LatestVersionMarkerResult, error) {
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	if clientID == "" {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
@@ -511,41 +517,20 @@ func (fsh *StorageHandler) GetLatestWriteMarker(ctx context.Context, r *http.Req
 		return nil, common.NewError("invalid_signature", "could not verify the allocation owner")
 	}
 
-	var latestWM *writemarker.WriteMarkerEntity
-	var prevWM *writemarker.WriteMarkerEntity
-	if allocationObj.AllocationRoot == "" {
-		latestWM = nil
-	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
+	var vm *writemarker.VersionMarker
+	if allocationObj.AllocationVersion != 0 {
+		vm, err = writemarker.GetVersionMarker(ctx, allocationId, allocationObj.AllocationVersion)
 		if err != nil {
-			Logger.Error("[latest_write_marker]", zap.String("allocation_root", allocationObj.AllocationRoot), zap.String("allocation_id", allocationObj.ID))
-			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation. "+err.Error())
+			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 		}
-		if latestWM == nil {
-			Logger.Info("[latest_write_marker]", zap.String("allocation_root", allocationObj.AllocationRoot), zap.String("allocation_id", allocationObj.ID))
-			return nil, common.NewError("latest_write_marker_read_error", "Latest write marker not found for allocation.")
-		}
-		if latestWM.WM.PreviousAllocationRoot != "" {
-			prevWM, err = writemarker.GetWriteMarkerEntity(ctx, latestWM.WM.PreviousAllocationRoot)
-			if err != nil {
-				return nil, common.NewError("latest_write_marker_read_error", "Error reading the previous write marker for allocation."+err.Error())
-			}
-		}
+	} else {
+		vm = &writemarker.VersionMarker{}
 	}
 
-	var result blobberhttp.LatestWriteMarkerResult
-	result.Version = writemarker.MARKER_VERSION
-	if latestWM != nil {
-		if latestWM.Status == writemarker.Committed {
-			latestWM.WM.ChainLength = 0 // start a new chain
-		}
-		result.LatestWM = &latestWM.WM
+	result := &blobberhttp.LatestVersionMarkerResult{
+		VersionMarker: vm,
 	}
-	if prevWM != nil {
-		result.PrevWM = &prevWM.WM
-	}
-
-	return &result, nil
+	return result, nil
 }
 
 func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request) (*blobberhttp.ReferencePathResult, error) {
@@ -626,7 +611,8 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 	if allocationObj.AllocationRoot == "" {
 		latestWM = nil
 	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, rootRef.Hash)
+		//TODO: remove latestWM
+		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, rootRef.FileMetaHash)
 		if err != nil {
 			errCh <- common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 			return
@@ -834,15 +820,16 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 		return nil, common.NewError("invalid_parameters", "empty path and authtoken")
 	}
 
-	var pathRef *reference.Ref
+	var pathRef *reference.PaginatedRef
 	switch {
 	case path != "":
 		pathHash = reference.GetReferenceLookup(allocationID, path)
 		fallthrough
 	case pathHash != "":
-		pathRef, err = reference.GetReferenceByLookupHash(ctx, allocationID, pathHash)
+		pathRef, err = reference.GetPaginatedRefByLookupHash(ctx, pathHash)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
+				logging.Logger.Error("GetRefs: GetPaginatedRefByLookupHash", zap.Error(err), zap.String("path", path), zap.String("pathHash", pathHash))
 				return nil, common.NewError("invalid_path", "")
 			}
 			return nil, err
@@ -874,7 +861,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 		}
 
 		if pathRef == nil {
-			pathRef, err = reference.GetReferenceByLookupHash(ctx, allocationID, authToken.FilePathHash)
+			pathRef, err = reference.GetPaginatedRefByLookupHash(ctx, authToken.FilePathHash)
 			if err != nil {
 				return nil, fsh.convertGormError(err)
 			}
@@ -910,13 +897,16 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 			pageLimit = o
 		}
 	}
-
+	var offsetTime int
 	offsetPath := r.FormValue("offsetPath")
 	offsetDate := r.FormValue("offsetDate")
 	updatedDate := r.FormValue("updatedDate")
 	err = checkValidDate(offsetDate, OffsetDateLayout)
 	if err != nil {
-		return nil, err
+		offsetTime, err = strconv.Atoi(offsetDate)
+		if err != nil {
+			return nil, err
+		}
 	}
 	err = checkValidDate(updatedDate, OffsetDateLayout)
 	if err != nil {
@@ -945,7 +935,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 	switch {
 	case refType == "regular":
 		refs, totalPages, newOffsetPath, err = reference.GetRefs(
-			ctx, allocationID, path, offsetPath, fileType, level, pageLimit,
+			ctx, allocationID, path, offsetPath, fileType, level, pageLimit, offsetTime, pathRef,
 		)
 
 	case refType == "updated":
@@ -961,24 +951,11 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 	if err != nil {
 		return nil, err
 	}
-	var latestWM *writemarker.WriteMarkerEntity
-	if allocationObj.AllocationRoot == "" {
-		latestWM = nil
-	} else {
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
-		if err != nil {
-			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
-		}
-	}
-
 	var refResult blobberhttp.RefResult
 	refResult.Refs = refs
 	refResult.TotalPages = totalPages
 	refResult.OffsetPath = newOffsetPath
 	refResult.OffsetDate = newOffsetDate
-	if latestWM != nil {
-		refResult.LatestWM = &latestWM.WM
-	}
 	// Refs will be returned as it is and object tree will be build in client side
 	return &refResult, nil
 }

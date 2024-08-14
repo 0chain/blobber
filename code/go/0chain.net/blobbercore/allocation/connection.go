@@ -68,10 +68,10 @@ func SaveFileChanger(connectionID string, fileChanger *BaseFileChanger) error {
 		return common.NewError("connection_not_found", "connection not found")
 	}
 	connectionObj.lock.Lock()
-	if connectionObj.changes[fileChanger.PathHash] == nil {
+	if connectionObj.changes[fileChanger.LookupHash] == nil {
 		return common.NewError("connection_change_not_found", "connection change not found")
 	}
-	connectionObj.changes[fileChanger.PathHash].baseChanger = fileChanger
+	connectionObj.changes[fileChanger.LookupHash].baseChanger = fileChanger
 	connectionObj.lock.Unlock()
 	return nil
 }
@@ -190,7 +190,7 @@ func SaveFileChange(ctx context.Context, connectionID, pathHash, fileName string
 		if err != nil {
 			return saveChange, err
 		}
-		hasher := filestore.GetNewCommitHasher(contentSize)
+		hasher := filestore.NewCommitHasher(contentSize)
 		change.hasher = hasher
 		change.seqPQ = seqpriorityqueue.NewSeqPriorityQueue(contentSize)
 		go hasher.Start(connectionObj.ctx, connectionID, connectionObj.AllocationID, fileName, pathHash, change.seqPQ)
@@ -211,6 +211,12 @@ func SaveFileChange(ctx context.Context, connectionID, pathHash, fileName string
 			DataBytes: dataWritten,
 		}, contentSize)
 		if addSize != 0 {
+			//check if reference exists and get the size
+			existingSize, err := reference.GetObjectSizeByLookupHash(ctx, pathHash)
+			if err != nil {
+				return saveChange, err
+			}
+			addSize -= existingSize
 			UpdateConnectionObjSize(connectionID, addSize)
 		}
 	} else {

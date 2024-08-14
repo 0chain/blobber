@@ -3,87 +3,60 @@ package allocation
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 	"strings"
 	"sync"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"gorm.io/gorm"
 )
 
 type NewDir struct {
 	ConnectionID string `json:"connection_id" validation:"required"`
 	Path         string `json:"filepath" validation:"required"`
 	AllocationID string `json:"allocation_id"`
+	CustomMeta   string `json:"custom_meta,omitempty"`
+	MimeType     string `json:"mimetype,omitempty"`
 }
 
-func (nf *NewDir) ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
-	allocationRoot string, ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error) {
-
-	totalRefs, err := reference.CountRefs(ctx, nf.AllocationID)
-	if err != nil {
-		return nil, err
+func (nf *NewDir) ApplyChange(ctx context.Context,
+	ts common.Timestamp, allocationVersion int64, collector reference.QueryCollector) error {
+	parentPath := filepath.Dir(nf.Path)
+	parentPathLookup := reference.GetReferenceLookup(nf.AllocationID, parentPath)
+	parentRef, err := reference.GetFullReferenceByLookupHashWithNewTransaction(parentPathLookup)
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return err
 	}
-
-	if int64(config.Configuration.MaxAllocationDirFiles) <= totalRefs {
-		return nil, common.NewErrorf("max_alloc_dir_files_reached",
-			"maximum files and directories already reached: %v", err)
-	}
-
-	err = nf.Unmarshal(change.Input)
-	if err != nil {
-		return nil, err
-	}
-
-	if rootRef.CreatedAt == 0 {
-		rootRef.CreatedAt = ts
-	}
-	rootRef.UpdatedAt = ts
-	rootRef.HashToBeComputed = true
-	fields, err := common.GetPathFields(nf.Path)
-	if err != nil {
-		return nil, err
-	}
-
-	dirRef := rootRef
-	for i := 0; i < len(fields); i++ {
-		found := false
-		for _, child := range dirRef.Children {
-			if child.Name == fields[i] {
-				dirRef = child
-				dirRef.HashToBeComputed = true
-				dirRef.UpdatedAt = ts
-				found = true
-				break
-			}
+	if parentRef == nil || parentRef.ID == 0 {
+		_, err = reference.Mkdir(ctx, nf.AllocationID, nf.Path, allocationVersion, ts, collector)
+	} else {
+		parentIDRef := &parentRef.ID
+		newRef := reference.NewDirectoryRef()
+		newRef.AllocationID = nf.AllocationID
+		newRef.Path = nf.Path
+		if newRef.Path != "/" {
+			newRef.ParentPath = parentPath
 		}
-
-		if !found {
-			newRef := reference.NewDirectoryRef()
-			newRef.AllocationID = nf.AllocationID
-			newRef.Path = filepath.Join("/", strings.Join(fields[:i+1], "/"))
-			newRef.PathLevel = len(fields) + 1
-			newRef.ParentPath = filepath.Dir(newRef.Path)
-			newRef.Name = fields[i]
-			newRef.LookupHash = reference.GetReferenceLookup(nf.AllocationID, newRef.Path)
-			newRef.CreatedAt = ts
-			newRef.UpdatedAt = ts
-			newRef.HashToBeComputed = true
-			fileID, ok := fileIDMeta[newRef.Path]
-			if !ok || fileID == "" {
-				return nil, common.NewError("invalid_parameter",
-					fmt.Sprintf("file path %s has no entry in fileID meta", newRef.Path))
-			}
-			newRef.FileID = fileID
-			dirRef.AddChild(newRef)
-			dirRef = newRef
+		newRef.Name = filepath.Base(nf.Path)
+		newRef.PathLevel = len(strings.Split(strings.TrimRight(nf.Path, "/"), "/"))
+		newRef.ParentID = parentIDRef
+		newRef.LookupHash = reference.GetReferenceLookup(nf.AllocationID, nf.Path)
+		newRef.CreatedAt = ts
+		newRef.UpdatedAt = ts
+		newRef.FileMetaHash = encryption.FastHash(newRef.GetFileMetaHashData())
+		if nf.CustomMeta != "" {
+			newRef.CustomMeta = nf.CustomMeta
 		}
+		if nf.MimeType != "" {
+			newRef.MimeType = nf.MimeType
+		}
+		newRef.AllocationVersion = allocationVersion
+		collector.CreateRefRecord(newRef)
 	}
-	return rootRef, nil
+	return err
 }
 
 func (nd *NewDir) Marshal() (string, error) {

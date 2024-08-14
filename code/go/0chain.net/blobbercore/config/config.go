@@ -35,6 +35,7 @@ func SetupDefaultConfig() {
 	viper.SetDefault("rate_limiters.commit_limit_monthly", 30000)
 	viper.SetDefault("rate_limiters.commit_limit_daily", 1600)
 	viper.SetDefault("rate_limiters.commit_zero_limit_daily", 400)
+	viper.SetDefault("rate_limiters.max_connection_changes", 100)
 
 	viper.SetDefault("healthcheck.frequency", "60s")
 
@@ -121,6 +122,7 @@ type Config struct {
 	CommitLimitDaily              int64
 	CommitZeroLimitDaily          int64
 	ChallengeCleanupGap           int64
+	MaxConnectionChanges          int
 
 	HealthCheckWorkerFreq time.Duration
 
@@ -292,7 +294,6 @@ func ReadConfig(deploymentMode int) {
 	} else if Configuration.MinConfirmation > 100 {
 		Configuration.MinConfirmation = 100
 	}
-
 	Configuration.BlockLimitDaily = viper.GetInt64("rate_limiters.block_limit_daily")
 	Configuration.BlockLimitRequest = viper.GetInt64("rate_limiters.block_limit_request")
 	Configuration.BlockLimitMonthly = viper.GetInt64("rate_limiters.block_limit_monthly")
@@ -302,6 +303,7 @@ func ReadConfig(deploymentMode int) {
 	Configuration.CommitZeroLimitDaily = viper.GetInt64("rate_limiters.commit_zero_limit_daily")
 
 	Configuration.IsEnterprise = viper.GetBool("is_enterprise")
+	Configuration.MaxConnectionChanges = viper.GetInt("rate_limiters.max_connection_changes")
 }
 
 // StorageSCConfiguration will include all the required sc configs to operate blobber

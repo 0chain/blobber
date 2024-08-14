@@ -17,7 +17,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/zboxcore/fileref"
@@ -77,25 +76,15 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 		return common.NewError("invalid_path", fmt.Sprintf("%v is not absolute path", fileChanger.Path))
 	}
 
+	if filepath.Clean(fileChanger.Path) != fileChanger.Path {
+		return common.NewError("invalid_path", fmt.Sprintf("%v is not a clean path", fileChanger.Path))
+	}
+
 	if fileChanger.ConnectionID == "" {
 		return common.NewError("invalid_connection", "Invalid connection id")
 	}
 
-	fileChanger.PathHash = encryption.Hash(fileChanger.Path)
-
-	if fileChanger.UploadOffset == 0 {
-		isExist, err := reference.IsRefExist(ctx, allocationObj.ID, fileChanger.Path)
-
-		if err != nil {
-			logging.Logger.Error(err.Error())
-			return common.NewError("database_error", "Got db error while getting ref")
-		}
-
-		if isExist {
-			msg := fmt.Sprintf("File at path :%s: already exists", fileChanger.Path)
-			return common.NewError("duplicate_file", msg)
-		}
-	}
+	fileChanger.LookupHash = reference.GetReferenceLookup(allocationObj.ID, fileChanger.Path)
 
 	thumbFile, thumbHeader, _ := req.FormFile(UploadThumbnailFile)
 	if thumbHeader != nil {
@@ -110,6 +99,9 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 
 	if fileChanger.ChunkSize <= 0 {
 		fileChanger.ChunkSize = fileref.CHUNK_SIZE
+	}
+	if allocationObj.CanUpdate() {
+		fileChanger.CanUpdate = true
 	}
 
 	origfile, _, err := req.FormFile(UploadFile)
@@ -135,7 +127,7 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, allocationObj 
 		ChunkSize:    cmd.fileChanger.ChunkSize,
 		UploadOffset: cmd.fileChanger.UploadOffset,
 		IsFinal:      cmd.fileChanger.IsFinal,
-		FilePathHash: cmd.fileChanger.PathHash,
+		LookupHash:   cmd.fileChanger.LookupHash,
 		Size:         cmd.fileChanger.Size,
 	}
 	fileOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionID, fileInputData, cmd.contentFile)
@@ -144,7 +136,6 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, allocationObj 
 		return result, common.NewError("upload_error", "Failed to write file. "+err.Error())
 	}
 	result.Filename = cmd.fileChanger.Filename
-	result.ValidationRoot = fileOutputData.ValidationRoot
 	result.Size = fileOutputData.Size
 
 	allocationSize := allocation.GetConnectionObjSize(connectionID) + cmd.fileChanger.Size
@@ -171,7 +162,7 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, allocationObj 
 		}
 	}
 
-	saveChange, err := allocation.SaveFileChange(ctx, connectionID, cmd.fileChanger.PathHash, cmd.fileChanger.Filename, cmd, cmd.fileChanger.IsFinal, cmd.fileChanger.Size, cmd.fileChanger.UploadOffset, fileOutputData.Size, cmd.fileChanger.Size)
+	saveChange, err := allocation.SaveFileChange(ctx, connectionID, cmd.fileChanger.LookupHash, cmd.fileChanger.Filename, cmd, cmd.fileChanger.IsFinal, cmd.fileChanger.Size, cmd.fileChanger.UploadOffset, fileOutputData.Size, cmd.fileChanger.Size)
 	if err != nil {
 		logging.Logger.Error("UploadFileCommand.ProcessContent", zap.Error(err))
 		return result, err
@@ -200,7 +191,7 @@ func (cmd *UploadFileCommand) ProcessThumbnail(allocationObj *allocation.Allocat
 	if cmd.thumbHeader != nil {
 		defer cmd.thumbFile.Close()
 
-		thumbInputData := &filestore.FileInputData{Name: cmd.thumbHeader.Filename, Path: cmd.fileChanger.Path, IsThumbnail: true, FilePathHash: cmd.fileChanger.PathHash}
+		thumbInputData := &filestore.FileInputData{Name: cmd.thumbHeader.Filename, Path: cmd.fileChanger.Path, IsThumbnail: true, LookupHash: cmd.fileChanger.LookupHash}
 		thumbOutputData, err := filestore.GetFileStore().WriteFile(allocationObj.ID, connectionID, thumbInputData, cmd.thumbFile)
 		if err != nil {
 			return common.NewError("upload_error", "Failed to upload the thumbnail. "+err.Error())
@@ -214,7 +205,7 @@ func (cmd *UploadFileCommand) ProcessThumbnail(allocationObj *allocation.Allocat
 }
 
 func (cmd *UploadFileCommand) reloadChange() {
-	changer := allocation.GetFileChanger(cmd.fileChanger.ConnectionID, cmd.fileChanger.PathHash)
+	changer := allocation.GetFileChanger(cmd.fileChanger.ConnectionID, cmd.fileChanger.LookupHash)
 	if changer != nil && changer.ThumbnailHash != "" {
 		cmd.fileChanger.ThumbnailFilename = changer.ThumbnailFilename
 		cmd.fileChanger.ThumbnailSize = changer.ThumbnailSize
@@ -234,6 +225,7 @@ func (cmd *UploadFileCommand) AddChange(ctx context.Context) error {
 	connectionInput, _ := cmd.fileChanger.Marshal()
 	cmd.allocationChange.LookupHash = reference.GetReferenceLookup(cmd.fileChanger.AllocationID, cmd.fileChanger.Path)
 	cmd.allocationChange.Input = connectionInput
+	logging.Logger.Info("AddChange: ", zap.String("connectionID", cmd.allocationChange.ConnectionID), zap.String("lookupHash", cmd.allocationChange.LookupHash))
 	return cmd.allocationChange.Create(ctx)
 }
 

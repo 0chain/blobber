@@ -39,6 +39,10 @@ func cleanupAllocationFiles(ctx context.Context, allocationObj allocation.Alloca
 	db := datastore.GetStore().GetTransaction(ctx)
 
 	_ = filestore.GetFileStore().IterateObjects(allocationObj.ID, func(hash string, contentSize int64) {
+		// thumbnail suffix makes hash greater than 65
+		if len(hash) > 65 {
+			return
+		}
 		var refs []reference.Ref
 		version := 0
 		if len(hash) > 64 {
@@ -46,8 +50,7 @@ func cleanupAllocationFiles(ctx context.Context, allocationObj allocation.Alloca
 			hash = hash[:64]
 		}
 		err := db.Table((reference.Ref{}).TableName()).
-			Where(reference.Ref{ValidationRoot: hash, Type: reference.FILE}).
-			Or(reference.Ref{ThumbnailHash: hash, Type: reference.FILE}).
+			Where(reference.Ref{LookupHash: hash, Type: reference.FILE}).
 			Find(&refs).Error
 
 		if err != nil {
