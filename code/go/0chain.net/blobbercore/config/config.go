@@ -158,6 +158,8 @@ type Config struct {
 	// AutomacitUpdate Whether to automatically update blobber updates to blockchain
 	AutomaticUpdate       bool
 	BlobberUpdateInterval time.Duration
+
+	IsEnterprise bool
 }
 
 /*Configuration of the system */
@@ -299,6 +301,8 @@ func ReadConfig(deploymentMode int) {
 	Configuration.CommitLimitMonthly = viper.GetInt64("rate_limiters.commit_limit_monthly")
 	Configuration.CommitLimitDaily = viper.GetInt64("rate_limiters.commit_limit_daily")
 	Configuration.CommitZeroLimitDaily = viper.GetInt64("rate_limiters.commit_zero_limit_daily")
+
+	Configuration.IsEnterprise = viper.GetBool("is_enterprise")
 	Configuration.MaxConnectionChanges = viper.GetInt("rate_limiters.max_connection_changes")
 }
 
