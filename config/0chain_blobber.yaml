@@ -16,6 +16,8 @@ write_price: 0.025    # token / GB / time_unit for writing
 price_in_usd: false
 price_worker_in_hours: 12
 
+is_enterprise: false
+
 # update_allocations_interval used to refresh known allocation objects from SC
 update_allocations_interval: 60m
 
