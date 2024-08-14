@@ -304,6 +304,8 @@ func ReadConfig(deploymentMode int) {
 
 	Configuration.IsEnterprise = viper.GetBool("is_enterprise")
 	Configuration.MaxConnectionChanges = viper.GetInt("rate_limiters.max_connection_changes")
+
+	Configuration.IsEnterprise = viper.GetBool("is_enterprise")
 }
 
 // StorageSCConfiguration will include all the required sc configs to operate blobber
