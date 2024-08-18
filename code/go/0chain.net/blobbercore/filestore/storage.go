@@ -846,7 +846,7 @@ func (fs *FileStore) getAllocDir(allocID string) string {
 }
 
 func (fs *FileStore) GetPathForFile(allocID, hash string, version int) (string, error) {
-	if len(allocID) != 64 || len(hash) != 64 {
+	if len(allocID) != 64 {
 		return "", errors.New("length of allocationID/hash must be 64")
 	}
 	var versionStr string
