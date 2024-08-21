@@ -50,6 +50,8 @@ func main() {
 			panic(err)
 		}
 
+		logging.Logger.Info("Blobber registered on chain")
+
 		common.SetBlobberRegistered(true)
 	}()
 
