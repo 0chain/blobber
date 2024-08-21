@@ -109,10 +109,13 @@ func ReloadFromChain(ctx context.Context, db *gorm.DB) (*zcncore.Blobber, error)
 
 	b, err := zcn.GetBlobber(node.Self.ID)
 	if err != nil { // blobber is not registered yet
+		panic("Reload settings from chain failed: " + err.Error())
 		logging.Logger.Warn("failed to sync blobber settings from blockchain", zap.Error(err))
 
 		return nil, err
 	}
+
+	panic("Blobber found : " + b.ID)
 
 	Configuration.Capacity = int64(b.Capacity)
 	Configuration.NumDelegates = *b.StakePoolSettings.NumDelegates
