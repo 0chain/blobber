@@ -756,7 +756,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	if allocationObj.BlobberSizeUsed+connectionObj.Size > allocationObj.BlobberSize {
 		return nil, common.NewError("max_allocation_size",
-			"Max size reached for the allocation with this blobber")
+			fmt.Sprintf("Max size reached for the allocation with this blobber : %d < %d", allocationObj.BlobberSize, allocationObj.BlobberSizeUsed+connectionObj.Size))
 	}
 
 	if latestWriteMarkerEntity != nil && latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size != writeMarker.ChainSize {

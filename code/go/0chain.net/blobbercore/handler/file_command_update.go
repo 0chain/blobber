@@ -171,7 +171,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, allocationObj 
 	}
 
 	if allocationObj.BlobberSizeUsed+allocationSize > allocationObj.BlobberSize {
-		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
+		return result, common.NewError("max_allocation_size", fmt.Sprintf("Max size reached for the allocation with this blobber : %d < %d", allocationObj.BlobberSize, allocationObj.BlobberSizeUsed+allocationSize))
 	}
 
 	return result, nil
