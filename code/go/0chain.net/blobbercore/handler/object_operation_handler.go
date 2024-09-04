@@ -558,7 +558,7 @@ func (fsh *StorageHandler) CreateConnection(ctx context.Context, r *http.Request
 	}
 
 	if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
+		return nil, common.NewError("invalid_operation", fmt.Sprintf("Operation needs to be performed by the owner or the payer of the allocation %s : client %s", allocationObj.ID, clientID))
 	}
 
 	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), r.Header.Get(common.ClientSignatureHeaderV2), allocationObj.OwnerPublicKey)
@@ -756,7 +756,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	if allocationObj.BlobberSizeUsed+connectionObj.Size > allocationObj.BlobberSize {
 		return nil, common.NewError("max_allocation_size",
-			"Max size reached for the allocation with this blobber")
+			fmt.Sprintf("Max size reached for the allocation with this blobber : %d < %d", allocationObj.BlobberSize, allocationObj.BlobberSizeUsed+connectionObj.Size))
 	}
 
 	if latestWriteMarkerEntity != nil && latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size != writeMarker.ChainSize {
@@ -1245,7 +1245,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*all
 	allocationID := allocationObj.ID
 
 	if clientID == "" {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
+		return nil, common.NewError("invalid_operation", fmt.Sprintf("Operation needs to be performed by the owner or the payer of the allocation %s : client %s", allocationObj.ID, clientID))
 	}
 
 	dirPath := r.FormValue("dir_path")
@@ -1288,7 +1288,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*all
 	}
 
 	if clientID != allocationObj.OwnerID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
+		return nil, common.NewError("invalid_operation", fmt.Sprintf("Operation needs to be performed by the owner or the payer of the allocation %s : client %s", allocationObj.ID, clientID))
 	}
 
 	if err := validateParentPathType(ctx, allocationID, dirPath); err != nil {
@@ -1341,7 +1341,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
 	}
 	if clientID == "" {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
+		return nil, common.NewError("invalid_operation", fmt.Sprintf("Operation needs to be performed by the owner or the payer of the allocation %s : client %s", allocationID, clientID))
 	}
 	if ok := CheckBlacklist(clientID); ok {
 		return nil, common.NewError("blacklisted_client", "Client is blacklisted: "+clientID)
@@ -1361,7 +1361,7 @@ func (fsh *StorageHandler) WriteFile(ctx context.Context, r *http.Request) (*all
 	}
 
 	if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
+		return nil, common.NewError("invalid_operation", fmt.Sprintf("Operation needs to be performed by the owner or the payer of the allocation %s : client %s", allocationObj.ID, clientID))
 	}
 
 	elapsedAllocation := time.Since(st)

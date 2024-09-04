@@ -53,7 +53,7 @@ func (cmd *UploadFileCommand) GetPath() string {
 // IsValidated validate request.
 func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error {
 	if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
-		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
+		return common.NewError("invalid_operation", fmt.Sprintf("Operation needs to be performed by the owner or the payer of the allocation %s : client %s", allocationObj.ID, clientID))
 	}
 
 	fileChanger := &allocation.UploadFileChanger{}
@@ -187,7 +187,7 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, allocationObj 
 	}
 
 	if allocationObj.BlobberSizeUsed+allocationSize > allocationObj.BlobberSize {
-		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
+		return result, common.NewError("max_allocation_size", fmt.Sprintf("Max size reached for the allocation with this blobber : %d < %d", allocationObj.BlobberSize, allocationObj.BlobberSizeUsed+allocationSize))
 	}
 
 	return result, nil
