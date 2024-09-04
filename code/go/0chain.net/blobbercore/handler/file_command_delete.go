@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/0chain/gosdk/constants"
@@ -33,7 +34,7 @@ func (cmd *DeleteFileCommand) GetPath() string {
 // IsValidated validate request.
 func (cmd *DeleteFileCommand) IsValidated(ctx context.Context, req *http.Request, allocationObj *allocation.Allocation, clientID string) error {
 	if allocationObj.OwnerID != clientID && allocationObj.RepairerID != clientID {
-		return common.NewError("invalid_operation", "Operation needs to be performed by the owner or the payer of the allocation")
+		return common.NewError("invalid_operation", fmt.Sprintf("Operation needs to be performed by the owner or the payer of the allocation %s : client %s", allocationObj.ID, clientID))
 	}
 
 	path, ok := common.GetField(req, "path")
