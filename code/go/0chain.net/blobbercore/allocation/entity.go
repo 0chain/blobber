@@ -8,6 +8,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/common/core/util/wmpt"
 	"gorm.io/gorm/clause"
 
 	"gorm.io/gorm"
@@ -71,15 +72,22 @@ type Allocation struct {
 	// 00001000 - 8  - move
 	// 00010000 - 16 - copy
 	// 00100000 - 32 - rename
-	FileOptions uint16 `json:"file_options" gorm:"column:file_options;not null;default:63"`
-
+	FileOptions    uint16 `json:"file_options" gorm:"column:file_options;not null;default:63"`
+	StorageVersion uint8  `json:"storage_version" gorm:"column:storage_version"`
+	NumObjects     int32  `json:"num_objects" gorm:"column:num_objects"`
 	// Has many terms
 	// If Preload("Terms") is required replace tag `gorm:"-"` with `gorm:"foreignKey:AllocationID"`
 	Terms []*Terms `gorm:"-"`
+	//wmpt
+	trie *wmpt.WeightedMerkleTrie `gorm:"-" json:"-"`
 }
 
 func (Allocation) TableName() string {
 	return TableNameAllocation
+}
+
+func (a *Allocation) GetTrie() *wmpt.WeightedMerkleTrie {
+	return a.trie
 }
 
 func (a *Allocation) CanUpload() bool {

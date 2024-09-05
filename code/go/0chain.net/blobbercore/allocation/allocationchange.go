@@ -275,7 +275,8 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocatio
 	if err != nil {
 		return rootRef, err
 	}
-	err = collector.Finalize(ctx)
+	//Ignore ref cache for version 1 of storage
+	err = collector.Finalize(ctx, "", "")
 	return rootRef, err
 }
 

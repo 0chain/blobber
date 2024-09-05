@@ -33,6 +33,7 @@ services:
 
   blobber:
     image: blobber
+    stop_grace_period: 1m30s
     depends_on:
       - validator
     links:

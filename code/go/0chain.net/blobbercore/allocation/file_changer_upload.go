@@ -2,18 +2,26 @@ package allocation
 
 import (
 	"context"
+	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"github.com/0chain/common/core/util/wmpt"
+	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 )
 
 // swagger:model UploadFileChanger
@@ -134,6 +142,87 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context, rootRef *reference
 	dirRef.AddChild(newFile)
 
 	return rootRef, nil
+}
+
+func (nf *UploadFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, ts common.Timestamp, hashSignature map[string]string, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) error {
+	if nf.AllocationID == "" {
+		return common.NewError("invalid_allocation_id", "Allocation ID is empty")
+	}
+	//find if ref exists
+	var refResult struct {
+		ID int64
+	}
+
+	parentPath := filepath.Dir(nf.Path)
+	nf.LookupHash = reference.GetReferenceLookup(nf.AllocationID, parentPath)
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		tx := datastore.GetStore().GetTransaction(ctx)
+		return tx.Model(&reference.Ref{}).Select("id").Where("lookup_hash = ?", nf.LookupHash).Take(&refResult).Error
+	}, &sql.TxOptions{
+		ReadOnly: true,
+	})
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return err
+	}
+
+	if refResult.ID > 0 {
+		return common.NewError("duplicate_file", "File already exists")
+	}
+	newFile := &reference.Ref{
+		ActualFileHash:          nf.ActualHash,
+		ActualFileHashSignature: nf.ActualFileHashSignature,
+		ActualFileSize:          nf.ActualSize,
+		AllocationID:            nf.AllocationID,
+		ValidationRoot:          nf.ValidationRoot,
+		ValidationRootSignature: nf.ValidationRootSignature,
+		CustomMeta:              nf.CustomMeta,
+		FixedMerkleRoot:         nf.FixedMerkleRoot,
+		Name:                    nf.Filename,
+		Path:                    nf.Path,
+		ParentPath:              parentPath,
+		Type:                    reference.FILE,
+		Size:                    nf.Size,
+		MimeType:                nf.MimeType,
+		AllocationRoot:          allocationRoot,
+		ThumbnailHash:           nf.ThumbnailHash,
+		ThumbnailSize:           nf.ThumbnailSize,
+		ActualThumbnailHash:     nf.ActualThumbnailHash,
+		ActualThumbnailSize:     nf.ActualThumbnailSize,
+		EncryptedKey:            nf.EncryptedKey,
+		EncryptedKeyPoint:       nf.EncryptedKeyPoint,
+		ChunkSize:               nf.ChunkSize,
+		CreatedAt:               ts,
+		UpdatedAt:               ts,
+		FilestoreVersion:        filestore.VERSION,
+		PathLevel:               len(strings.Split(strings.TrimRight(nf.Path, "/"), "/")),
+		NumBlocks:               int64(math.Ceil(float64(nf.Size*1.0) / float64(nf.ChunkSize))),
+		NumUpdates:              1,
+	}
+	nf.storageVersion = 1
+	newFile.FileMetaHash = encryption.Hash(newFile.GetFileHashDataV2())
+	sig, ok := hashSignature[newFile.LookupHash]
+	if !ok {
+		return common.NewError("invalid_hash_signature", "Hash signature not found")
+	}
+	fileHash := encryption.Hash(newFile.GetFileHashDataV2())
+	//verify signature
+	verify, err := encryption.Verify(clientPubKey, sig, fileHash)
+	if err != nil || !verify {
+		return common.NewError("invalid_signature", "Signature is invalid")
+	}
+	newFile.Hash = sig
+
+	//create parent dir if it doesn't exist
+	_, err = reference.Mkdir(ctx, nf.AllocationID, parentPath, allocationRoot, ts, numFiles, collector)
+	if err != nil {
+		return err
+	}
+	collector.CreateRefRecord(newFile)
+	numFiles.Add(1)
+	decodedKey, _ := hex.DecodeString(newFile.LookupHash)
+	decodedValue, _ := hex.DecodeString(newFile.FileMetaHash)
+	err = trie.Update(decodedKey, decodedValue, uint64(newFile.NumBlocks))
+	return err
 }
 
 // Marshal marshal and change to persistent to postgres

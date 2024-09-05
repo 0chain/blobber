@@ -37,6 +37,9 @@ func setupDatabase() error {
 	if err := migrateDatabase(pgDB); err != nil {
 		return fmt.Errorf("error while migrating schema: %v", err)
 	}
+	if err := datastore.OpenBlockStore(); err != nil {
+		return fmt.Errorf("error while opening block store: %v", err)
+	}
 
 	return nil
 }

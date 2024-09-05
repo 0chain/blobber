@@ -1615,10 +1615,12 @@ func StatsHandler(w http.ResponseWriter, r *http.Request) {
 func HandleShutdown(ctx context.Context) {
 
 	go func() {
-		select {
-		case <-ctx.Done():
-			Logger.Info("Shutting down server")
-			datastore.GetStore().Close()
+		<-ctx.Done()
+		Logger.Info("Shutting down server")
+		datastore.GetStore().Close()
+		store := datastore.GetBlockStore()
+		if store != nil {
+			store.Close()
 		}
 	}()
 }

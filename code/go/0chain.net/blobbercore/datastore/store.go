@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/0chain/common/core/util/storage"
+	"github.com/0chain/common/core/util/storage/kv"
 	"gorm.io/gorm"
 )
 
@@ -45,7 +47,7 @@ type Store interface {
 	CreateTransaction(ctx context.Context, opts ...*sql.TxOptions) context.Context
 	// GetTransaction get transaction from context
 	GetTransaction(ctx context.Context) *EnhancedDB
-	WithNewTransaction(f func(ctx context.Context) error) error
+	WithNewTransaction(f func(ctx context.Context) error, opts ...*sql.TxOptions) error
 	WithTransaction(ctx context.Context, f func(ctx context.Context) error) error
 	// Get db connection with user that creates roles and databases. Its dialactor does not contain database name
 	GetPgDB() (*gorm.DB, error)
@@ -53,7 +55,10 @@ type Store interface {
 	Close()
 }
 
-var instance Store
+var (
+	instance      Store
+	blockInstance storage.StorageAdapter
+)
 
 func init() {
 	instance = &postgresStore{}
@@ -61,6 +66,20 @@ func init() {
 
 func GetStore() Store {
 	return instance
+}
+
+func GetBlockStore() storage.StorageAdapter {
+	return blockInstance
+}
+
+func OpenBlockStore() error {
+	//TODO: read from config
+	pebbleInstance, err := kv.NewPebbleAdapter("/pebble")
+	if err != nil {
+		return err
+	}
+	blockInstance = pebbleInstance
+	return nil
 }
 
 func FromContext(ctx context.Context) Store {

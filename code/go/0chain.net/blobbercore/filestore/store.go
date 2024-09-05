@@ -15,6 +15,7 @@ type FileInputData struct {
 	ValidationRoot  string
 	FixedMerkleRoot string
 	ThumbnailHash   string
+	Hash            string
 
 	// ChunkSize chunk size
 	ChunkSize int64

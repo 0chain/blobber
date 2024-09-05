@@ -38,7 +38,7 @@ func startHttpServer() {
 
 	logging.Logger.Info("Ready to listen to the requests with development mode: " + mode)
 	fmt.Print("> start http server	[OK]\n")
-
+	handler.HandleShutdown(common.GetRootContext())
 	wg.Wait()
 }
 
@@ -92,16 +92,21 @@ func startServer(wg *sync.WaitGroup, r *mux.Router, mode string, port int, isTls
 			Handler:           r,
 		}
 	}
+	go func() {
+		if isTls {
+			err := server.ListenAndServeTLS(httpsCertFile, httpsKeyFile)
+			if err != nil && err != http.ErrServerClosed {
+				logging.Logger.Fatal("blobber failed", zap.Error(err))
+			}
+		} else {
+			err := server.ListenAndServe()
+			if err != nil && err != http.ErrServerClosed {
+				logging.Logger.Fatal("blobber failed", zap.Error(err))
+			}
+		}
+	}()
+	// this is blocking call, will wait for the interrupt or quit signal
 	common.HandleShutdown(server)
-	handler.HandleShutdown(common.GetRootContext())
-
-	if isTls {
-		err := server.ListenAndServeTLS(httpsCertFile, httpsKeyFile)
-		logging.Logger.Fatal("validator failed", zap.Error(err))
-	} else {
-		err := server.ListenAndServe()
-		logging.Logger.Fatal("validator failed", zap.Error(err))
-	}
 }
 
 func initHandlers(r *mux.Router, devMode bool) {
