@@ -115,8 +115,7 @@ func (nf *UpdateFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, 
 		return common.NewError("invalid_allocation_id", "Allocation ID is empty")
 	}
 
-	parentPath := filepath.Dir(nf.Path)
-	nf.LookupHash = reference.GetReferenceLookup(nf.AllocationID, parentPath)
+	nf.LookupHash = reference.GetReferenceLookup(nf.AllocationID, nf.Path)
 
 	//find if ref exists
 	var refResult struct {
@@ -155,7 +154,8 @@ func (nf *UpdateFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, 
 		FixedMerkleRoot:         nf.FixedMerkleRoot,
 		Name:                    nf.Filename,
 		Path:                    nf.Path,
-		ParentPath:              parentPath,
+		ParentPath:              filepath.Dir(nf.Path),
+		LookupHash:              nf.LookupHash,
 		Type:                    reference.FILE,
 		Size:                    nf.Size,
 		MimeType:                nf.MimeType,
@@ -175,7 +175,7 @@ func (nf *UpdateFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, 
 		NumUpdates:              refResult.NumUpdates + 1,
 	}
 	nf.storageVersion = 1
-	newFile.FileMetaHash = encryption.Hash(newFile.GetFileHashDataV2())
+	newFile.FileMetaHash = encryption.Hash(newFile.GetFileMetaHashDataV2())
 	sig, ok := hashSignature[newFile.LookupHash]
 	if !ok {
 		return common.NewError("invalid_hash_signature", "Hash signature not found")
@@ -196,10 +196,6 @@ func (nf *UpdateFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, 
 	collector.CreateRefRecord(newFile)
 	decodedKey, _ := hex.DecodeString(newFile.LookupHash)
 	decodedValue, _ := hex.DecodeString(newFile.FileMetaHash)
-	err = trie.Update(decodedKey, nil, 0)
-	if err != nil {
-		return err
-	}
 	err = trie.Update(decodedKey, decodedValue, uint64(newFile.NumBlocks))
 	return err
 }

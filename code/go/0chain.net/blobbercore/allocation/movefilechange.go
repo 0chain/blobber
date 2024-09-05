@@ -2,22 +2,33 @@ package allocation
 
 import (
 	"context"
+	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/common/core/util/wmpt"
 )
 
 type MoveFileChange struct {
-	ConnectionID string `json:"connection_id"`
-	AllocationID string `json:"allocation_id"`
-	SrcPath      string `json:"path"`
-	DestPath     string `json:"dest_path"`
+	ConnectionID   string `json:"connection_id"`
+	AllocationID   string `json:"allocation_id"`
+	SrcPath        string `json:"path"`
+	DestPath       string `json:"dest_path"`
+	Type           string `json:"-"`
+	srcLookupHash  string
+	destLookupHash string
+	storageVersion int
 }
 
 func (rf *MoveFileChange) DeleteTempFile() error {
@@ -124,6 +135,90 @@ func (rf *MoveFileChange) ApplyChange(ctx context.Context, rootRef *reference.Re
 	return rootRef, nil
 }
 
+func (rf *MoveFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, ts common.Timestamp, hashSignature map[string]string, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) error {
+	rf.srcLookupHash = reference.GetReferenceLookup(rf.AllocationID, rf.SrcPath)
+	rf.destLookupHash = reference.GetReferenceLookup(rf.AllocationID, rf.DestPath)
+	var (
+		err    error
+		srcRef *reference.Ref
+	)
+	err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		srcRef, err = reference.GetReferenceByLookupHash(ctx, rf.AllocationID, rf.srcLookupHash)
+		if err != nil {
+			return err
+		}
+		exist, err := reference.IsRefExist(ctx, rf.AllocationID, rf.DestPath)
+		if err != nil {
+			return err
+		}
+		if exist {
+			return common.NewError("invalid_reference_path", "file already exists")
+		}
+		if srcRef.Type == reference.DIRECTORY {
+			isEmpty, err := reference.IsDirectoryEmpty(ctx, srcRef.Path)
+			if err != nil {
+				return err
+			}
+			if !isEmpty {
+				return common.NewError("invalid_reference_path", "directory is not empty")
+			}
+		}
+		return nil
+	}, &sql.TxOptions{
+		ReadOnly: true,
+	})
+	if err != nil {
+		return err
+	}
+
+	rf.Type = srcRef.Type
+	_, err = reference.Mkdir(ctx, rf.AllocationID, filepath.Dir(rf.DestPath), allocationRoot, ts, numFiles, collector)
+	if err != nil {
+		return err
+	}
+	deleteRef := &reference.Ref{
+		ID:         srcRef.ID,
+		LookupHash: rf.srcLookupHash,
+		Type:       srcRef.Type,
+	}
+	collector.DeleteRefRecord(deleteRef)
+	srcRef.ID = 0
+	srcRef.Path = rf.DestPath
+	srcRef.ParentPath = filepath.Dir(rf.DestPath)
+	srcRef.UpdatedAt = ts
+	srcRef.CreatedAt = ts
+	srcRef.PathLevel = len(strings.Split(srcRef.Path, "/"))
+	srcRef.LookupHash = rf.destLookupHash
+	srcRef.AllocationRoot = allocationRoot
+	if srcRef.Type == reference.FILE {
+		fileMetaHashRaw := encryption.RawHash(srcRef.GetFileMetaHashDataV2())
+		sig, ok := hashSignature[rf.destLookupHash]
+		if !ok {
+			return common.NewError("invalid_parameter", "hash signature not found")
+		}
+		fileHash := encryption.Hash(srcRef.GetFileHashDataV2())
+		verify, err := encryption.Verify(clientPubKey, sig, fileHash)
+		if err != nil || !verify {
+			return common.NewError("invalid_signature", "Signature is invalid")
+		}
+		decodedOldKey, _ := hex.DecodeString(rf.srcLookupHash)
+		err = trie.Update(decodedOldKey, nil, 0)
+		if err != nil {
+			return err
+		}
+		decodedNewKey, _ := hex.DecodeString(rf.destLookupHash)
+		err = trie.Update(decodedNewKey, fileMetaHashRaw, uint64(srcRef.NumBlocks))
+		if err != nil {
+			return err
+		}
+		srcRef.Hash = sig
+		srcRef.FileMetaHash = hex.EncodeToString(fileMetaHashRaw)
+	}
+	collector.CreateRefRecord(srcRef)
+	rf.storageVersion = 1
+	return nil
+}
+
 func (rf *MoveFileChange) processMoveRefs(
 	ctx context.Context, srcRef, destRef *reference.Ref,
 	allocationRoot string, ts common.Timestamp, toAdd bool) (fileRefs []*reference.Ref) {
@@ -168,7 +263,10 @@ func (rf *MoveFileChange) Unmarshal(input string) error {
 }
 
 func (rf *MoveFileChange) CommitToFileStore(ctx context.Context, mut *sync.Mutex) error {
-	return nil
+	if rf.storageVersion == 0 || rf.Type == reference.DIRECTORY {
+		return nil
+	}
+	return filestore.GetFileStore().CopyFile(rf.AllocationID, rf.srcLookupHash, rf.destLookupHash)
 }
 
 func (rf *MoveFileChange) GetPath() []string {

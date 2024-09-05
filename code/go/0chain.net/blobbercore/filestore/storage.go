@@ -524,7 +524,9 @@ func (fs *FileStore) DeleteAllocation(allocID string) {
 func (fs *FileStore) GetFileThumbnail(readBlockIn *ReadBlockInput) (*FileDownloadResponse, error) {
 	var fileObjectPath string
 	var err error
-	readBlockIn.Hash += ThumbnailSuffix
+	if readBlockIn.StorageVersion == 1 {
+		readBlockIn.Hash += ThumbnailSuffix
+	}
 	startBlock := readBlockIn.StartBlockNum
 	if startBlock < 0 {
 		return nil, common.NewError("invalid_block_number", "Invalid block number. Start block number cannot be negative")

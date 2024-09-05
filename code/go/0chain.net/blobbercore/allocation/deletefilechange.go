@@ -2,12 +2,19 @@ package allocation
 
 import (
 	"context"
+	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/common/core/util/wmpt"
+	"go.uber.org/zap"
 )
 
 var (
@@ -20,7 +27,7 @@ type DeleteFileChange struct {
 	Name         string `json:"name"`
 	Path         string `json:"path"`
 	Size         int64  `json:"size"`
-	Hash         string `json:"hash"`
+	LookupHash   string `json:"lookup_hash"`
 }
 
 func (nf *DeleteFileChange) ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
@@ -32,6 +39,46 @@ func (nf *DeleteFileChange) ApplyChange(ctx context.Context, rootRef *reference.
 	}
 
 	return nil, nil
+}
+
+func (nf *DeleteFileChange) ApplyChangeV2(_ context.Context, _, _ string, numFiles *atomic.Int32, _ common.Timestamp, _ map[string]string, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) error {
+
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		ref, err := reference.GetLimitedRefFieldsByLookupHashWith(ctx, nf.AllocationID, nf.LookupHash, []string{"id", "type"})
+		if err != nil {
+			logging.Logger.Error("deleted_object_error", zap.Error(err))
+			return err
+		}
+		if ref.Type == reference.DIRECTORY {
+			isEmpty, err := reference.IsDirectoryEmpty(ctx, nf.Path)
+			if err != nil {
+				logging.Logger.Error("deleted_object_error", zap.Error(err))
+				return err
+			}
+			if !isEmpty {
+				return common.NewError("invalid_reference_path", "directory is not empty")
+			}
+		}
+		deleteRecord := &reference.Ref{
+			ID:         ref.ID,
+			LookupHash: nf.LookupHash,
+			Type:       ref.Type,
+		}
+		collector.DeleteRefRecord(deleteRecord)
+		return nil
+	}, &sql.TxOptions{
+		ReadOnly: true,
+	})
+	if err != nil {
+		return err
+	}
+	decodedKey, _ := hex.DecodeString(nf.LookupHash)
+	err = trie.Update(decodedKey, nil, 0)
+	if err != nil {
+		return err
+	}
+	numFiles.Add(-1)
+	return nil
 }
 
 func (nf *DeleteFileChange) Marshal() (string, error) {

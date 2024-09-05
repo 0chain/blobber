@@ -199,7 +199,7 @@ func (nf *UploadFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, 
 		NumUpdates:              1,
 	}
 	nf.storageVersion = 1
-	newFile.FileMetaHash = encryption.Hash(newFile.GetFileHashDataV2())
+	newFile.FileMetaHash = encryption.Hash(newFile.GetFileMetaHashDataV2())
 	sig, ok := hashSignature[newFile.LookupHash]
 	if !ok {
 		return common.NewError("invalid_hash_signature", "Hash signature not found")

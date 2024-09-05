@@ -1072,7 +1072,254 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	return result, nil
 }
 
-func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (interface{}, error) {
+func (fsh *StorageHandler) CopyObjectV2(ctx context.Context, r *http.Request) (any, error) {
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	if !allocationObj.CanCopy() {
+		return nil, common.NewError("prohibited_allocation_file_options", "Cannot copy data from this allocation.")
+	}
+
+	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), r.Header.Get(common.ClientSignatureHeaderV2), allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	_ = ctx.Value(constants.ContextKeyClientKey).(string)
+
+	allocationID := allocationObj.ID
+
+	if clientID == "" {
+		return nil, common.NewError("invalid_operation", "Invalid client")
+	}
+
+	destPath := r.FormValue("dest")
+	if destPath == "" {
+		return nil, common.NewError("invalid_parameters", "Invalid destination for operation")
+	}
+	destPath = filepath.Clean(destPath)
+
+	pathHash, err := pathHashFromReq(r, allocationID)
+	if err != nil {
+		return nil, err
+	}
+
+	if clientID == "" || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	connectionID := r.FormValue("connection_id")
+	if connectionID == "" {
+		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
+	}
+
+	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+	if err != nil {
+		return nil, common.NewError("meta_error", "Error reading metadata for connection")
+	}
+
+	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, pathHash, []string{"id", "name", "path", "size", "type"})
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+	}
+	if objectRef.ParentPath == destPath || objectRef.Path == destPath {
+		return nil, common.NewError("invalid_parameters", "Invalid destination path. Cannot copy to the same parent directory.")
+	}
+	if objectRef.Type == reference.DIRECTORY {
+		isEmpty, err := reference.IsDirectoryEmpty(ctx, objectRef.Path)
+		if err != nil {
+			return nil, err
+		}
+		if !isEmpty {
+			return nil, common.NewError("invalid_parameters", "Directory is not empty")
+		}
+	}
+
+	newPath := filepath.Join(destPath, objectRef.Name)
+	paths, err := common.GetParentPaths(newPath)
+	if err != nil {
+		return nil, err
+	}
+	newPathLookupHash := reference.GetReferenceLookup(allocationID, newPath)
+
+	paths = append(paths, newPath)
+
+	refs, err := reference.GetRefsTypeFromPaths(ctx, allocationID, paths)
+	if err != nil {
+		Logger.Error("Database error", zap.Error(err))
+		return nil, common.NewError("database_error", fmt.Sprintf("Got db error while getting refs for %v", paths))
+	}
+
+	for _, ref := range refs {
+		switch ref.Path {
+		case newPath:
+			return nil, common.NewError("invalid_parameters", "Invalid destination path. Object Already exists.")
+		default:
+			if ref.Type == reference.FILE {
+				return nil, common.NewError("invalid_path", fmt.Sprintf("%v is of file type", ref.Path))
+			}
+		}
+	}
+
+	allocationChange := &allocation.AllocationChange{}
+	allocationChange.ConnectionID = connectionObj.ID
+	allocationChange.Size = objectRef.Size
+	allocationChange.LookupHash = newPathLookupHash
+	allocationChange.Operation = constants.FileOperationCopy
+	dfc := &allocation.CopyFileChange{ConnectionID: connectionObj.ID,
+		AllocationID: connectionObj.AllocationID, DestPath: destPath}
+	dfc.SrcPath = objectRef.Path
+	allocation.UpdateConnectionObjSize(connectionID, allocationChange.Size)
+	connectionObj.AddChange(allocationChange, dfc)
+
+	err = connectionObj.Save(ctx)
+	if err != nil {
+		Logger.Error("Error in writing the connection meta data", zap.Error(err))
+		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
+	}
+
+	result := &allocation.UploadResult{}
+	result.Filename = objectRef.Name
+	result.Hash = objectRef.Hash
+	result.ValidationRoot = objectRef.ValidationRoot
+	result.FixedMerkleRoot = objectRef.FixedMerkleRoot
+	result.Size = objectRef.Size
+	return result, nil
+}
+
+func (fsh *StorageHandler) MoveObjectV2(ctx context.Context, r *http.Request) (any, error) {
+
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+
+	if !allocationObj.CanMove() {
+		return nil, common.NewError("prohibited_allocation_file_options", "Cannot move data in this allocation.")
+	}
+
+	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), r.Header.Get(common.ClientSignatureHeaderV2), allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	_ = ctx.Value(constants.ContextKeyClientKey).(string)
+
+	allocationID := allocationObj.ID
+
+	if clientID == "" {
+		return nil, common.NewError("invalid_operation", "Invalid client")
+	}
+
+	destPath := r.FormValue("dest")
+	if destPath == "" {
+		return nil, common.NewError("invalid_parameters", "Invalid destination for operation")
+	}
+	destPath = filepath.Clean(destPath)
+
+	pathHash, err := pathHashFromReq(r, allocationID)
+	if err != nil {
+		return nil, err
+	}
+
+	if clientID == "" || allocationObj.OwnerID != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	connectionID := r.FormValue("connection_id")
+	if connectionID == "" {
+		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
+	}
+
+	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+	if err != nil {
+		return nil, common.NewError("meta_error", "Error reading metadata for connection")
+	}
+
+	objectRef, err := reference.GetLimitedRefFieldsByLookupHash(
+		ctx, allocationID, pathHash, []string{"id", "name", "path", "size", "type"})
+
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+	}
+
+	if filepath.Dir(objectRef.Path) == destPath {
+		return nil, common.NewError("invalid_parameters", "Invalid destination path. Cannot move to the same parent directory.")
+	}
+	if objectRef.Type == reference.DIRECTORY {
+		isEmpty, err := reference.IsDirectoryEmpty(ctx, objectRef.Path)
+		if err != nil {
+			return nil, err
+		}
+		if !isEmpty {
+			return nil, common.NewError("invalid_parameters", "Directory is not empty")
+		}
+	}
+	newPath := filepath.Join(destPath, objectRef.Name)
+	newPathLookupHash := reference.GetReferenceLookup(allocationID, newPath)
+	paths, err := common.GetParentPaths(newPath)
+	if err != nil {
+		return nil, err
+	}
+
+	paths = append(paths, newPath)
+
+	refs, err := reference.GetRefsTypeFromPaths(ctx, allocationID, paths)
+	if err != nil {
+		Logger.Error("Database error", zap.Error(err))
+		return nil, common.NewError("database_error", fmt.Sprintf("Got db error while getting refs for %v", paths))
+	}
+
+	for _, ref := range refs {
+		switch ref.Path {
+		case newPath:
+			return nil, common.NewError("invalid_parameters", "Invalid destination path. Object Already exists.")
+		default:
+			if ref.Type == reference.FILE {
+				return nil, common.NewError("invalid_path", fmt.Sprintf("%v is of file type", ref.Path))
+			}
+		}
+	}
+
+	allocationChange := &allocation.AllocationChange{}
+	allocationChange.ConnectionID = connectionObj.ID
+	allocationChange.Size = 0
+	allocationChange.LookupHash = newPathLookupHash
+	allocationChange.Operation = constants.FileOperationMove
+	dfc := &allocation.MoveFileChange{
+		ConnectionID: connectionObj.ID,
+		AllocationID: connectionObj.AllocationID,
+		SrcPath:      objectRef.Path,
+		DestPath:     destPath,
+	}
+	dfc.SrcPath = objectRef.Path
+	connectionObj.AddChange(allocationChange, dfc)
+
+	err = connectionObj.Save(ctx)
+	if err != nil {
+		Logger.Error("Error in writing the connection meta data", zap.Error(err))
+		return nil, common.NewError("connection_write_error", "Error writing the connection meta data")
+	}
+
+	result := &allocation.UploadResult{}
+	result.Filename = objectRef.Name
+	result.Hash = objectRef.Hash
+	result.ValidationRoot = objectRef.ValidationRoot
+	result.FixedMerkleRoot = objectRef.FixedMerkleRoot
+	result.Size = objectRef.Size
+	return result, nil
+}
+
+func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (any, error) {
 
 	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
@@ -1194,7 +1441,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 		return nil, common.NewError("invalid_parameters", "Invalid path")
 	}
 	fileRef, err := reference.GetLimitedRefFieldsByPath(ctx, connectionObj.AllocationID, path,
-		[]string{"path", "name", "size", "hash", "validation_root", "fixed_merkle_root"})
+		[]string{"path", "name", "size", "lookup_hash", "validation_root", "fixed_merkle_root"})
 
 	if err != nil {
 		Logger.Error("invalid_file", zap.Error(err))
@@ -1209,7 +1456,7 @@ func (fsh *StorageHandler) DeleteFile(ctx context.Context, r *http.Request, conn
 		allocationChange.Operation = constants.FileOperationDelete
 		dfc := &allocation.DeleteFileChange{ConnectionID: connectionObj.ID,
 			AllocationID: connectionObj.AllocationID, Name: fileRef.Name,
-			Hash: fileRef.Hash, Path: fileRef.Path, Size: deleteSize}
+			LookupHash: fileRef.LookupHash, Path: fileRef.Path, Size: deleteSize}
 
 		allocation.UpdateConnectionObjSize(connectionObj.ID, allocationChange.Size)
 
@@ -1308,6 +1555,7 @@ func (fsh *StorageHandler) CreateDir(ctx context.Context, r *http.Request) (*all
 	allocationChange := &allocation.AllocationChange{}
 	allocationChange.ConnectionID = connectionObj.ID
 	allocationChange.Size = 0
+	allocationChange.LookupHash = reference.GetReferenceLookup(allocationID, dirPath)
 	allocationChange.Operation = constants.FileOperationCreateDir
 	var newDir allocation.NewDir
 	newDir.ConnectionID = connectionID

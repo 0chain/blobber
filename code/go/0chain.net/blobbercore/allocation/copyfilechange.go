@@ -13,6 +13,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/common/core/util/wmpt"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -135,7 +136,7 @@ func (rf *CopyFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, cli
 
 		rf.Type = srcRef.Type
 		if srcRef.Type == reference.DIRECTORY {
-			isEmpty, err := reference.IsDirectoryEmpty(ctx, srcRef.ID)
+			isEmpty, err := reference.IsDirectoryEmpty(ctx, srcRef.Path)
 			if err != nil {
 				return err
 			}
@@ -244,7 +245,7 @@ func (rf *CopyFileChange) CommitToFileStore(ctx context.Context, mut *sync.Mutex
 		return nil
 	}
 
-	return nil
+	return filestore.GetFileStore().CopyFile(rf.AllocationID, rf.srcLookupHash, rf.destLookupHash)
 }
 
 func (rf *CopyFileChange) GetPath() []string {
