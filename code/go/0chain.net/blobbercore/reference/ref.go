@@ -14,6 +14,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -512,7 +513,7 @@ func (fr *Ref) GetFileHashData() string {
 }
 
 func (fr *Ref) GetFileHashDataV2() string {
-	return fmt.Sprintf("%s:%s:%d:%s:%d:%s", fr.AllocationID, fr.Path, fr.Size, fr.FixedMerkleRoot, fr.ActualFileSize, fr.ActualFileHash)
+	return fmt.Sprintf("%s:%s:%s:%d:%s:%d:%s", node.Self.ID, fr.AllocationID, fr.Path, fr.Size, fr.FixedMerkleRoot, fr.ActualFileSize, fr.ActualFileHash)
 }
 
 func (r *Ref) GetHashData() string {
