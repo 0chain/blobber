@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
@@ -850,6 +851,328 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	result.WriteMarker = writemarkerEntity
 	result.Success = true
 	result.ErrorMessage = ""
+	commitOperation := connectionObj.Changes[0].Operation
+	input := connectionObj.Changes[0].Input
+
+	//Delete connection object and its changes
+
+	db.Delete(connectionObj)
+	go allocation.DeleteConnectionObjEntry(connectionID)
+	go AddWriteMarkerCount(clientID, connectionObj.Size <= 0)
+
+	Logger.Info("[commit]"+commitOperation,
+		zap.String("alloc_id", allocationID),
+		zap.String("allocation_root", writeMarker.AllocationRoot),
+		zap.String("input", input),
+		zap.Duration("get_alloc", elapsedAllocation),
+		zap.Duration("get-lock", elapsedGetLock),
+		zap.Duration("get-conn-obj", elapsedGetConnObj),
+		zap.Duration("verify-wm", elapsedVerifyWM),
+		zap.Duration("write-pre-redeem", elapsedWritePreRedeem),
+		zap.Duration("move-to-filestore", elapsedMoveToFilestore),
+		zap.Duration("apply-changes", elapsedApplyChanges),
+		zap.Duration("save-allocation", elapsedSaveAllocation),
+		zap.Duration("commit-store", elapsedCommitStore),
+		zap.Duration("total", time.Since(startTime)),
+	)
+	return &result, nil
+}
+
+func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (*blobberhttp.CommitResult, error) {
+	var prevChainHash string
+	startTime := time.Now()
+	if r.Method == "GET" {
+		return nil, common.NewError("invalid_method", "Invalid method used for the upload URL. Use POST instead")
+	}
+
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	clientKey := ctx.Value(constants.ContextKeyClientKey).(string)
+	clientKeyBytes, _ := hex.DecodeString(clientKey)
+
+	logging.Logger.Info("commit_write", zap.String("allocation_id", allocationId))
+
+	if clientID == "" || clientKey == "" {
+		return nil, common.NewError("invalid_parameters", "Please provide clientID and clientKey")
+	}
+
+	if ok := CheckBlacklist(clientID); ok {
+		return nil, common.NewError("blacklisted_client", "Client is blacklisted: "+clientID)
+	}
+
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+	}
+	if allocationObj.FileOptions == 0 {
+		return nil, common.NewError("immutable_allocation", "Cannot write to an immutable allocation")
+	}
+
+	elapsedAllocation := time.Since(startTime)
+
+	allocationID := allocationObj.ID
+
+	connectionID, ok := common.GetField(r, "connection_id")
+	if !ok {
+		return nil, common.NewError("invalid_parameters", "Invalid connection id passed")
+	}
+
+	elapsedGetLock := time.Since(startTime) - elapsedAllocation
+
+	err = checkPendingMarkers(ctx, allocationObj.ID)
+	if err != nil {
+		Logger.Error("Error checking pending markers", zap.Error(err))
+		return nil, common.NewError("pending_markers", "previous marker is still pending to be redeemed")
+	}
+
+	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
+	if err != nil {
+		// might be good to check if blobber already has stored writemarker
+		return nil, common.NewErrorf("invalid_parameters",
+			"Invalid connection id. Connection id was not found: %v", err)
+	}
+	if len(connectionObj.Changes) == 0 {
+		if connectionObj.Status == allocation.NewConnection {
+			return nil, common.NewError("invalid_parameters",
+				"Invalid connection id. Connection not found.")
+		}
+		return nil, common.NewError("invalid_parameters",
+			"Invalid connection id. Connection does not have any changes.")
+	}
+
+	elapsedGetConnObj := time.Since(startTime) - elapsedAllocation - elapsedGetLock
+
+	if allocationObj.OwnerID != clientID || encryption.Hash(clientKeyBytes) != clientID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	writeMarkerString := r.FormValue("write_marker")
+	if writeMarkerString == "" {
+		return nil, common.NewError("invalid_parameters", "Invalid write marker passed")
+	}
+	writeMarker := writemarker.WriteMarker{}
+	err = json.Unmarshal([]byte(writeMarkerString), &writeMarker)
+	if err != nil {
+		return nil, common.NewErrorf("invalid_parameters",
+			"Invalid parameters. Error parsing the writemarker for commit: %v",
+			err)
+	}
+
+	var result blobberhttp.CommitResult
+	var latestWriteMarkerEntity *writemarker.WriteMarkerEntity
+	if allocationObj.AllocationRoot == "" {
+		latestWriteMarkerEntity = nil
+	} else {
+		latestWriteMarkerEntity, err = writemarker.GetWriteMarkerEntity(ctx,
+			allocationObj.AllocationRoot)
+		if err != nil {
+			return nil, common.NewErrorf("latest_write_marker_read_error",
+				"Error reading the latest write marker for allocation: %v", err)
+		}
+		if latestWriteMarkerEntity.Status == writemarker.Failed {
+			return nil, common.NewError("latest_write_marker_failed",
+				"Latest write marker is in failed state")
+		}
+
+		if latestWriteMarkerEntity.Status != writemarker.Committed {
+			writeMarker.ChainLength = latestWriteMarkerEntity.WM.ChainLength
+		}
+		prevChainHash = latestWriteMarkerEntity.WM.ChainHash
+	}
+
+	writemarkerEntity := &writemarker.WriteMarkerEntity{}
+	writemarkerEntity.WM = writeMarker
+	writemarkerEntity.WM.ChainLength += 1
+	if writemarkerEntity.WM.ChainLength > config.Configuration.MaxChainLength {
+		return nil, common.NewError("chain_length_exceeded", "Chain length exceeded")
+	}
+
+	err = writemarkerEntity.VerifyMarker(ctx, allocationObj, connectionObj, latestWriteMarkerEntity)
+	if err != nil {
+		result.AllocationRoot = allocationObj.AllocationRoot
+		result.ErrorMessage = "Verification of write marker failed: " + err.Error()
+		result.Success = false
+		if latestWriteMarkerEntity != nil {
+			result.WriteMarker = latestWriteMarkerEntity
+		}
+		Logger.Error("verify_writemarker_failed", zap.Error(err))
+		return &result, common.NewError("write_marker_verification_failed", result.ErrorMessage)
+	}
+
+	elapsedVerifyWM := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj
+
+	var clientIDForWriteRedeem = writeMarker.ClientID
+
+	if err := writePreRedeem(ctx, allocationObj, &writeMarker, clientIDForWriteRedeem); err != nil {
+		return nil, err
+	}
+
+	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
+		elapsedGetConnObj - elapsedVerifyWM
+
+	hashSignatureStr := r.FormValue("hash_signature")
+	if hashSignatureStr == "" {
+		return nil, common.NewError("invalid_parameters", "Invalid file ID meta passed")
+	}
+	hashSignatureMap := make(map[string]string, 0)
+	err = json.Unmarshal([]byte(hashSignatureStr), &hashSignatureMap)
+	if err != nil {
+		return nil, common.NewError("unmarshall_error",
+			fmt.Sprintf("Error while unmarshalling file ID meta data: %s", err.Error()))
+	}
+
+	// Move preCommitDir to finalDir
+	err = connectionObj.MoveToFilestoreV2(ctx, allocationObj, writeMarker.AllocationRoot)
+	if err != nil {
+		return nil, common.NewError("move_to_filestore_error", fmt.Sprintf("Error while moving to filestore: %s", err.Error()))
+	}
+
+	elapsedMoveToFilestore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
+	numFiles := atomic.Int32{}
+	trie := allocationObj.GetTrie()
+	prevWeight := int64(trie.Weight())
+	trie.SaveRoot()
+	maxFiles := int32((allocationObj.BlobberSize/(GB))*1000) - allocationObj.NumObjects
+	err = connectionObj.ApplyChangesV2(
+		ctx, writeMarker.AllocationRoot, clientKey, &numFiles, maxFiles, writeMarker.Timestamp, hashSignatureMap, trie)
+	if err != nil {
+		trie.Rollback()
+		Logger.Error("Error applying changes", zap.Error(err))
+		return nil, err
+	}
+
+	if allocationObj.BlobberSizeUsed+connectionObj.Size > allocationObj.BlobberSize {
+		trie.Rollback()
+		return nil, common.NewError("max_allocation_size",
+			"Max size reached for the allocation with this blobber")
+	}
+
+	batcher, err := trie.Commit(4)
+	if err != nil {
+		trie.Rollback()
+		return nil, common.NewError("trie_commit_error", "Error committing the trie")
+	}
+	newWeight := int64(trie.Weight())
+	diff := newWeight - prevWeight
+	size := diff * allocation.CHUNK_SIZE
+
+	if writemarkerEntity.WM.Size != size {
+		trie.Rollback()
+		return nil, common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker size %v does not match the connection size %v", writemarkerEntity.WM.Size, connectionObj.Size))
+	}
+
+	if latestWriteMarkerEntity != nil && latestWriteMarkerEntity.WM.ChainSize+size != writeMarker.ChainSize {
+		trie.Rollback()
+		return nil, common.NewErrorf("invalid_chain_size",
+			"Invalid chain size. expected:%v got %v", latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size, writeMarker.ChainSize)
+	} else if latestWriteMarkerEntity == nil && size != writeMarker.ChainSize {
+		trie.Rollback()
+		return nil, common.NewErrorf("invalid_chain_size",
+			"Invalid chain size. expected:%v got %v", connectionObj.Size, writeMarker.ChainSize)
+	}
+
+	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
+		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
+
+	allocationRoot := hex.EncodeToString(trie.Root())
+	fileMetaRoot := allocationRoot
+	if allocationRoot != writeMarker.AllocationRoot {
+		result.AllocationRoot = allocationObj.AllocationRoot
+		if latestWriteMarkerEntity != nil {
+			result.WriteMarker = latestWriteMarkerEntity
+		}
+		result.Success = false
+		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root." +
+			" Expected hash: " + allocationRoot
+		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
+	}
+
+	chainHash := writemarker.CalculateChainHash(prevChainHash, allocationRoot)
+	if chainHash != writeMarker.ChainHash {
+		return nil, common.NewError("chain_hash_mismatch", "Chain hash in the write marker does not match the calculated chain hash")
+	}
+
+	if fileMetaRoot != writeMarker.FileMetaRoot {
+		// result.AllocationRoot = allocationObj.AllocationRoot
+		if latestWriteMarkerEntity != nil {
+			result.WriteMarker = latestWriteMarkerEntity
+		}
+		result.Success = false
+		result.ErrorMessage = "File meta root in the write marker does not match the calculated file meta root." +
+			" Expected hash: " + fileMetaRoot + "; Got: " + writeMarker.FileMetaRoot
+		return &result, common.NewError("file_meta_root_mismatch", result.ErrorMessage)
+	}
+
+	writemarkerEntity.ConnectionID = connectionObj.ID
+	writemarkerEntity.ClientPublicKey = clientKey
+
+	db := datastore.GetStore().GetTransaction(ctx)
+	writemarkerEntity.Latest = true
+	if err = db.Create(writemarkerEntity).Error; err != nil {
+		return nil, common.NewError("write_marker_error", "Error persisting the write marker")
+	}
+	allocationObj.AllocationRoot = allocationRoot
+	allocationObj.FileMetaRoot = fileMetaRoot
+	allocationObj.IsRedeemRequired = true
+	allocationObj.BlobberSizeUsed += connectionObj.Size
+	allocationObj.UsedSize += connectionObj.Size
+	allocationObj.PrevNumBlocks = allocationObj.NumBlocks
+	allocationObj.NumBlocks = uint64(int64(allocationObj.NumBlocks) + diff)
+	allocationObj.NumObjects += numFiles.Load()
+
+	updateMap := map[string]interface{}{
+		"allocation_root":    allocationRoot,
+		"file_meta_root":     fileMetaRoot,
+		"used_size":          allocationObj.UsedSize,
+		"blobber_size_used":  allocationObj.BlobberSizeUsed,
+		"num_blocks":         allocationObj.NumBlocks,
+		"prev_num_blocks":    allocationObj.PrevNumBlocks,
+		"num_objects":        allocationObj.NumObjects,
+		"is_redeem_required": true,
+	}
+	updateOption := func(a *allocation.Allocation) {
+		a.AllocationRoot = allocationRoot
+		a.FileMetaRoot = fileMetaRoot
+		a.IsRedeemRequired = true
+		a.BlobberSizeUsed = allocationObj.BlobberSizeUsed
+		a.UsedSize = allocationObj.UsedSize
+		a.NumBlocks = allocationObj.NumBlocks
+		a.PrevNumBlocks = allocationObj.PrevNumBlocks
+		a.NumObjects = allocationObj.NumObjects
+	}
+
+	if err = allocation.Repo.UpdateAllocation(ctx, allocationObj, updateMap, updateOption); err != nil {
+		trie.Rollback()
+		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
+	}
+
+	elapsedSaveAllocation := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
+		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem - elapsedApplyChanges
+
+	err = batcher.Commit(false)
+	if err != nil {
+		trie.Rollback()
+		return nil, common.NewError("trie_commit_error", "Error committing the trie")
+	}
+
+	err = connectionObj.CommitToFileStore(ctx)
+	if err != nil {
+		if !errors.Is(err, common.ErrFileWasDeleted) {
+			trie.Rollback()
+			return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
+		}
+	}
+	elapsedCommitStore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem - elapsedApplyChanges - elapsedSaveAllocation
+	logging.Logger.Info("commit_filestore", zap.String("allocation_id", allocationId), zap.String("allocation_root", allocationRoot))
+	connectionObj.DeleteChanges(ctx)
+
+	db.Model(connectionObj).Updates(allocation.AllocationChangeCollector{Status: allocation.CommittedConnection})
+	result.AllocationRoot = allocationObj.AllocationRoot
+	result.WriteMarker = writemarkerEntity
+	result.Success = true
+	result.ErrorMessage = ""
+	result.Trie = trie
 	commitOperation := connectionObj.Changes[0].Operation
 	input := connectionObj.Changes[0].Input
 

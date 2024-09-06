@@ -2,16 +2,20 @@ package handler
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
 	"strconv"
+	"time"
 
 	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/common/core/util/wmpt"
 	"github.com/0chain/gosdk/constants"
 	"go.uber.org/zap"
 
@@ -21,6 +25,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 )
@@ -565,10 +570,26 @@ func (fsh *StorageHandler) GetReferencePath(ctx context.Context, r *http.Request
 	}
 }
 
+func (fsh *StorageHandler) GetReferencePathV2(ctx context.Context, r *http.Request) (*blobberhttp.ReferencePathResultV2, error) {
+	resCh := make(chan *blobberhttp.ReferencePathResultV2)
+	errCh := make(chan error)
+	go fsh.getReferencePathV2(ctx, r, resCh, errCh)
+
+	select {
+	case <-ctx.Done():
+		return nil, common.NewError("timeout", "timeout reached")
+	case result := <-resCh:
+		return result, nil
+	case err := <-errCh:
+		return nil, err
+	}
+
+}
+
 func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request, resCh chan<- *blobberhttp.ReferencePathResult, errCh chan<- error) {
 	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
 	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, true)
 	if err != nil {
 		errCh <- common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 		return
@@ -642,6 +663,93 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 		}
 		refPathResult.LatestWM = &latestWM.WM
 	}
+
+	resCh <- &refPathResult
+}
+
+func (fsh *StorageHandler) getReferencePathV2(ctx context.Context, r *http.Request, resCh chan<- *blobberhttp.ReferencePathResultV2, errCh chan<- error) {
+	allocationId := ctx.Value(constants.ContextKeyAllocationID).(string)
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, true)
+	if err != nil {
+		errCh <- common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
+		return
+	}
+
+	paths, err := pathsFromReq(r)
+	if err != nil {
+		errCh <- err
+		return
+	}
+
+	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
+
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	if clientID == "" {
+		errCh <- common.NewError("invalid_operation", "Please pass clientID in the header")
+		return
+	}
+
+	publicKey := allocationObj.OwnerPublicKey
+
+	clientSignV2 := ctx.Value(constants.ContextKeyClientSignatureHeaderV2Key).(string)
+	valid, err := verifySignatureFromRequest(allocationTx, clientSign, clientSignV2, publicKey)
+	if !valid || err != nil {
+		errCh <- common.NewError("invalid_signature", "could not verify the allocation owner or collaborator")
+		return
+	}
+	allocMu := lock.GetMutex(allocation.Allocation{}.TableName(), allocationId)
+	allocMu.RLock()
+	defer allocMu.RUnlock()
+	now := time.Now()
+
+	trie := allocationObj.GetTrie()
+	if trie == nil {
+		errCh <- common.NewError("invalid_parameters", "Trie not found for allocation.")
+		return
+	}
+
+	keys := make([][]byte, 0, len(paths))
+	for _, path := range paths {
+		k, err := hex.DecodeString(path)
+		if err != nil {
+			errCh <- common.NewError("invalid_parameters", "Invalid path. "+err.Error())
+			return
+		}
+		keys = append(keys, k)
+	}
+	// we create a copy of the trie so we don't load all the nodes into main trie, client can keep calling this api with different paths leading to high memory usage
+	copyTrie := wmpt.New(trie.CopyRoot(), datastore.GetBlockStore())
+	refpath, err := copyTrie.GetPath(keys)
+	if err != nil {
+		errCh <- common.NewError("invalid_parameters", "Invalid path. "+err.Error())
+		return
+	}
+	elapsedGetPath := time.Since(now)
+	// set the root of the original trie to the root of the copy so that it can be used for commit write
+	trie.SetRoot(copyTrie.GetRoot())
+	copyTrie = nil
+	var latestWM *writemarker.WriteMarkerEntity
+	if allocationObj.AllocationRoot == "" {
+		latestWM = nil
+	} else {
+		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
+		if err != nil {
+			errCh <- common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
+			return
+		}
+	}
+	elapsedGetWM := time.Since(now) - elapsedGetPath
+	var refPathResult blobberhttp.ReferencePathResultV2
+	refPathResult.Version = writemarker.MARKER_VERSION
+	refPathResult.Path = refpath
+	if latestWM != nil {
+		if latestWM.Status == writemarker.Committed {
+			latestWM.WM.ChainLength = 0 // start a new chain
+		}
+		refPathResult.LatestWM = &latestWM.WM
+	}
+	Logger.Info("getReferencePathV2", zap.Duration("elapsedGetPath", elapsedGetPath), zap.Duration("elapsedGetWM", elapsedGetWM))
 
 	resCh <- &refPathResult
 }

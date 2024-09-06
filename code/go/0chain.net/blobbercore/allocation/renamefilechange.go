@@ -109,37 +109,37 @@ func (rf *RenameFileChange) applyChange(ctx context.Context, rootRef *reference.
 	return rootRef, nil
 }
 
-func (rf *RenameFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, _ *atomic.Int32, ts common.Timestamp, hashSignature map[string]string, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) error {
+func (rf *RenameFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, _ *atomic.Int32, ts common.Timestamp, hashSignature map[string]string, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) (int64, error) {
 	collector.LockTransaction()
 	defer collector.UnlockTransaction()
 
 	if rf.Path == "/" {
-		return common.NewError("invalid_operation", "cannot rename root path")
+		return 0, common.NewError("invalid_operation", "cannot rename root path")
 	}
 
 	newPath := filepath.Join(filepath.Dir(rf.Path), rf.NewName)
 	isFilePresent, err := reference.IsRefExist(ctx, rf.AllocationID, newPath)
 	if err != nil && err != gorm.ErrRecordNotFound {
 		logging.Logger.Info("invalid_reference_path", zap.Error(err))
-		return err
+		return 0, err
 	}
 
 	if isFilePresent {
-		return common.NewError("invalid_reference_path", "file already exists")
+		return 0, common.NewError("invalid_reference_path", "file already exists")
 	}
 
 	oldFileLookupHash := reference.GetReferenceLookup(rf.AllocationID, rf.Path)
 	ref, err := reference.GetReferenceByLookupHash(ctx, rf.AllocationID, oldFileLookupHash)
 	if err != nil {
-		return common.NewError("invalid_reference_path", err.Error())
+		return 0, common.NewError("invalid_reference_path", err.Error())
 	}
 	if ref.Type == reference.DIRECTORY {
 		isEmpty, err := reference.IsDirectoryEmpty(ctx, ref.Path)
 		if err != nil {
-			return common.NewError("invalid_reference_path", err.Error())
+			return 0, common.NewError("invalid_reference_path", err.Error())
 		}
 		if !isEmpty {
-			return common.NewError("invalid_reference_path", "directory is not empty")
+			return 0, common.NewError("invalid_reference_path", "directory is not empty")
 		}
 	}
 	rf.Type = ref.Type
@@ -161,22 +161,22 @@ func (rf *RenameFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, c
 		fileMetaHashRaw := encryption.RawHash(ref.GetFileMetaHashDataV2())
 		sig, ok := hashSignature[ref.LookupHash]
 		if !ok {
-			return common.NewError("invalid_hash_signature", "Hash signature not found")
+			return 0, common.NewError("invalid_hash_signature", "Hash signature not found")
 		}
 		fileHash := encryption.Hash(ref.GetFileHashDataV2())
 		verify, err := encryption.Verify(clientPubKey, sig, fileHash)
 		if err != nil || !verify {
-			return common.NewError("invalid_signature", "Signature is invalid")
+			return 0, common.NewError("invalid_signature", "Signature is invalid")
 		}
 		decodedOldKey, _ := hex.DecodeString(oldFileLookupHash)
 		err = trie.Update(decodedOldKey, nil, 0)
 		if err != nil {
-			return err
+			return 0, err
 		}
 		decodedNewKey, _ := hex.DecodeString(ref.LookupHash)
 		err = trie.Update(decodedNewKey, fileMetaHashRaw, uint64(ref.NumBlocks))
 		if err != nil {
-			return err
+			return 0, err
 		}
 		ref.Hash = sig
 		ref.FileMetaHash = hex.EncodeToString(fileMetaHashRaw)
@@ -184,7 +184,7 @@ func (rf *RenameFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, c
 	rf.newLookupHash = ref.LookupHash
 	rf.oldFileLookupHash = oldFileLookupHash
 	rf.storageVersion = 1
-	return nil
+	return 0, nil
 }
 
 func (rf *RenameFileChange) processChildren(ctx context.Context, curRef *reference.Ref, ts common.Timestamp) {

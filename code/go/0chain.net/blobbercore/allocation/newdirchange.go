@@ -91,21 +91,21 @@ func (nf *NewDir) ApplyChange(ctx context.Context, rootRef *reference.Ref, chang
 	return rootRef, nil
 }
 
-func (nf *NewDir) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, ts common.Timestamp, _ map[string]string, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) error {
+func (nf *NewDir) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, ts common.Timestamp, _ map[string]string, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) (int64, error) {
 	if nf.Path == "/" {
-		return common.NewError("invalid_path", "cannot create root path")
+		return 0, common.NewError("invalid_path", "cannot create root path")
 	}
 	parentPath := filepath.Dir(nf.Path)
 	parentPathLookup := reference.GetReferenceLookup(nf.AllocationID, parentPath)
 	parentRef, err := reference.GetReferenceByLookupHashWithNewTransaction(parentPathLookup)
 	if err != nil && err != gorm.ErrRecordNotFound {
-		return err
+		return 0, err
 	}
 	if parentRef == nil || parentRef.ID == 0 {
 		_, err = reference.Mkdir(ctx, nf.AllocationID, nf.Path, allocationRoot, ts, numFiles, collector)
 	} else {
 		if parentRef.Type != reference.DIRECTORY {
-			return common.NewError("invalid_parent_path", "parent path is not a directory")
+			return 0, common.NewError("invalid_parent_path", "parent path is not a directory")
 		}
 		newRef := reference.NewDirectoryRef()
 		newRef.AllocationID = nf.AllocationID
@@ -121,7 +121,7 @@ func (nf *NewDir) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKe
 		collector.CreateRefRecord(newRef)
 		numFiles.Add(1)
 	}
-	return err
+	return 0, err
 }
 
 func (nd *NewDir) Marshal() (string, error) {

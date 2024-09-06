@@ -2,6 +2,7 @@ package allocation
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
@@ -75,11 +76,11 @@ type Allocation struct {
 	FileOptions    uint16 `json:"file_options" gorm:"column:file_options;not null;default:63"`
 	StorageVersion uint8  `json:"storage_version" gorm:"column:storage_version"`
 	NumObjects     int32  `json:"num_objects" gorm:"column:num_objects"`
+	NumBlocks      uint64 `json:"num_blocks" gorm:"column:num_blocks"`
+	PrevNumBlocks  uint64 `json:"prev_num_blocks" gorm:"column:prev_num_blocks"`
 	// Has many terms
 	// If Preload("Terms") is required replace tag `gorm:"-"` with `gorm:"foreignKey:AllocationID"`
 	Terms []*Terms `gorm:"-"`
-	//wmpt
-	trie *wmpt.WeightedMerkleTrie `gorm:"-" json:"-"`
 }
 
 func (Allocation) TableName() string {
@@ -87,7 +88,17 @@ func (Allocation) TableName() string {
 }
 
 func (a *Allocation) GetTrie() *wmpt.WeightedMerkleTrie {
-	return a.trie
+	trie := Repo.getTrie(a.ID)
+	if trie == nil {
+		if a.AllocationRoot == "" {
+			trie = wmpt.New(nil, datastore.GetBlockStore())
+		} else {
+			decodedRoot, _ := hex.DecodeString(a.AllocationRoot)
+			trie = wmpt.New(wmpt.NewHashNode(decodedRoot, a.NumBlocks), datastore.GetBlockStore())
+		}
+		Repo.setTrie(a.ID, trie)
+	}
+	return trie
 }
 
 func (a *Allocation) CanUpload() bool {

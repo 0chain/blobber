@@ -2,6 +2,8 @@
 -- +goose StatementBegin
 ALTER TABLE allocations ADD COLUMN storage_version smallint;
 ALTER TABLE allocations ADD COLUMN num_objects integer;
+ALTER TABLE allocations ADD COLUMN num_blocks bigint;
+ALTER TABLE allocations ADD COLUMN prev_num_blocks bigint;
 
 DROP INDEX IF EXISTS idx_parent_path_alloc,idx_path_alloc;
 ALTER TABLE allocations DROP CONSTRAINT path_commit;
@@ -27,6 +29,6 @@ CREATE INDEX idx_path_alloc_level ON reference_objects USING btree (allocation_i
 
 ALTER TABLE ONLY allocation_changes ADD CONSTRAINT connection_id_lookup_hash UNIQUE (connection_id,lookup_hash);
 
-CREATE UNIQUE INDEX idx_lookup_hash_deleted ON reference_objects(lookup_hash,(deleted_at IS NULL)) INCLUDE(id,type,num_of_updates);
+CREATE UNIQUE INDEX idx_lookup_hash_deleted ON reference_objects(lookup_hash,(deleted_at IS NULL)) INCLUDE(id,type,num_of_updates,size);
 
 -- +goose StatementEnd

@@ -184,6 +184,9 @@ func setupHandlers(s *mux.Router) {
 	s.HandleFunc("/v1/connection/commit/{allocation}",
 		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnectionForWM(CommitHandler))))
 
+	s.HandleFunc("/v2/connection/commit/{allocation}",
+		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnectionForWM(CommitHandlerV2))))
+
 	s.HandleFunc("/v1/connection/rollback/{allocation}",
 		RateLimitByCommmitRL(common.ToStatusCode(WithStatusConnectionForWM(RollbackHandler))))
 
@@ -199,6 +202,9 @@ func setupHandlers(s *mux.Router) {
 
 	s.HandleFunc("/v1/file/referencepath/{allocation}",
 		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathHandler))))
+
+	s.HandleFunc("/v2/file/referencepath/{allocation}",
+		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathV2Handler))))
 
 	s.HandleFunc("/v1/file/latestwritemarker/{allocation}",
 		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(WriteMarkerHandler))))
@@ -716,6 +722,10 @@ func CommitHandler(ctx context.Context, r *http.Request) (interface{}, int, erro
 	return commitHandler(ctx, r)
 }
 
+func CommitHandlerV2(ctx context.Context, r *http.Request) (interface{}, int, error) {
+	return commitHandlerV2(ctx, r)
+}
+
 // swagger:route POST/v1/connection/rollback/{allocation} PostRollback
 // Rollback operation.
 // RollbackHandler used to commit the storage operation provided its connection id.
@@ -822,12 +832,25 @@ func RollbackHandler(ctx context.Context, r *http.Request) (interface{}, int, er
 //	500:
 func ReferencePathHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 
-	ctx, canceler := context.WithTimeout(ctx, time.Second*10)
+	ctx, canceler := context.WithTimeout(ctx, time.Second*60)
 	defer canceler()
 
 	ctx = setupHandlerContext(ctx, r)
 
 	response, err := storageHandler.GetReferencePath(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+func ReferencePathV2Handler(ctx context.Context, r *http.Request) (interface{}, error) {
+	ctx, canceler := context.WithTimeout(ctx, time.Second*60)
+	defer canceler()
+
+	ctx = setupHandlerContext(ctx, r)
+
+	response, err := storageHandler.GetReferencePathV2(ctx, r)
 	if err != nil {
 		return nil, err
 	}

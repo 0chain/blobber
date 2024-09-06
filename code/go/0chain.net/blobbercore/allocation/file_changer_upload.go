@@ -144,9 +144,9 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context, rootRef *reference
 	return rootRef, nil
 }
 
-func (nf *UploadFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, ts common.Timestamp, hashSignature map[string]string, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) error {
+func (nf *UploadFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, ts common.Timestamp, hashSignature map[string]string, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) (int64, error) {
 	if nf.AllocationID == "" {
-		return common.NewError("invalid_allocation_id", "Allocation ID is empty")
+		return 0, common.NewError("invalid_allocation_id", "Allocation ID is empty")
 	}
 	//find if ref exists
 	var refResult struct {
@@ -162,11 +162,11 @@ func (nf *UploadFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, 
 		ReadOnly: true,
 	})
 	if err != nil && err != gorm.ErrRecordNotFound {
-		return err
+		return 0, err
 	}
 
 	if refResult.ID > 0 {
-		return common.NewError("duplicate_file", "File already exists")
+		return 0, common.NewError("duplicate_file", "File already exists")
 	}
 	newFile := &reference.Ref{
 		ActualFileHash:          nf.ActualHash,
@@ -202,27 +202,27 @@ func (nf *UploadFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, 
 	newFile.FileMetaHash = encryption.Hash(newFile.GetFileMetaHashDataV2())
 	sig, ok := hashSignature[newFile.LookupHash]
 	if !ok {
-		return common.NewError("invalid_hash_signature", "Hash signature not found")
+		return 0, common.NewError("invalid_hash_signature", "Hash signature not found")
 	}
 	fileHash := encryption.Hash(newFile.GetFileHashDataV2())
 	//verify signature
 	verify, err := encryption.Verify(clientPubKey, sig, fileHash)
 	if err != nil || !verify {
-		return common.NewError("invalid_signature", "Signature is invalid")
+		return 0, common.NewError("invalid_signature", "Signature is invalid")
 	}
 	newFile.Hash = sig
 
 	//create parent dir if it doesn't exist
 	_, err = reference.Mkdir(ctx, nf.AllocationID, parentPath, allocationRoot, ts, numFiles, collector)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	collector.CreateRefRecord(newFile)
 	numFiles.Add(1)
 	decodedKey, _ := hex.DecodeString(newFile.LookupHash)
 	decodedValue, _ := hex.DecodeString(newFile.FileMetaHash)
 	err = trie.Update(decodedKey, decodedValue, uint64(newFile.NumBlocks))
-	return err
+	return newFile.Size, err
 }
 
 // Marshal marshal and change to persistent to postgres

@@ -110,37 +110,37 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, rootRef *reference
 	return rootRef, nil
 }
 
-func (nf *UpdateFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, ts common.Timestamp, hashSignature map[string]string, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) error {
+func (nf *UpdateFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, ts common.Timestamp, hashSignature map[string]string, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) (int64, error) {
 	if nf.AllocationID == "" {
-		return common.NewError("invalid_allocation_id", "Allocation ID is empty")
+		return 0, common.NewError("invalid_allocation_id", "Allocation ID is empty")
 	}
 
 	nf.LookupHash = reference.GetReferenceLookup(nf.AllocationID, nf.Path)
 
 	//find if ref exists
 	var refResult struct {
-		ID           int64
-		Type         string
-		NumUpdates   int64  `gorm:"column:num_of_updates" json:"num_of_updates"`
-		FileMetaHash string `gorm:"column:file_meta_hash" json:"file_meta_hash"`
+		ID         int64
+		Type       string
+		NumUpdates int64 `gorm:"column:num_of_updates" json:"num_of_updates"`
+		Size       int64 `gorm:"column:size" json:"size"`
 	}
 
 	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		tx := datastore.GetStore().GetTransaction(ctx)
-		return tx.Model(&reference.Ref{}).Select("id", "type", "num_of_updates").Where("lookup_hash = ?", nf.LookupHash).Take(&refResult).Error
+		return tx.Model(&reference.Ref{}).Select("id", "type", "num_of_updates", "size").Where("lookup_hash = ?", nf.LookupHash).Take(&refResult).Error
 	}, &sql.TxOptions{
 		ReadOnly: true,
 	})
 	if err != nil && err != gorm.ErrRecordNotFound {
-		return err
+		return 0, err
 	}
 
 	if refResult.ID == 0 {
-		return common.NewError("file_not_found", "File not found")
+		return 0, common.NewError("file_not_found", "File not found")
 	}
 
 	if refResult.Type != reference.FILE {
-		return common.NewError("invalid_reference_type", "Cannot update a directory")
+		return 0, common.NewError("invalid_reference_type", "Cannot update a directory")
 	}
 
 	newFile := &reference.Ref{
@@ -178,13 +178,13 @@ func (nf *UpdateFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, 
 	newFile.FileMetaHash = encryption.Hash(newFile.GetFileMetaHashDataV2())
 	sig, ok := hashSignature[newFile.LookupHash]
 	if !ok {
-		return common.NewError("invalid_hash_signature", "Hash signature not found")
+		return 0, common.NewError("invalid_hash_signature", "Hash signature not found")
 	}
 	fileHash := encryption.Hash(newFile.GetFileHashDataV2())
 	//verify signature
 	verify, err := encryption.Verify(clientPubKey, sig, fileHash)
 	if err != nil || !verify {
-		return common.NewError("invalid_signature", "Signature is invalid")
+		return 0, common.NewError("invalid_signature", "Signature is invalid")
 	}
 	newFile.Hash = sig
 	deleteRecord := &reference.Ref{
@@ -197,7 +197,7 @@ func (nf *UpdateFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, 
 	decodedKey, _ := hex.DecodeString(newFile.LookupHash)
 	decodedValue, _ := hex.DecodeString(newFile.FileMetaHash)
 	err = trie.Update(decodedKey, decodedValue, uint64(newFile.NumBlocks))
-	return err
+	return refResult.Size - newFile.Size, err
 }
 
 func (nf *UpdateFileChanger) CommitToFileStore(ctx context.Context, mut *sync.Mutex) error {

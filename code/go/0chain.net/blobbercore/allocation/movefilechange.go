@@ -135,7 +135,7 @@ func (rf *MoveFileChange) ApplyChange(ctx context.Context, rootRef *reference.Re
 	return rootRef, nil
 }
 
-func (rf *MoveFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, ts common.Timestamp, hashSignature map[string]string, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) error {
+func (rf *MoveFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, ts common.Timestamp, hashSignature map[string]string, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) (int64, error) {
 	rf.srcLookupHash = reference.GetReferenceLookup(rf.AllocationID, rf.SrcPath)
 	rf.destLookupHash = reference.GetReferenceLookup(rf.AllocationID, rf.DestPath)
 	var (
@@ -168,13 +168,13 @@ func (rf *MoveFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, cli
 		ReadOnly: true,
 	})
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	rf.Type = srcRef.Type
 	_, err = reference.Mkdir(ctx, rf.AllocationID, filepath.Dir(rf.DestPath), allocationRoot, ts, numFiles, collector)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	deleteRef := &reference.Ref{
 		ID:         srcRef.ID,
@@ -194,29 +194,29 @@ func (rf *MoveFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, cli
 		fileMetaHashRaw := encryption.RawHash(srcRef.GetFileMetaHashDataV2())
 		sig, ok := hashSignature[rf.destLookupHash]
 		if !ok {
-			return common.NewError("invalid_parameter", "hash signature not found")
+			return 0, common.NewError("invalid_parameter", "hash signature not found")
 		}
 		fileHash := encryption.Hash(srcRef.GetFileHashDataV2())
 		verify, err := encryption.Verify(clientPubKey, sig, fileHash)
 		if err != nil || !verify {
-			return common.NewError("invalid_signature", "Signature is invalid")
+			return 0, common.NewError("invalid_signature", "Signature is invalid")
 		}
 		decodedOldKey, _ := hex.DecodeString(rf.srcLookupHash)
 		err = trie.Update(decodedOldKey, nil, 0)
 		if err != nil {
-			return err
+			return 0, err
 		}
 		decodedNewKey, _ := hex.DecodeString(rf.destLookupHash)
 		err = trie.Update(decodedNewKey, fileMetaHashRaw, uint64(srcRef.NumBlocks))
 		if err != nil {
-			return err
+			return 0, err
 		}
 		srcRef.Hash = sig
 		srcRef.FileMetaHash = hex.EncodeToString(fileMetaHashRaw)
 	}
 	collector.CreateRefRecord(srcRef)
 	rf.storageVersion = 1
-	return nil
+	return 0, nil
 }
 
 func (rf *MoveFileChange) processMoveRefs(

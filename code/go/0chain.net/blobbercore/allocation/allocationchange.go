@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -36,7 +37,7 @@ type AllocationChangeProcessor interface {
 	DeleteTempFile() error
 	ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange, allocationRoot string,
 		ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error)
-	ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, ts common.Timestamp, hashSignature map[string]string, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) error
+	ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, ts common.Timestamp, hashSignature map[string]string, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) (int64, error)
 	GetPath() []string
 	Marshal() (string, error)
 	Unmarshal(string) error
@@ -284,13 +285,14 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocatio
 	return rootRef, err
 }
 
-func (cc *AllocationChangeCollector) ApplyChangesV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, ts common.Timestamp, hashSignature map[string]string, trie *wmpt.WeightedMerkleTrie) error {
+func (cc *AllocationChangeCollector) ApplyChangesV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, maxFileChange int32, ts common.Timestamp, hashSignature map[string]string, trie *wmpt.WeightedMerkleTrie) error {
 	now := time.Now()
 	collector := reference.NewCollector(len(cc.Changes))
 	timeoutctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 	eg, egCtx := errgroup.WithContext(timeoutctx)
 	eg.SetLimit(10)
+	cc.Size = 0
 	for idx, change := range cc.Changes {
 		change.AllocationID = cc.AllocationID
 		select {
@@ -300,7 +302,14 @@ func (cc *AllocationChangeCollector) ApplyChangesV2(ctx context.Context, allocat
 			changeIndex := idx
 			eg.Go(func() error {
 				changeProcessor := cc.AllocationChanges[changeIndex]
-				return changeProcessor.ApplyChangeV2(ctx, allocationRoot, clientPubKey, numFiles, ts, hashSignature, trie, collector)
+				sizeChange, err := changeProcessor.ApplyChangeV2(ctx, allocationRoot, clientPubKey, numFiles, ts, hashSignature, trie, collector)
+				if err != nil {
+					return err
+				}
+				if sizeChange > 0 {
+					atomic.AddInt64(&cc.Size, sizeChange)
+				}
+				return nil
 			})
 		}
 	}
@@ -308,6 +317,9 @@ func (cc *AllocationChangeCollector) ApplyChangesV2(ctx context.Context, allocat
 	if err != nil {
 		logging.Logger.Error("ApplyChangesV2", zap.Error(err))
 		return err
+	}
+	if numFiles.Load() > maxFileChange {
+		return common.NewError("max_file_change", "Max file change exceeded "+strconv.Itoa(int(maxFileChange)))
 	}
 	elapsedApplyChanges := time.Since(now)
 	err = collector.Finalize(ctx, cc.AllocationID, allocationRoot)
