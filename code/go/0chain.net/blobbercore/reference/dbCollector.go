@@ -12,7 +12,7 @@ import (
 type QueryCollector interface {
 	CreateRefRecord(ref *Ref)
 	DeleteRefRecord(ref *Ref)
-	Finalize(ctx context.Context, allocationID, allocationVersion string) error
+	Finalize(ctx context.Context, allocationID, allocationRoot string) error
 	AddToCache(ref *Ref)
 	GetFromCache(lookupHash string) *Ref
 	DeleteLookupRefRecord(ref *Ref)
