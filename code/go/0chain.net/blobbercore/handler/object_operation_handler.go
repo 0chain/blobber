@@ -1019,9 +1019,9 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
 		elapsedGetConnObj - elapsedVerifyWM
 
-	hashSignatureStr := r.FormValue("hash_signature")
+	hashSignatureStr := r.FormValue("file_id_meta")
 	if hashSignatureStr == "" {
-		return nil, common.NewError("invalid_parameters", "Invalid file ID meta passed")
+		return nil, common.NewError("invalid_parameters", "Invalid hash signature meta passed")
 	}
 	hashSignatureMap := make(map[string]string, 0)
 	err = json.Unmarshal([]byte(hashSignatureStr), &hashSignatureMap)
