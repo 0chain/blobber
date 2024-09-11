@@ -1041,7 +1041,12 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 	trie := allocationObj.GetTrie()
 	prevWeight := int64(trie.Weight())
 	trie.SaveRoot()
-	maxFiles := int32((allocationObj.BlobberSize/(GB))*1000) - allocationObj.NumObjects
+	var maxFiles int32
+	if allocationObj.BlobberSize < GB {
+		maxFiles = int32(config.Configuration.MaxObjectsPerGB) - allocationObj.NumObjects
+	} else {
+		maxFiles = (int32(allocationObj.BlobberSize/GB) * config.Configuration.MaxObjectsPerGB) - allocationObj.NumObjects
+	}
 	err = connectionObj.ApplyChangesV2(
 		ctx, writeMarker.AllocationRoot, clientKey, &numFiles, maxFiles, writeMarker.Timestamp, hashSignatureMap, trie)
 	if err != nil {

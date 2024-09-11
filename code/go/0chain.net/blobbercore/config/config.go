@@ -53,6 +53,7 @@ func SetupDefaultConfig() {
 
 	viper.SetDefault("max_dirs_files", 50000)
 	viper.SetDefault("max_objects_dir", 1000)
+	viper.SetDefault("max_objects_per_gb", 100000)
 	viper.SetDefault("kv.pebble_dir", "/pebble/data")
 	viper.SetDefault("kv.pebble_wal_dir", "/pebble/wal")
 	viper.SetDefault("kv.pebble_cache", 4*1024*1024*1024)
@@ -141,6 +142,7 @@ type Config struct {
 
 	MaxAllocationDirFiles int
 	MaxObjectsInDir       int
+	MaxObjectsPerGB       int32
 
 	// DelegateWallet for pool owner.
 	DelegateWallet string `json:"delegate_wallet"`
@@ -284,7 +286,7 @@ func ReadConfig(deploymentMode int) {
 		viper.GetInt("max_dirs_files")
 
 	Configuration.MaxObjectsInDir = viper.GetInt("max_objects_dir")
-
+	Configuration.MaxObjectsPerGB = viper.GetInt32("max_objects_per_gb")
 	Configuration.DelegateWallet = viper.GetString("delegate_wallet")
 	if w := Configuration.DelegateWallet; len(w) != 64 {
 		log.Fatal("invalid delegate wallet:", w)
