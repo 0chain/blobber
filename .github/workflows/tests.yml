@@ -14,10 +14,10 @@ jobs:
     name: Lints
     runs-on: [self-hosted,blobber-runner]
     steps:
-      - name: Setup go
-        uses: actions/setup-go@v3
-        with:
-          go-version: ^1.22 # The Go version to download (if necessary) and use.
+      # - name: Setup go
+      #   uses: actions/setup-go@v3
+      #   with:
+      #     go-version: ^1.22 # The Go version to download (if necessary) and use.
 
       - name: Clone blobber
         uses: actions/checkout@v2
