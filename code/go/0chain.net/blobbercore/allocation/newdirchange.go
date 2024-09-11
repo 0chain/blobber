@@ -16,6 +16,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 )
 
 type NewDir struct {
@@ -117,6 +118,7 @@ func (nf *NewDir) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKe
 		newRef.UpdatedAt = ts
 		newRef.AllocationRoot = allocationRoot
 		newRef.CustomMeta = nf.CustomMeta
+		newRef.FileMetaHash = encryption.Hash(newRef.GetFileMetaHashDataV2())
 		newRef.PathLevel = len(strings.Split(strings.TrimRight(nf.Path, "/"), "/"))
 		collector.CreateRefRecord(newRef)
 		numFiles.Add(1)

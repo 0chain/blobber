@@ -72,7 +72,7 @@ type Ref struct {
 	ActualFileHashSignature string `gorm:"column:actual_file_hash_signature;size:64" filelist:"actual_file_hash_signature"  json:"actual_file_hash_signature,omitempty"`
 	ActualFileHash          string `gorm:"column:actual_file_hash;size:64;not null" filelist:"actual_file_hash"`
 	MimeType                string `gorm:"column:mimetype;size:255;not null" filelist:"mimetype"`
-	AllocationRoot          string `gorm:"column:allocation_root;size:64;not null"`
+	AllocationRoot          string `gorm:"column:allocation_root;size:64;not null" filelist:"allocation_root" dirlist:"allocation_root"`
 	ThumbnailSize           int64  `gorm:"column:thumbnail_size;not null;default:0" filelist:"thumbnail_size"`
 	ThumbnailHash           string `gorm:"column:thumbnail_hash;size:64;not null" filelist:"thumbnail_hash"`
 	PrevThumbnailHash       string `gorm:"column:prev_thumbnail_hash" filelist:"prev_thumbnail_hash"`
@@ -261,6 +261,7 @@ func Mkdir(ctx context.Context, allocationID, destpath, allocationRoot string, t
 		newRef.CreatedAt = ts
 		newRef.UpdatedAt = ts
 		newRef.AllocationRoot = allocationRoot
+		newRef.FileMetaHash = encryption.Hash(newRef.GetFileMetaHashDataV2())
 		err = db.Create(newRef).Error
 		if err != nil {
 			return nil, err
