@@ -404,7 +404,7 @@ func TestDeletePreCommitDir(t *testing.T) {
 		Offset:    0,
 		DataBytes: tF.Size(),
 	}, int64(size))
-
+	fid.Hash = fid.ValidationRoot
 	success, err = fs.CommitWrite(allocID, connID, fid)
 	require.Nil(t, err)
 	require.True(t, success)

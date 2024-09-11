@@ -7,7 +7,7 @@ ALTER TABLE allocations ADD COLUMN num_blocks bigint;
 ALTER TABLE allocations ADD COLUMN prev_num_blocks bigint;
 
 DROP INDEX IF EXISTS idx_parent_path_alloc,idx_path_alloc;
-ALTER TABLE allocations DROP CONSTRAINT path_commit;
+ALTER TABLE reference_objects DROP CONSTRAINT path_commit;
 
 --
 -- Name: idx_parent_path_alloc; Type: INDEX; Schema: public; Owner: blobber_user
