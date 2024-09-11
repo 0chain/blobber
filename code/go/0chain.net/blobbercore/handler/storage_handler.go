@@ -15,6 +15,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/common/core/util/wmpt"
 	"github.com/0chain/gosdk/constants"
 	"go.uber.org/zap"
@@ -719,7 +720,7 @@ func (fsh *StorageHandler) getReferencePathV2(ctx context.Context, r *http.Reque
 		keys = append(keys, k)
 	}
 	// we create a copy of the trie so we don't load all the nodes into main trie, client can keep calling this api with different paths leading to high memory usage
-	copyTrie := wmpt.New(trie.CopyRoot(), datastore.GetBlockStore())
+	copyTrie := wmpt.New(trie.CopyRoot(filestore.COLLAPSE_DEPTH), datastore.GetBlockStore())
 	refpath, err := copyTrie.GetPath(keys)
 	if err != nil {
 		errCh <- common.NewError("invalid_parameters", "Invalid path. "+err.Error())

@@ -52,6 +52,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.24.0
 	github.com/aws/aws-sdk-go-v2/config v1.26.1
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.25.5
+	github.com/cockroachdb/pebble v1.1.2
 	github.com/pressly/goose/v3 v3.13.4
 )
 
@@ -74,7 +75,6 @@ require (
 	github.com/cockroachdb/errors v1.11.3 // indirect
 	github.com/cockroachdb/fifo v0.0.0-20240606204812-0bbfbd93a7ce // indirect
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
-	github.com/cockroachdb/pebble v1.1.2 // indirect
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
@@ -99,7 +99,7 @@ require (
 )
 
 require (
-	github.com/0chain/common v1.13.1-0.20240906163051-df3ffa05fdfc
+	github.com/0chain/common v1.13.1-0.20240911081741-3b969e9ffeb2
 	github.com/Luzifer/go-openssl/v3 v3.1.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/btcsuite/btcd v0.23.4 // indirect

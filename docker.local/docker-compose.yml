@@ -45,6 +45,8 @@ services:
       - ./blobber${BLOBBER}/data:/blobber/data
       - ./blobber${BLOBBER}/log:/blobber/log
       - ./keys_config:/blobber/keysconfig
+      - ./blobber${BLOBBER}/data/pebble/data:/pebble/data
+      - ./blobber${BLOBBER}/data/pebble/wal:/pebble/wal
     ports:
       - "505${BLOBBER}:505${BLOBBER}"
       - "703${BLOBBER}:703${BLOBBER}"
