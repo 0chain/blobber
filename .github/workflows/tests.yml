@@ -12,7 +12,7 @@ on:
 jobs:
   linter:
     name: Lints
-    runs-on: [self-hosted,arc-runner]
+    runs-on: [self-hosted,blobber-runner]
     steps:
       - name: Setup go
         uses: actions/setup-go@v3
