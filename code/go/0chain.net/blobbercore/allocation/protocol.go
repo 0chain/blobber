@@ -110,6 +110,8 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 	a.TimeUnit = sa.TimeUnit
 	a.FileOptions = sa.FileOptions
 	a.StartTime = sa.StartTime
+	// Only for testing purpose
+	a.StorageVersion = 1
 
 	m := map[string]interface{}{
 		"allocation_id":  a.ID,

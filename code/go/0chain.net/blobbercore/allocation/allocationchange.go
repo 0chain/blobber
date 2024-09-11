@@ -318,7 +318,7 @@ func (cc *AllocationChangeCollector) ApplyChangesV2(ctx context.Context, allocat
 		logging.Logger.Error("ApplyChangesV2", zap.Error(err))
 		return err
 	}
-	if numFiles.Load() > maxFileChange {
+	if numFiles.Load() > int32(maxFileChange) {
 		return common.NewError("max_file_change", "Max file change exceeded "+strconv.Itoa(int(maxFileChange)))
 	}
 	elapsedApplyChanges := time.Since(now)

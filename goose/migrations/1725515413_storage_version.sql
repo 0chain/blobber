@@ -2,6 +2,7 @@
 -- +goose StatementBegin
 ALTER TABLE allocations ADD COLUMN storage_version smallint;
 ALTER TABLE allocations ADD COLUMN num_objects integer;
+ALTER TABLE allocations ADD COLUMN prev_num_objects integer;
 ALTER TABLE allocations ADD COLUMN num_blocks bigint;
 ALTER TABLE allocations ADD COLUMN prev_num_blocks bigint;
 

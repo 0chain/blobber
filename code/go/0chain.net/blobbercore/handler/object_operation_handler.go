@@ -1049,6 +1049,8 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 		Logger.Error("Error applying changes", zap.Error(err))
 		return nil, err
 	}
+	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
+		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem - elapsedMoveToFilestore
 
 	if allocationObj.BlobberSizeUsed+connectionObj.Size > allocationObj.BlobberSize {
 		trie.Rollback()
@@ -1056,11 +1058,13 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 			"Max size reached for the allocation with this blobber")
 	}
 
-	batcher, err := trie.Commit(4)
+	batcher, err := trie.Commit(filestore.COLLAPSE_DEPTH)
 	if err != nil {
 		trie.Rollback()
 		return nil, common.NewError("trie_commit_error", "Error committing the trie")
 	}
+	elapsedTrieCommit := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
+		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem - elapsedMoveToFilestore - elapsedApplyChanges
 	newWeight := int64(trie.Weight())
 	diff := newWeight - prevWeight
 	size := diff * allocation.CHUNK_SIZE
@@ -1079,9 +1083,6 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 		return nil, common.NewErrorf("invalid_chain_size",
 			"Invalid chain size. expected:%v got %v", connectionObj.Size, writeMarker.ChainSize)
 	}
-
-	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
-		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem
 
 	allocationRoot := hex.EncodeToString(trie.Root())
 	fileMetaRoot := allocationRoot
@@ -1123,10 +1124,11 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 	allocationObj.AllocationRoot = allocationRoot
 	allocationObj.FileMetaRoot = fileMetaRoot
 	allocationObj.IsRedeemRequired = true
-	allocationObj.BlobberSizeUsed += connectionObj.Size
-	allocationObj.UsedSize += connectionObj.Size
+	allocationObj.BlobberSizeUsed += size
+	allocationObj.UsedSize += size
 	allocationObj.PrevNumBlocks = allocationObj.NumBlocks
 	allocationObj.NumBlocks = uint64(int64(allocationObj.NumBlocks) + diff)
+	allocationObj.PrevNumObjects = allocationObj.NumObjects
 	allocationObj.NumObjects += numFiles.Load()
 
 	updateMap := map[string]interface{}{
@@ -1137,17 +1139,19 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 		"num_blocks":         allocationObj.NumBlocks,
 		"prev_num_blocks":    allocationObj.PrevNumBlocks,
 		"num_objects":        allocationObj.NumObjects,
+		"prev_num_objects":   allocationObj.PrevNumObjects,
 		"is_redeem_required": true,
 	}
 	updateOption := func(a *allocation.Allocation) {
 		a.AllocationRoot = allocationRoot
 		a.FileMetaRoot = fileMetaRoot
-		a.IsRedeemRequired = true
-		a.BlobberSizeUsed = allocationObj.BlobberSizeUsed
 		a.UsedSize = allocationObj.UsedSize
+		a.BlobberSizeUsed = allocationObj.BlobberSizeUsed
 		a.NumBlocks = allocationObj.NumBlocks
 		a.PrevNumBlocks = allocationObj.PrevNumBlocks
 		a.NumObjects = allocationObj.NumObjects
+		a.PrevNumObjects = allocationObj.PrevNumObjects
+		a.IsRedeemRequired = true
 	}
 
 	if err = allocation.Repo.UpdateAllocation(ctx, allocationObj, updateMap, updateOption); err != nil {
@@ -1156,7 +1160,7 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 	}
 
 	elapsedSaveAllocation := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
-		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem - elapsedApplyChanges
+		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem - elapsedMoveToFilestore - elapsedApplyChanges - elapsedTrieCommit
 
 	err = batcher.Commit(false)
 	if err != nil {
@@ -1171,7 +1175,8 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 			return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 		}
 	}
-	elapsedCommitStore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem - elapsedApplyChanges - elapsedSaveAllocation
+	elapsedCommitStore := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
+		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem - elapsedMoveToFilestore - elapsedApplyChanges - elapsedTrieCommit - elapsedSaveAllocation
 	logging.Logger.Info("commit_filestore", zap.String("allocation_id", allocationId), zap.String("allocation_root", allocationRoot))
 	connectionObj.DeleteChanges(ctx)
 
@@ -1201,6 +1206,7 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 		zap.Duration("write-pre-redeem", elapsedWritePreRedeem),
 		zap.Duration("move-to-filestore", elapsedMoveToFilestore),
 		zap.Duration("apply-changes", elapsedApplyChanges),
+		zap.Duration("trie-commit", elapsedTrieCommit),
 		zap.Duration("save-allocation", elapsedSaveAllocation),
 		zap.Duration("commit-store", elapsedCommitStore),
 		zap.Duration("total", time.Since(startTime)),

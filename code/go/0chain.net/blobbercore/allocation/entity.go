@@ -76,6 +76,7 @@ type Allocation struct {
 	FileOptions    uint16 `json:"file_options" gorm:"column:file_options;not null;default:63"`
 	StorageVersion uint8  `json:"storage_version" gorm:"column:storage_version"`
 	NumObjects     int32  `json:"num_objects" gorm:"column:num_objects"`
+	PrevNumObjects int32  `json:"prev_num_objects" gorm:"column:prev_num_objects"`
 	NumBlocks      uint64 `json:"num_blocks" gorm:"column:num_blocks"`
 	PrevNumBlocks  uint64 `json:"prev_num_blocks" gorm:"column:prev_num_blocks"`
 	// Has many terms
