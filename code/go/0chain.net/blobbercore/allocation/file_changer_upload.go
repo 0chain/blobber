@@ -153,8 +153,7 @@ func (nf *UploadFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, 
 		ID int64
 	}
 
-	parentPath := filepath.Dir(nf.Path)
-	nf.LookupHash = reference.GetReferenceLookup(nf.AllocationID, parentPath)
+	nf.LookupHash = reference.GetReferenceLookup(nf.AllocationID, nf.Path)
 	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		tx := datastore.GetStore().GetTransaction(ctx)
 		return tx.Model(&reference.Ref{}).Select("id").Where("lookup_hash = ?", nf.LookupHash).Take(&refResult).Error
@@ -179,7 +178,7 @@ func (nf *UploadFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, 
 		FixedMerkleRoot:         nf.FixedMerkleRoot,
 		Name:                    nf.Filename,
 		Path:                    nf.Path,
-		ParentPath:              parentPath,
+		ParentPath:              filepath.Dir(nf.Path),
 		LookupHash:              nf.LookupHash,
 		Type:                    reference.FILE,
 		Size:                    nf.Size,
@@ -214,7 +213,7 @@ func (nf *UploadFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, 
 	newFile.Hash = sig
 
 	//create parent dir if it doesn't exist
-	_, err = reference.Mkdir(ctx, nf.AllocationID, parentPath, allocationRoot, ts, numFiles, collector)
+	_, err = reference.Mkdir(ctx, nf.AllocationID, newFile.ParentPath, allocationRoot, ts, numFiles, collector)
 	if err != nil {
 		return 0, err
 	}

@@ -304,6 +304,7 @@ func (cc *AllocationChangeCollector) ApplyChangesV2(ctx context.Context, allocat
 				changeProcessor := cc.AllocationChanges[changeIndex]
 				sizeChange, err := changeProcessor.ApplyChangeV2(ctx, allocationRoot, clientPubKey, numFiles, ts, hashSignature, trie, collector)
 				if err != nil {
+					logging.Logger.Error("ApplyChangesV2", zap.Error(err))
 					return err
 				}
 				if sizeChange > 0 {
