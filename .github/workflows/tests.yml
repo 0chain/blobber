@@ -33,7 +33,9 @@ jobs:
         run: make local
 
       - name: Build Base
-        run: ./docker.local/bin/build.base.sh
+        run: |
+          ./docker.local/bin/build.base.sh
+          golangci-lint cache clean
 
       - name: Golangci-lint
         uses: golangci/golangci-lint-action@v3
