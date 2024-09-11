@@ -479,6 +479,10 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			IsThumbnail:      true,
 			IsPrecommit:      fromPreCommit,
 			FilestoreVersion: fileref.FilestoreVersion,
+			StorageVersion:   int(alloc.StorageVersion),
+		}
+		if alloc.StorageVersion == 1 {
+			rbi.Hash = fileref.LookupHash
 		}
 
 		logging.Logger.Info("calling GetFileBlock for thumb", zap.Any("rbi", rbi))
@@ -501,6 +505,10 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			VerifyDownload:   dr.VerifyDownload,
 			IsPrecommit:      fromPreCommit,
 			FilestoreVersion: fileref.FilestoreVersion,
+			StorageVersion:   int(alloc.StorageVersion),
+		}
+		if alloc.StorageVersion == 1 {
+			rbi.Hash = fileref.LookupHash
 		}
 		logging.Logger.Info("calling GetFileBlock", zap.Any("rbi", rbi))
 		fileDownloadResponse, err = filestore.GetFileStore().GetFileBlock(rbi)

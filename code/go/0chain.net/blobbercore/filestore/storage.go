@@ -218,7 +218,11 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 
 	fileHash := fileData.Hash
 	if fileData.IsThumbnail {
-		fileHash = fileData.Hash + ThumbnailSuffix
+		if fileData.StorageVersion == 0 {
+			fileHash = fileData.ThumbnailHash
+		} else {
+			fileHash = fileData.Hash + ThumbnailSuffix
+		}
 	}
 
 	preCommitPath := fs.getPreCommitPathForFile(allocID, fileHash, VERSION)

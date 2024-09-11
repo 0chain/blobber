@@ -124,10 +124,17 @@ func (fc *BaseFileChanger) DeleteTempFile() error {
 func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context, mut *sync.Mutex) error {
 
 	if fc.ThumbnailSize > 0 {
-		fileInputData := &filestore.FileInputData{}
+		fileInputData := &filestore.FileInputData{
+			StorageVersion: fc.storageVersion,
+		}
 		fileInputData.Name = fc.ThumbnailFilename
 		fileInputData.Path = fc.Path
 		fileInputData.ThumbnailHash = fc.ThumbnailHash
+		if fc.storageVersion == 0 {
+			fileInputData.Hash = fc.ThumbnailHash
+		} else {
+			fileInputData.Hash = fc.LookupHash
+		}
 		fileInputData.ChunkSize = fc.ChunkSize
 		fileInputData.IsThumbnail = true
 		_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fc.ConnectionID, fileInputData)
@@ -135,7 +142,9 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context, mut *sync.Mute
 			return common.NewError("file_store_error", "Error committing thumbnail to file store. "+err.Error())
 		}
 	}
-	fileInputData := &filestore.FileInputData{}
+	fileInputData := &filestore.FileInputData{
+		StorageVersion: fc.storageVersion,
+	}
 	fileInputData.Name = fc.Filename
 	fileInputData.Path = fc.Path
 	fileInputData.ValidationRoot = fc.ValidationRoot
