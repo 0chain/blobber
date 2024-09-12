@@ -683,7 +683,7 @@ func (fsh *StorageHandler) getReferencePathV2(ctx context.Context, r *http.Reque
 		errCh <- common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 		return
 	}
-
+	Logger.Info("getReferencePathV2", zap.String("allocation_id", allocationId))
 	paths, err := pathsFromReq(r)
 	if err != nil {
 		errCh <- err
