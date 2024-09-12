@@ -61,7 +61,7 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 		return common.NewError("write_marker_validation_failed", "Signature exceeds maximum length")
 	}
 
-	if wme.WM.AllocationRoot == dbAllocation.AllocationRoot {
+	if wme.WM.AllocationRoot == dbAllocation.AllocationRoot && dbAllocation.StorageVersion != 1 {
 		return common.NewError("write_marker_validation_failed", "Write Marker allocation root is the same as the allocation root on record")
 	}
 
