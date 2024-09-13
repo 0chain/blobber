@@ -27,7 +27,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
-	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 )
 
@@ -202,7 +202,7 @@ func (fsh *StorageHandler) GetFilesMetaByName(ctx context.Context, r *http.Reque
 
 	filerefs, err := reference.GetReferencesByName(ctx, allocationID, name)
 	if err != nil {
-		Logger.Info("No files in current allocation matched the search keyword", zap.Error(err))
+		logging.Logger.Info("No files in current allocation matched the search keyword", zap.Error(err))
 		return result, nil
 	}
 
@@ -531,11 +531,11 @@ func (fsh *StorageHandler) GetLatestWriteMarker(ctx context.Context, r *http.Req
 	} else {
 		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationObj.AllocationRoot)
 		if err != nil {
-			Logger.Error("[latest_write_marker]", zap.String("allocation_root", allocationObj.AllocationRoot), zap.String("allocation_id", allocationObj.ID))
+			logging.Logger.Error("[latest_write_marker]", zap.String("allocation_root", allocationObj.AllocationRoot), zap.String("allocation_id", allocationObj.ID))
 			return nil, common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation. "+err.Error())
 		}
 		if latestWM == nil {
-			Logger.Info("[latest_write_marker]", zap.String("allocation_root", allocationObj.AllocationRoot), zap.String("allocation_id", allocationObj.ID))
+			logging.Logger.Info("[latest_write_marker]", zap.String("allocation_root", allocationObj.AllocationRoot), zap.String("allocation_id", allocationObj.ID))
 			return nil, common.NewError("latest_write_marker_read_error", "Latest write marker not found for allocation.")
 		}
 		if latestWM.WM.PreviousAllocationRoot != "" {
@@ -683,7 +683,7 @@ func (fsh *StorageHandler) getReferencePathV2(ctx context.Context, r *http.Reque
 		errCh <- common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 		return
 	}
-	Logger.Info("getReferencePathV2", zap.String("allocation_id", allocationId))
+	logging.Logger.Info("getReferencePathV2", zap.String("allocation_id", allocationId))
 	paths, err := pathsFromReq(r)
 	if err != nil {
 		errCh <- err
@@ -757,7 +757,7 @@ func (fsh *StorageHandler) getReferencePathV2(ctx context.Context, r *http.Reque
 		}
 		refPathResult.LatestWM = &latestWM.WM
 	}
-	Logger.Info("getReferencePathV2", zap.Duration("elapsedGetPath", elapsedGetPath), zap.Duration("elapsedGetWM", elapsedGetWM))
+	logging.Logger.Info("getReferencePathV2", zap.Duration("elapsedGetPath", elapsedGetPath), zap.Duration("elapsedGetWM", elapsedGetWM))
 
 	resCh <- &refPathResult
 }

@@ -16,6 +16,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/common/core/util/wmpt"
 
 	"github.com/0chain/gosdk/constants"
 
@@ -2076,6 +2077,10 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
+	if !allocationObj.IsRedeemRequired {
+		return nil, common.NewError("allocation_not_redeemed", "Allocation cannot be rollbacked as data is already committed")
+	}
+
 	writeMarkerString := r.FormValue("write_marker")
 	writeMarker := writemarker.WriteMarker{}
 	err = json.Unmarshal([]byte(writeMarkerString), &writeMarker)
@@ -2113,37 +2118,46 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 
 	elapsedVerifyWM := time.Since(startTime) - elapsedAllocation - elapsedGetLock
 
-	var clientIDForWriteRedeem = writeMarker.ClientID
-
-	if err := writePreRedeem(ctx, allocationObj, &writeMarker, clientIDForWriteRedeem); err != nil {
-		return nil, err
-	}
-
-	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedVerifyWM
-	timeoutCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
+	timeoutCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 	c := datastore.GetStore().CreateTransaction(timeoutCtx)
 	txn := datastore.GetStore().GetTransaction(c)
-	err = allocation.ApplyRollback(c, allocationID)
+	if allocationObj.StorageVersion == 0 {
+		err = allocation.ApplyRollback(c, allocationID)
+	} else {
+		err = allocation.ApplyRollbackV2(c, allocationID, allocationObj.AllocationRoot, int64(latestWriteMarkerEntity.WM.Timestamp))
+	}
 	if err != nil {
 		txn.Rollback()
 		return nil, common.NewError("allocation_rollback_error", "Error applying the rollback for allocation: "+err.Error())
 	}
-	elapsedApplyRollback := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedVerifyWM - elapsedWritePreRedeem
+	elapsedApplyRollback := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedVerifyWM
+
+	var (
+		allocationRoot string
+		fileMetaRoot   string
+		trie           *wmpt.WeightedMerkleTrie
+	)
 
 	//get allocation root and ref
-	rootRef, err := reference.GetLimitedRefFieldsByPath(c, allocationID, "/", []string{"hash", "file_meta_hash", "is_precommit"})
-	if err != nil && err != gorm.ErrRecordNotFound {
-		txn.Rollback()
-		return nil, common.NewError("root_ref_read_error", "Error reading the root reference: "+err.Error())
-	}
-	if err == gorm.ErrRecordNotFound {
-		rootRef = &reference.Ref{}
-	}
+	if allocationObj.StorageVersion == 0 {
+		rootRef, err := reference.GetLimitedRefFieldsByPath(c, allocationID, "/", []string{"hash", "file_meta_hash"})
+		if err != nil && err != gorm.ErrRecordNotFound {
+			txn.Rollback()
+			return nil, common.NewError("root_ref_read_error", "Error reading the root reference: "+err.Error())
+		}
+		if err == gorm.ErrRecordNotFound {
+			rootRef = &reference.Ref{}
+		}
 
-	Logger.Info("rollback_root_ref", zap.Any("root_ref", rootRef))
-	allocationRoot := rootRef.Hash
-	fileMetaRoot := rootRef.FileMetaHash
+		Logger.Info("rollback_root_ref", zap.Any("root_ref", rootRef))
+		allocationRoot = rootRef.Hash
+		fileMetaRoot = rootRef.FileMetaHash
+	} else {
+		trie = allocationObj.GetTrie()
+		allocationRoot = writeMarker.AllocationRoot
+		fileMetaRoot = allocationRoot
+	}
 
 	if allocationRoot != writeMarker.AllocationRoot {
 		result.AllocationRoot = allocationObj.AllocationRoot
@@ -2162,9 +2176,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	}
 
 	if fileMetaRoot != writeMarker.FileMetaRoot {
-		if latestWriteMarkerEntity != nil {
-			result.WriteMarker = latestWriteMarkerEntity
-		}
+		result.WriteMarker = latestWriteMarkerEntity
 		result.Success = false
 		result.ErrorMessage = "File meta root in the write marker does not match the calculated file meta root." +
 			" Expected hash: " + fileMetaRoot + "; Got: " + writeMarker.FileMetaRoot
@@ -2187,13 +2199,17 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	alloc.UsedSize -= latestWriteMarkerEntity.WM.Size
 	alloc.AllocationRoot = allocationRoot
 	alloc.FileMetaRoot = fileMetaRoot
-	alloc.IsRedeemRequired = true
+	alloc.IsRedeemRequired = false
+	alloc.NumObjects = alloc.PrevNumObjects
+	alloc.NumBlocks = alloc.PrevNumBlocks
 	updateMap := map[string]interface{}{
 		"blobber_size_used":  alloc.BlobberSizeUsed,
 		"used_size":          alloc.UsedSize,
 		"allocation_root":    alloc.AllocationRoot,
 		"file_meta_root":     alloc.FileMetaRoot,
-		"is_redeem_required": true,
+		"is_redeem_required": false,
+		"num_objects":        alloc.NumObjects,
+		"num_blocks":         alloc.NumBlocks,
 	}
 
 	updateOption := func(a *allocation.Allocation) {
@@ -2202,6 +2218,8 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		a.AllocationRoot = alloc.AllocationRoot
 		a.FileMetaRoot = alloc.FileMetaRoot
 		a.IsRedeemRequired = alloc.IsRedeemRequired
+		a.NumObjects = alloc.NumObjects
+		a.NumBlocks = alloc.NumBlocks
 	}
 	writemarkerEntity.Latest = true
 	err = txn.Create(writemarkerEntity).Error
@@ -2218,12 +2236,20 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	if err != nil {
 		return &result, common.NewError("allocation_commit_error", "Error committing the transaction "+err.Error())
 	}
+	if trie != nil {
+		var node wmpt.Node
+		if len(allocationRoot) > 0 {
+			decodedRoot, _ := hex.DecodeString(allocationRoot)
+			node = wmpt.NewHashNode(decodedRoot, alloc.NumBlocks)
+		}
+		trie.RollbackTrie(node)
+	}
 	err = allocation.CommitRollback(allocationID)
 	if err != nil {
 		Logger.Error("Error committing the rollback for allocation", zap.Error(err))
 	}
 
-	elapsedCommitRollback := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedVerifyWM - elapsedWritePreRedeem
+	elapsedCommitRollback := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedVerifyWM
 	result.AllocationRoot = allocationObj.AllocationRoot
 	result.WriteMarker = writemarkerEntity
 	result.Success = true
@@ -2235,7 +2261,6 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		zap.Duration("get_alloc", elapsedAllocation),
 		zap.Duration("get-lock", elapsedGetLock),
 		zap.Duration("verify-wm", elapsedVerifyWM),
-		zap.Duration("write-pre-redeem", elapsedWritePreRedeem),
 		zap.Duration("apply-rollback", elapsedApplyRollback),
 		zap.Duration("total", time.Since(startTime)),
 		zap.Duration("commit-rollback", elapsedCommitRollback),

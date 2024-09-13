@@ -27,7 +27,7 @@ func objectTreeHandler(ctx context.Context, r *http.Request) (interface{}, int, 
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.GetObjectTree(ctx, r)
 	if err != nil {
-		if errors.Is(common.ErrNotFound, err) {
+		if errors.Is(err, common.ErrNotFound) {
 			return response, http.StatusNotFound, nil
 		}
 		Logger.Error("objectTreeHandler_request_failed", zap.Error(err))
@@ -185,7 +185,8 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 
 		if blobberRes, ok := resp.(*blobberhttp.CommitResult); ok {
 			// Save the write marker data
-			writemarker.SaveMarkerData(allocationID, blobberRes.WriteMarker.WM.Timestamp, blobberRes.WriteMarker.WM.ChainLength)
+			//TODO: Save the write marker data only commented for testing
+			// writemarker.SaveMarkerData(allocationID, blobberRes.WriteMarker.WM.Timestamp, blobberRes.WriteMarker.WM.ChainLength)
 			trie := blobberRes.Trie
 			if trie != nil {
 				_ = trie.DeleteNodes()

@@ -226,9 +226,7 @@ type validationTree struct {
 // CalculateRootAndStoreNodes is used to calculate root and write intermediate nodes excluding root
 // node to f
 func (v *validationTree) CalculateRootAndStoreNodes(f io.Writer, dataSize int64) (merkleRoot []byte, err error) {
-
-	nodes := make([][]byte, len(v.GetLeaves()))
-	copy(nodes, v.GetLeaves())
+	nodes := v.GetLeaves()
 
 	h := sha256.New()
 	depth := v.CalculateDepth()
@@ -240,7 +238,7 @@ func (v *validationTree) CalculateRootAndStoreNodes(f io.Writer, dataSize int64)
 		if len(nodes) == 1 {
 			break
 		}
-		newNodes := make([][]byte, 0)
+		newNodes := make([][]byte, 0, (len(nodes)/2)+1)
 		if len(nodes)&1 == 0 {
 			for j := 0; j < len(nodes); j += 2 {
 				h.Reset()

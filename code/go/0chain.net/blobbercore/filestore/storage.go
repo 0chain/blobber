@@ -212,7 +212,7 @@ func (fs *FileStore) DeletePreCommitDir(allocID string) error {
 
 func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData) (_ bool, err error) {
 
-	logging.Logger.Info("Committing write", zap.String("allocation_id", allocID), zap.Any("file_data", fileData))
+	logging.Logger.Info("Committing write", zap.String("allocation_id", allocID))
 	filePathHash := encryption.Hash(fileData.Path)
 	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, filePathHash, conID)
 
@@ -318,12 +318,13 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	elapsedRoot := time.Since(now) - elapsedWait
 	if fmtRoot != fileData.FixedMerkleRoot {
 		err = common.NewError("fixed_merkle_root_mismatch",
-			fmt.Sprintf("Expected %s got %s", fileData.FixedMerkleRoot, fmtRoot))
+			fmt.Sprintf("Expected %s got %s", fmtRoot, fileData.FixedMerkleRoot))
 		return false, err
 	}
 	if validationRoot != fileData.ValidationRoot {
+		logging.Logger.Error("validation_root_mismatch", zap.String("expected", fileData.ValidationRoot), zap.String("got", validationRoot), zap.String("file_path", fileData.Path), zap.Int64("size", fileSize))
 		err = common.NewError("validation_root_mismatch",
-			"calculated validation root does not match with client's validation root")
+			fmt.Sprintf("Expected %s got %s", validationRoot, fileData.ValidationRoot))
 		return false, err
 	}
 
