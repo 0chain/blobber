@@ -847,7 +847,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
-		if !errors.Is(common.ErrFileWasDeleted, err) {
+		if !errors.Is(err, common.ErrFileWasDeleted) {
 			return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 		}
 	}
@@ -993,9 +993,10 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 	writemarkerEntity := &writemarker.WriteMarkerEntity{}
 	writemarkerEntity.WM = writeMarker
 	writemarkerEntity.WM.ChainLength += 1
-	if writemarkerEntity.WM.ChainLength > config.Configuration.MaxChainLength {
-		return nil, common.NewError("chain_length_exceeded", "Chain length exceeded")
-	}
+	//TODO: Commented out only for testing
+	// if writemarkerEntity.WM.ChainLength > config.Configuration.MaxChainLength {
+	// 	return nil, common.NewError("chain_length_exceeded", "Chain length exceeded")
+	// }
 
 	err = writemarkerEntity.VerifyMarker(ctx, allocationObj, connectionObj, latestWriteMarkerEntity)
 	if err != nil {
@@ -2111,10 +2112,10 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	if err != nil {
 		return nil, common.NewError("write_marker_verification_failed", "Verification of the write marker failed: "+err.Error())
 	}
-
-	if writemarkerEntity.WM.ChainLength > config.Configuration.MaxChainLength {
-		return nil, common.NewError("chain_length_exceeded", "Chain length exceeded")
-	}
+	//TODO: Commented out only for testing
+	// if writemarkerEntity.WM.ChainLength > config.Configuration.MaxChainLength {
+	// 	return nil, common.NewError("chain_length_exceeded", "Chain length exceeded")
+	// }
 
 	elapsedVerifyWM := time.Since(startTime) - elapsedAllocation - elapsedGetLock
 
