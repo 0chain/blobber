@@ -15,6 +15,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/common/core/util/wmpt"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 var (
@@ -71,6 +72,9 @@ func (nf *DeleteFileChange) ApplyChangeV2(_ context.Context, _, _ string, numFil
 		ReadOnly: true,
 	})
 	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return 0, nil
+		}
 		return 0, err
 	}
 	decodedKey, _ := hex.DecodeString(nf.LookupHash)

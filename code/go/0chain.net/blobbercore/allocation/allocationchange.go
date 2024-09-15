@@ -288,31 +288,25 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocatio
 func (cc *AllocationChangeCollector) ApplyChangesV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, maxFileChange int32, ts common.Timestamp, hashSignature map[string]string, trie *wmpt.WeightedMerkleTrie) error {
 	now := time.Now()
 	collector := reference.NewCollector(len(cc.Changes))
-	timeoutctx, cancel := context.WithTimeout(ctx, 60*time.Second)
-	defer cancel()
-	eg, egCtx := errgroup.WithContext(timeoutctx)
+	eg, _ := errgroup.WithContext(context.TODO())
 	eg.SetLimit(10)
 	cc.Size = 0
 	for idx, change := range cc.Changes {
 		change.AllocationID = cc.AllocationID
-		select {
-		case <-egCtx.Done():
-			return egCtx.Err()
-		default:
-			changeIndex := idx
-			eg.Go(func() error {
-				changeProcessor := cc.AllocationChanges[changeIndex]
-				sizeChange, err := changeProcessor.ApplyChangeV2(ctx, allocationRoot, clientPubKey, numFiles, ts, hashSignature, trie, collector)
-				if err != nil {
-					logging.Logger.Error("ApplyChangesV2", zap.Error(err))
-					return err
-				}
-				if sizeChange > 0 {
-					atomic.AddInt64(&cc.Size, sizeChange)
-				}
-				return nil
-			})
-		}
+		changeIndex := idx
+		eg.Go(func() error {
+			changeProcessor := cc.AllocationChanges[changeIndex]
+			sizeChange, err := changeProcessor.ApplyChangeV2(ctx, allocationRoot, clientPubKey, numFiles, ts, hashSignature, trie, collector)
+			if err != nil {
+				logging.Logger.Error("ApplyChangesV2Error", zap.Error(err))
+				return err
+			}
+			if sizeChange > 0 {
+				atomic.AddInt64(&cc.Size, sizeChange)
+			}
+			return nil
+		})
+
 	}
 	err := eg.Wait()
 	if err != nil {
