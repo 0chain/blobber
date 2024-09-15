@@ -75,7 +75,7 @@ func (nf *DeleteFileChange) ApplyChangeV2(_ context.Context, _, _ string, numFil
 	}
 	decodedKey, _ := hex.DecodeString(nf.LookupHash)
 	err = trie.Update(decodedKey, nil, 0)
-	if err != nil {
+	if err != nil && err != wmpt.ErrNotFound {
 		return 0, err
 	}
 	numFiles.Add(-1)
