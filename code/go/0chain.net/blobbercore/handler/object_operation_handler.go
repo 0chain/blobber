@@ -1033,7 +1033,7 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 	}
 
 	// Move preCommitDir to finalDir
-	err = connectionObj.MoveToFilestoreV2(ctx, allocationObj, writeMarker.AllocationRoot)
+	err = connectionObj.MoveToFilestoreV2(ctx, allocationObj, writeMarker.PreviousAllocationRoot)
 	if err != nil {
 		return nil, common.NewError("move_to_filestore_error", fmt.Sprintf("Error while moving to filestore: %s", err.Error()))
 	}
@@ -1101,11 +1101,13 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 		result.Success = false
 		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root." +
 			" Expected hash: " + allocationRoot
+		trie.Rollback()
 		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
 	}
 
 	chainHash := writemarker.CalculateChainHash(prevChainHash, allocationRoot)
 	if chainHash != writeMarker.ChainHash {
+		trie.Rollback()
 		return nil, common.NewError("chain_hash_mismatch", "Chain hash in the write marker does not match the calculated chain hash")
 	}
 
@@ -1117,6 +1119,7 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 		result.Success = false
 		result.ErrorMessage = "File meta root in the write marker does not match the calculated file meta root." +
 			" Expected hash: " + fileMetaRoot + "; Got: " + writeMarker.FileMetaRoot
+		trie.Rollback()
 		return &result, common.NewError("file_meta_root_mismatch", result.ErrorMessage)
 	}
 

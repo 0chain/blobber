@@ -565,7 +565,7 @@ func (a *AllocationChangeCollector) MoveToFilestoreV2(ctx context.Context, alloc
 		refs = refCache.CreatedRefs
 		deletedRefs = refCache.DeletedRefs
 	} else if refCache != nil && refCache.AllocationRoot != allocationRoot {
-		logging.Logger.Error("Ref cache is not valid", zap.String("allocation_id", a.AllocationID), zap.String("ref_cache_root", allocationRoot), zap.String("allocation_root", allocationRoot))
+		logging.Logger.Error("Ref cache is not valid", zap.String("allocation_id", a.AllocationID), zap.String("ref_cache_root", refCache.AllocationRoot), zap.String("allocation_root", allocationRoot))
 	} else {
 		logging.Logger.Error("Ref cache is nil", zap.String("allocation_id", a.AllocationID))
 	}

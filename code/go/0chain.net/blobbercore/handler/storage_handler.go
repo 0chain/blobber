@@ -689,6 +689,7 @@ func (fsh *StorageHandler) getReferencePathV2(ctx context.Context, r *http.Reque
 		errCh <- err
 		return
 	}
+	_, loadOnly := common.GetField(r, "load")
 
 	clientSign, _ := ctx.Value(constants.ContextKeyClientSignatureHeaderKey).(string)
 
@@ -750,7 +751,9 @@ func (fsh *StorageHandler) getReferencePathV2(ctx context.Context, r *http.Reque
 	elapsedGetWM := time.Since(now) - elapsedGetPath
 	var refPathResult blobberhttp.ReferencePathResultV2
 	refPathResult.Version = writemarker.MARKER_VERSION
-	refPathResult.Path = refpath
+	if !loadOnly {
+		refPathResult.Path = refpath
+	}
 	if latestWM != nil {
 		if latestWM.Status == writemarker.Committed {
 			latestWM.WM.ChainLength = 0 // start a new chain
