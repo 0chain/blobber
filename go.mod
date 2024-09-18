@@ -99,7 +99,7 @@ require (
 )
 
 require (
-	github.com/0chain/common v1.13.1-0.20240918062608-4c9de12cd91e
+	github.com/0chain/common v1.13.1-0.20240918082919-4f8142448230
 	github.com/Luzifer/go-openssl/v3 v3.1.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/btcsuite/btcd v0.23.4 // indirect

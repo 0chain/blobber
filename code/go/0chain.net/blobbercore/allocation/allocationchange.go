@@ -526,6 +526,7 @@ func deleteFromFileStore(allocationID string) error {
 
 func (a *AllocationChangeCollector) MoveToFilestoreV2(ctx context.Context, allocationObj *Allocation, allocationRoot string) error {
 	logging.Logger.Info("Move to filestore v2", zap.String("allocation_id", a.AllocationID))
+	now := time.Now()
 	if allocationObj.IsRedeemRequired {
 		err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 			allocationObj.IsRedeemRequired = false
@@ -546,6 +547,7 @@ func (a *AllocationChangeCollector) MoveToFilestoreV2(ctx context.Context, alloc
 			return err
 		}
 	}
+	elapsedUpdateAllocation := time.Since(now)
 
 	var (
 		refs        []*reference.Ref
@@ -567,6 +569,7 @@ func (a *AllocationChangeCollector) MoveToFilestoreV2(ctx context.Context, alloc
 	if err != nil {
 		return err
 	}
+	elapsedDeleteFromFilestore := time.Since(now) - elapsedUpdateAllocation
 
 	limitCh := make(chan struct{}, 12)
 	wg := &sync.WaitGroup{}
@@ -598,6 +601,8 @@ func (a *AllocationChangeCollector) MoveToFilestoreV2(ctx context.Context, alloc
 	}
 
 	wg.Wait()
+	elapsedMove := time.Since(now) - elapsedUpdateAllocation - elapsedDeleteFromFilestore
+	logging.Logger.Info("moveToFilestoreV2", zap.Duration("elapsedAllocation", elapsedUpdateAllocation), zap.Duration("elapsedDelete", elapsedDeleteFromFilestore), zap.Duration("elapsedMove", elapsedMove), zap.Duration("elapsedTotal", time.Since(now)), zap.Bool("useRefCache", useRefCache), zap.Int("createRefs", len(refs)), zap.Int("deleteRefs", len(deletedRefs)))
 	return nil
 }
 
