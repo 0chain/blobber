@@ -527,28 +527,6 @@ func deleteFromFileStore(allocationID string) error {
 func (a *AllocationChangeCollector) MoveToFilestoreV2(ctx context.Context, allocationObj *Allocation, allocationRoot string) error {
 	logging.Logger.Info("Move to filestore v2", zap.String("allocation_id", a.AllocationID))
 	now := time.Now()
-	if allocationObj.IsRedeemRequired {
-		err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-			allocationObj.IsRedeemRequired = false
-
-			updateMap := map[string]interface{}{
-				"is_redeem_required": false,
-			}
-			updateOption := func(a *Allocation) {
-				a.IsRedeemRequired = false
-			}
-
-			if err := Repo.UpdateAllocation(ctx, allocationObj, updateMap, updateOption); err != nil {
-				return common.NewError("allocation_write_error", "Error persisting the allocation object")
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-	}
-	elapsedUpdateAllocation := time.Since(now)
-
 	var (
 		refs        []*reference.Ref
 		useRefCache bool
@@ -565,11 +543,11 @@ func (a *AllocationChangeCollector) MoveToFilestoreV2(ctx context.Context, alloc
 	} else {
 		logging.Logger.Error("Ref cache is nil", zap.String("allocation_id", a.AllocationID))
 	}
-	err := deleteFromFileStoreV2(a.AllocationID, deletedRefs, useRefCache)
+	err := deleteFromFileStoreV2(allocationObj, deletedRefs, useRefCache)
 	if err != nil {
 		return err
 	}
-	elapsedDeleteFromFilestore := time.Since(now) - elapsedUpdateAllocation
+	elapsedDeleteFromFilestore := time.Since(now)
 
 	limitCh := make(chan struct{}, 12)
 	wg := &sync.WaitGroup{}
@@ -601,12 +579,12 @@ func (a *AllocationChangeCollector) MoveToFilestoreV2(ctx context.Context, alloc
 	}
 
 	wg.Wait()
-	elapsedMove := time.Since(now) - elapsedUpdateAllocation - elapsedDeleteFromFilestore
-	logging.Logger.Info("moveToFilestoreV2", zap.Duration("elapsedAllocation", elapsedUpdateAllocation), zap.Duration("elapsedDelete", elapsedDeleteFromFilestore), zap.Duration("elapsedMove", elapsedMove), zap.Duration("elapsedTotal", time.Since(now)), zap.Bool("useRefCache", useRefCache), zap.Int("createRefs", len(refs)), zap.Int("deleteRefs", len(deletedRefs)))
+	elapsedMove := time.Since(now) - elapsedDeleteFromFilestore
+	logging.Logger.Info("moveToFilestoreV2", zap.Duration("elapsedDelete", elapsedDeleteFromFilestore), zap.Duration("elapsedMove", elapsedMove), zap.Duration("elapsedTotal", time.Since(now)), zap.Bool("useRefCache", useRefCache), zap.Int("createRefs", len(refs)), zap.Int("deleteRefs", len(deletedRefs)))
 	return nil
 }
 
-func deleteFromFileStoreV2(allocationID string, deletedRefs []*reference.Ref, useRefCache bool) error {
+func deleteFromFileStoreV2(allocationObj *Allocation, deletedRefs []*reference.Ref, useRefCache bool) error {
 	limitCh := make(chan struct{}, 12)
 	wg := &sync.WaitGroup{}
 	var results []*reference.Ref
@@ -618,7 +596,7 @@ func deleteFromFileStoreV2(allocationID string, deletedRefs []*reference.Ref, us
 		db := datastore.GetStore().GetTransaction(ctx)
 		if !useRefCache {
 			err := db.Model(&reference.Ref{}).Unscoped().Select("lookup_hash").
-				Where("allocation_id=? AND type=? AND deleted_at is not NULL", allocationID, reference.FILE).
+				Where("allocation_id=? AND type=? AND deleted_at is not NULL", allocationObj.ID, reference.FILE).
 				Find(&results).Error
 			if err != nil && err != gorm.ErrRecordNotFound {
 				logging.Logger.Error("DeleteFromFileStore", zap.Error(err))
@@ -636,7 +614,7 @@ func deleteFromFileStoreV2(allocationID string, deletedRefs []*reference.Ref, us
 					wg.Done()
 				}()
 
-				err := filestore.GetFileStore().DeleteFromFilestore(allocationID, resLookupHash,
+				err := filestore.GetFileStore().DeleteFromFilestore(allocationObj.ID, resLookupHash,
 					filestore.VERSION)
 				if err != nil {
 					logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
@@ -646,11 +624,25 @@ func deleteFromFileStoreV2(allocationID string, deletedRefs []*reference.Ref, us
 
 		}
 		wg.Wait()
+		if allocationObj.IsRedeemRequired {
+			allocationObj.IsRedeemRequired = false
+
+			updateMap := map[string]interface{}{
+				"is_redeem_required": false,
+			}
+			updateOption := func(a *Allocation) {
+				a.IsRedeemRequired = false
+			}
+
+			if err := Repo.UpdateAllocation(ctx, allocationObj, updateMap, updateOption); err != nil {
+				return common.NewError("allocation_write_error", "Error persisting the allocation object")
+			}
+		}
 
 		return db.Model(&reference.Ref{}).Unscoped().
 			Delete(&reference.Ref{},
 				"allocation_id = ? AND deleted_at IS NOT NULL",
-				allocationID).Error
+				allocationObj.ID).Error
 	})
 }
 
