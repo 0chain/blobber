@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -255,6 +256,7 @@ func (r *Repository) UpdateAllocation(ctx context.Context, allocationObj *Alloca
 }
 
 func (r *Repository) Commit(tx *datastore.EnhancedDB) {
+	now := time.Now()
 	if tx == nil {
 		logging.Logger.Panic("no transaction in the context")
 	}
@@ -282,6 +284,7 @@ func (r *Repository) Commit(tx *datastore.EnhancedDB) {
 		}
 		mut.Unlock()
 	}
+	logging.Logger.Info("commitAlloc", zap.Duration("total", time.Since(now)))
 }
 
 func (r *Repository) Save(ctx context.Context, alloc *Allocation) error {
