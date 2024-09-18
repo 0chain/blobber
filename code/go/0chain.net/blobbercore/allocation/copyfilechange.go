@@ -112,7 +112,7 @@ func (rf *CopyFileChange) ApplyChange(ctx context.Context, rootRef *reference.Re
 	return rootRef, err
 }
 
-func (rf *CopyFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, ts common.Timestamp, hashSignature map[string]string, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) (int64, error) {
+func (rf *CopyFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, ts common.Timestamp, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) (int64, error) {
 	rf.srcLookupHash = reference.GetReferenceLookup(rf.AllocationID, rf.SrcPath)
 	rf.destLookupHash = reference.GetReferenceLookup(rf.AllocationID, rf.DestPath)
 
@@ -168,21 +168,11 @@ func (rf *CopyFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, cli
 	srcRef.AllocationRoot = allocationRoot
 	if srcRef.Type == reference.FILE {
 		fileMetaHashRaw := encryption.RawHash(srcRef.GetFileMetaHashDataV2())
-		sig, ok := hashSignature[srcRef.LookupHash]
-		if !ok {
-			return 0, common.NewError("invalid_parameter", "hash signature not found")
-		}
-		fileHash := encryption.Hash(srcRef.GetFileHashDataV2())
-		verify, err := encryption.Verify(clientPubKey, sig, fileHash)
-		if err != nil || !verify {
-			return 0, common.NewError("invalid_signature", "Signature is invalid")
-		}
 		decodedKey, _ := hex.DecodeString(srcRef.LookupHash)
 		err = trie.Update(decodedKey, fileMetaHashRaw, uint64(srcRef.NumBlocks))
 		if err != nil {
 			return 0, err
 		}
-		srcRef.Hash = sig
 		srcRef.FileMetaHash = hex.EncodeToString(fileMetaHashRaw)
 	}
 

@@ -109,7 +109,7 @@ func (rf *RenameFileChange) applyChange(ctx context.Context, rootRef *reference.
 	return rootRef, nil
 }
 
-func (rf *RenameFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, _ *atomic.Int32, ts common.Timestamp, hashSignature map[string]string, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) (int64, error) {
+func (rf *RenameFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, _ *atomic.Int32, ts common.Timestamp, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) (int64, error) {
 	collector.LockTransaction()
 	defer collector.UnlockTransaction()
 
@@ -159,15 +159,6 @@ func (rf *RenameFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, c
 	ref.AllocationRoot = allocationRoot
 	if ref.Type == reference.FILE {
 		fileMetaHashRaw := encryption.RawHash(ref.GetFileMetaHashDataV2())
-		sig, ok := hashSignature[ref.LookupHash]
-		if !ok {
-			return 0, common.NewError("invalid_hash_signature", "Hash signature not found")
-		}
-		fileHash := encryption.Hash(ref.GetFileHashDataV2())
-		verify, err := encryption.Verify(clientPubKey, sig, fileHash)
-		if err != nil || !verify {
-			return 0, common.NewError("invalid_signature", "Signature is invalid")
-		}
 		decodedOldKey, _ := hex.DecodeString(oldFileLookupHash)
 		err = trie.Update(decodedOldKey, nil, 0)
 		if err != nil {
@@ -178,7 +169,6 @@ func (rf *RenameFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, c
 		if err != nil {
 			return 0, err
 		}
-		ref.Hash = sig
 		ref.FileMetaHash = hex.EncodeToString(fileMetaHashRaw)
 	}
 	rf.newLookupHash = ref.LookupHash

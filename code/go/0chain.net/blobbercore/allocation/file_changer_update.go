@@ -110,7 +110,7 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, rootRef *reference
 	return rootRef, nil
 }
 
-func (nf *UpdateFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, ts common.Timestamp, hashSignature map[string]string, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) (int64, error) {
+func (nf *UpdateFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, ts common.Timestamp, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) (int64, error) {
 	if nf.AllocationID == "" {
 		return 0, common.NewError("invalid_allocation_id", "Allocation ID is empty")
 	}
@@ -176,17 +176,6 @@ func (nf *UpdateFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, 
 	}
 	nf.storageVersion = 1
 	newFile.FileMetaHash = encryption.Hash(newFile.GetFileMetaHashDataV2())
-	sig, ok := hashSignature[newFile.LookupHash]
-	if !ok {
-		return 0, common.NewError("invalid_hash_signature", "Hash signature not found")
-	}
-	fileHash := encryption.Hash(newFile.GetFileHashDataV2())
-	//verify signature
-	verify, err := encryption.Verify(clientPubKey, sig, fileHash)
-	if err != nil || !verify {
-		return 0, common.NewError("invalid_signature", "Signature is invalid")
-	}
-	newFile.Hash = sig
 	deleteRecord := &reference.Ref{
 		ID:         refResult.ID,
 		LookupHash: newFile.LookupHash,

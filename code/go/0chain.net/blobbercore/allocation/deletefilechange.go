@@ -42,7 +42,7 @@ func (nf *DeleteFileChange) ApplyChange(ctx context.Context, rootRef *reference.
 	return nil, nil
 }
 
-func (nf *DeleteFileChange) ApplyChangeV2(_ context.Context, _, _ string, numFiles *atomic.Int32, _ common.Timestamp, _ map[string]string, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) (int64, error) {
+func (nf *DeleteFileChange) ApplyChangeV2(_ context.Context, _, _ string, numFiles *atomic.Int32, _ common.Timestamp, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) (int64, error) {
 	var changeSize int64
 	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		ref, err := reference.GetLimitedRefFieldsByLookupHashWith(ctx, nf.AllocationID, nf.LookupHash, []string{"id", "type", "size"})

@@ -1021,17 +1021,6 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 	elapsedWritePreRedeem := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
 		elapsedGetConnObj - elapsedVerifyWM
 
-	hashSignatureStr := r.FormValue("file_id_meta")
-	if hashSignatureStr == "" {
-		return nil, common.NewError("invalid_parameters", "Invalid hash signature meta passed")
-	}
-	hashSignatureMap := make(map[string]string, 0)
-	err = json.Unmarshal([]byte(hashSignatureStr), &hashSignatureMap)
-	if err != nil {
-		return nil, common.NewError("unmarshall_error",
-			fmt.Sprintf("Error while unmarshalling file ID meta data: %s", err.Error()))
-	}
-
 	// Move preCommitDir to finalDir
 	err = connectionObj.MoveToFilestoreV2(ctx, allocationObj, writeMarker.PreviousAllocationRoot)
 	if err != nil {
@@ -1050,7 +1039,7 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 		maxFiles = (int32(allocationObj.BlobberSize/GB) * config.Configuration.MaxObjectsPerGB) - allocationObj.NumObjects
 	}
 	err = connectionObj.ApplyChangesV2(
-		ctx, writeMarker.AllocationRoot, clientKey, &numFiles, maxFiles, writeMarker.Timestamp, hashSignatureMap, trie)
+		ctx, writeMarker.AllocationRoot, clientKey, &numFiles, maxFiles, writeMarker.Timestamp, trie)
 	if err != nil {
 		trie.Rollback()
 		Logger.Error("Error applying changes", zap.Error(err))

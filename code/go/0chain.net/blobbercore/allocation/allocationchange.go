@@ -37,7 +37,7 @@ type AllocationChangeProcessor interface {
 	DeleteTempFile() error
 	ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange, allocationRoot string,
 		ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error)
-	ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, ts common.Timestamp, hashSignature map[string]string, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) (int64, error)
+	ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, ts common.Timestamp, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) (int64, error)
 	GetPath() []string
 	Marshal() (string, error)
 	Unmarshal(string) error
@@ -285,7 +285,7 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocatio
 	return rootRef, err
 }
 
-func (cc *AllocationChangeCollector) ApplyChangesV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, maxFileChange int32, ts common.Timestamp, hashSignature map[string]string, trie *wmpt.WeightedMerkleTrie) error {
+func (cc *AllocationChangeCollector) ApplyChangesV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, maxFileChange int32, ts common.Timestamp, trie *wmpt.WeightedMerkleTrie) error {
 	now := time.Now()
 	collector := reference.NewCollector(len(cc.Changes))
 	eg, _ := errgroup.WithContext(context.TODO())
@@ -296,7 +296,7 @@ func (cc *AllocationChangeCollector) ApplyChangesV2(ctx context.Context, allocat
 		changeIndex := idx
 		eg.Go(func() error {
 			changeProcessor := cc.AllocationChanges[changeIndex]
-			sizeChange, err := changeProcessor.ApplyChangeV2(ctx, allocationRoot, clientPubKey, numFiles, ts, hashSignature, trie, collector)
+			sizeChange, err := changeProcessor.ApplyChangeV2(ctx, allocationRoot, clientPubKey, numFiles, ts, trie, collector)
 			if err != nil {
 				logging.Logger.Error("ApplyChangesV2Error", zap.Error(err))
 				return err
