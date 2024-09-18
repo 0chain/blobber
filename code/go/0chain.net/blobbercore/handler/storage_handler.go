@@ -727,14 +727,16 @@ func (fsh *StorageHandler) getReferencePathV2(ctx context.Context, r *http.Reque
 		}
 		keys = append(keys, k)
 	}
+	elapsedDecode := time.Since(now)
 	// we create a copy of the trie so we don't load all the nodes into main trie, client can keep calling this api with different paths leading to high memory usage
 	copyTrie := wmpt.New(trie.CopyRoot(filestore.COLLAPSE_DEPTH), datastore.GetBlockStore())
+	elapsedCopy := time.Since(now) - elapsedDecode
 	refPath, err := copyTrie.GetPath(keys)
 	if err != nil {
 		errCh <- common.NewError("invalid_parameters", "Invalid path. "+err.Error())
 		return
 	}
-	elapsedGetPath := time.Since(now)
+	elapsedGetPath := time.Since(now) - elapsedCopy - elapsedDecode
 	// set the root of the original trie to the root of the copy so that it can be used for commit write
 	trie.SetRoot(copyTrie.GetRoot())
 	copyTrie = nil
@@ -748,7 +750,7 @@ func (fsh *StorageHandler) getReferencePathV2(ctx context.Context, r *http.Reque
 			return
 		}
 	}
-	elapsedGetWM := time.Since(now) - elapsedGetPath
+	elapsedGetWM := time.Since(now) - elapsedGetPath - elapsedCopy - elapsedDecode
 	var refPathResult blobberhttp.ReferencePathResultV2
 	refPathResult.Version = writemarker.MARKER_VERSION
 	if !loadOnly {
@@ -760,7 +762,7 @@ func (fsh *StorageHandler) getReferencePathV2(ctx context.Context, r *http.Reque
 		}
 		refPathResult.LatestWM = &latestWM.WM
 	}
-	logging.Logger.Info("getReferencePathV2", zap.Duration("elapsedGetPath", elapsedGetPath), zap.Duration("elapsedGetWM", elapsedGetWM), zap.Duration("total", time.Since(now)), zap.Int("path_size", len(refPath)))
+	logging.Logger.Info("getReferencePathV2", zap.Duration("elapsedDecode", elapsedDecode), zap.Duration("elapsedCopy", elapsedCopy), zap.Duration("elapsedGetPath", elapsedGetPath), zap.Duration("elapsedGetWM", elapsedGetWM), zap.Duration("total", time.Since(now)), zap.Int("path_size", len(refPath)))
 
 	resCh <- &refPathResult
 }
