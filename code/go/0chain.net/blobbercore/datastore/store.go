@@ -3,15 +3,12 @@ package datastore
 import (
 	"context"
 	"database/sql"
-	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/common/core/util/storage"
 	"github.com/0chain/common/core/util/storage/kv"
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/bloom"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -36,15 +33,10 @@ func EnhanceDB(db *gorm.DB) *EnhancedDB {
 }
 
 func (edb *EnhancedDB) Commit() *gorm.DB {
-	now := time.Now()
 	db := edb.DB.Commit()
 	if db.Error == nil {
 		if edb.CommitAllocCache != nil {
-			elapsedCommit := time.Since(now)
 			edb.CommitAllocCache(edb)
-			logging.Logger.Info("dbCommit", zap.Duration("elapsedDB", elapsedCommit), zap.Duration(
-				"elapsedCommitAlloc", time.Since(now)-elapsedCommit,
-			), zap.Duration("total", time.Since(now)))
 		}
 	}
 	return db

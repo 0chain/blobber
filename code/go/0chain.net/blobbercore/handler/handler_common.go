@@ -185,8 +185,7 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 
 		if blobberRes, ok := resp.(*blobberhttp.CommitResult); ok {
 			// Save the write marker data
-			//TODO: Save the write marker data only commented for testing
-			// writemarker.SaveMarkerData(allocationID, blobberRes.WriteMarker.WM.Timestamp, blobberRes.WriteMarker.WM.ChainLength)
+			writemarker.SaveMarkerData(allocationID, blobberRes.WriteMarker.WM.Timestamp, blobberRes.WriteMarker.WM.ChainLength)
 			trie := blobberRes.Trie
 			if trie != nil {
 				_ = trie.DeleteNodes()
