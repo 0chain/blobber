@@ -1400,6 +1400,9 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 			}
 		}
 	}
+	if allocationObj.StorageVersion == 1 {
+		destPath = newPath
+	}
 
 	allocationChange := &allocation.AllocationChange{}
 	allocationChange.ConnectionID = connectionObj.ID
@@ -1519,6 +1522,10 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (any
 				return nil, common.NewError("invalid_path", fmt.Sprintf("%v is of file type", ref.Path))
 			}
 		}
+	}
+
+	if allocationObj.StorageVersion == 1 {
+		destPath = newPath
 	}
 
 	allocationChange := &allocation.AllocationChange{}

@@ -176,7 +176,7 @@ func (rf *CopyFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, cli
 			return 0, err
 		}
 		srcRef.FileMetaHash = hex.EncodeToString(fileMetaHashRaw)
-		logging.Logger.Info("copyFileChange", zap.String("lookupHash", srcRef.LookupHash), zap.String("fileMetaHash", srcRef.FileMetaHash), zap.Int64("numBlocks", srcRef.NumBlocks))
+		logging.Logger.Info("copyFileChange", zap.String("destPath", rf.DestPath), zap.String("lookupHash", srcRef.LookupHash), zap.String("fileMetaHash", srcRef.FileMetaHash), zap.Int64("numBlocks", srcRef.NumBlocks))
 	}
 
 	collector.CreateRefRecord(srcRef)
