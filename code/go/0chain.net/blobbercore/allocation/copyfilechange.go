@@ -15,10 +15,12 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/common/core/util/wmpt"
+	"go.uber.org/zap"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
 type CopyFileChange struct {
@@ -174,6 +176,7 @@ func (rf *CopyFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, cli
 			return 0, err
 		}
 		srcRef.FileMetaHash = hex.EncodeToString(fileMetaHashRaw)
+		logging.Logger.Info("copyFileChange", zap.String("lookupHash", srcRef.LookupHash), zap.String("fileMetaHash", srcRef.FileMetaHash), zap.Int64("numBlocks", srcRef.NumBlocks))
 	}
 
 	collector.CreateRefRecord(srcRef)
