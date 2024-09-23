@@ -1032,7 +1032,10 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 	trie := allocationObj.GetTrie()
 	prevWeight := int64(trie.Weight())
 	trie.SaveRoot()
-	var maxFiles int32
+	var (
+		maxFiles      int32
+		commitSuccess = false
+	)
 	if allocationObj.BlobberSize < GB {
 		maxFiles = int32(config.Configuration.MaxObjectsPerGB) - allocationObj.NumObjects
 	} else {
@@ -1040,23 +1043,20 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 	}
 	err = connectionObj.ApplyChangesV2(
 		ctx, writeMarker.AllocationRoot, clientKey, &numFiles, maxFiles, writeMarker.Timestamp, trie)
+	defer func() {
+		if !commitSuccess {
+			trie.Rollback()
+		}
+	}()
 	if err != nil {
-		trie.Rollback()
 		Logger.Error("Error applying changes", zap.Error(err))
 		return nil, err
 	}
 	elapsedApplyChanges := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
 		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem - elapsedMoveToFilestore
 
-	if allocationObj.BlobberSizeUsed+connectionObj.Size > allocationObj.BlobberSize {
-		trie.Rollback()
-		return nil, common.NewError("max_allocation_size",
-			"Max size reached for the allocation with this blobber")
-	}
-
 	batcher, err := trie.Commit(filestore.COLLAPSE_DEPTH)
 	if err != nil {
-		trie.Rollback()
 		return nil, common.NewError("trie_commit_error", "Error committing the trie")
 	}
 	elapsedTrieCommit := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
@@ -1065,17 +1065,19 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 	diff := newWeight - prevWeight
 	size := diff * allocation.CHUNK_SIZE
 
+	if allocationObj.BlobberSizeUsed+size > allocationObj.BlobberSize {
+		return nil, common.NewError("max_allocation_size",
+			"Max size reached for the allocation with this blobber")
+	}
+
 	if writemarkerEntity.WM.Size != size {
-		trie.Rollback()
 		return nil, common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker size %v does not match the connection size %v", writemarkerEntity.WM.Size, connectionObj.Size))
 	}
 
 	if latestWriteMarkerEntity != nil && latestWriteMarkerEntity.WM.ChainSize+size != writeMarker.ChainSize {
-		trie.Rollback()
 		return nil, common.NewErrorf("invalid_chain_size",
 			"Invalid chain size. expected:%v got %v", latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size, writeMarker.ChainSize)
 	} else if latestWriteMarkerEntity == nil && size != writeMarker.ChainSize {
-		trie.Rollback()
 		return nil, common.NewErrorf("invalid_chain_size",
 			"Invalid chain size. expected:%v got %v", connectionObj.Size, writeMarker.ChainSize)
 	}
@@ -1090,13 +1092,11 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 		result.Success = false
 		result.ErrorMessage = "Allocation root in the write marker does not match the calculated allocation root." +
 			" Expected hash: " + allocationRoot
-		trie.Rollback()
 		return &result, common.NewError("allocation_root_mismatch", result.ErrorMessage)
 	}
 
 	chainHash := writemarker.CalculateChainHash(prevChainHash, allocationRoot)
 	if chainHash != writeMarker.ChainHash {
-		trie.Rollback()
 		return nil, common.NewError("chain_hash_mismatch", "Chain hash in the write marker does not match the calculated chain hash")
 	}
 
@@ -1108,7 +1108,6 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 		result.Success = false
 		result.ErrorMessage = "File meta root in the write marker does not match the calculated file meta root." +
 			" Expected hash: " + fileMetaRoot + "; Got: " + writeMarker.FileMetaRoot
-		trie.Rollback()
 		return &result, common.NewError("file_meta_root_mismatch", result.ErrorMessage)
 	}
 
@@ -1154,7 +1153,6 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 	}
 
 	if err = allocation.Repo.UpdateAllocation(ctx, allocationObj, updateMap, updateOption); err != nil {
-		trie.Rollback()
 		return nil, common.NewError("allocation_write_error", "Error persisting the allocation object")
 	}
 
@@ -1163,14 +1161,12 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 
 	err = batcher.Commit(false)
 	if err != nil {
-		trie.Rollback()
 		return nil, common.NewError("trie_commit_error", "Error committing the trie")
 	}
 
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
 		if !errors.Is(err, common.ErrFileWasDeleted) {
-			trie.Rollback()
 			return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 		}
 	}
@@ -1187,6 +1183,7 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 	result.Trie = trie
 	commitOperation := connectionObj.Changes[0].Operation
 	input := connectionObj.Changes[0].Input
+	commitSuccess = true
 
 	//Delete connection object and its changes
 
