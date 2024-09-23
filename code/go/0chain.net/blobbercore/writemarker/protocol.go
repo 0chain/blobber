@@ -148,7 +148,7 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context, startSeq int64) 
 		return err
 	}
 
-	if sn.AllocationRoot == sn.PrevAllocationRoot {
+	if sn.AllocationRoot == sn.PrevAllocationRoot && wme.WM.Version != MARKER_VERSION {
 		// get nonce of prev WM
 		var prevWM *WriteMarkerEntity
 		prevWM, err = GetPreviousWM(ctx, sn.AllocationRoot, wme.WM.Timestamp)
