@@ -484,6 +484,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		}
 		if alloc.StorageVersion == 1 {
 			rbi.Hash = fileref.LookupHash
+			rbi.IsPrecommit = fileref.AllocationRoot == alloc.AllocationRoot
 		}
 
 		logging.Logger.Info("calling GetFileBlock for thumb", zap.Any("rbi", rbi))
@@ -510,6 +511,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 		}
 		if alloc.StorageVersion == 1 {
 			rbi.Hash = fileref.LookupHash
+			rbi.IsPrecommit = fileref.AllocationRoot == alloc.AllocationRoot
 		}
 		logging.Logger.Info("calling GetFileBlock", zap.Any("rbi", rbi))
 		fileDownloadResponse, err = filestore.GetFileStore().GetFileBlock(rbi)
