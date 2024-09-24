@@ -155,6 +155,7 @@ func (rf *RenameFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, c
 	collector.CreateRefRecord(ref)
 	ref.Name = rf.NewName
 	ref.Path = newPath
+	ref.CreatedAt = ts
 	ref.UpdatedAt = ts
 	ref.AllocationRoot = allocationRoot
 	if ref.Type == reference.FILE {
