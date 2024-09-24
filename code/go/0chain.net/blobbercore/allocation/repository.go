@@ -213,20 +213,17 @@ func (r *Repository) UpdateAllocationRedeem(ctx context.Context, allocationID, A
 
 	allocationUpdates := make(map[string]interface{})
 	allocationUpdates["latest_redeemed_write_marker"] = AllocationRoot
-	allocationUpdates["is_redeem_required"] = false
 	allocationUpdates["last_redeemed_sequence"] = redeemSeq
 	err = tx.Model(allocationObj).Updates(allocationUpdates).Error
 	if err != nil {
 		return err
 	}
 	allocationObj.LatestRedeemedWM = AllocationRoot
-	allocationObj.IsRedeemRequired = false
 	allocationObj.LastRedeemedSeq = redeemSeq
 	txnCache := cache[allocationID]
 	txnCache.Allocation = allocationObj
 	updateAlloc := func(a *Allocation) {
 		a.LatestRedeemedWM = AllocationRoot
-		a.IsRedeemRequired = false
 		a.LastRedeemedSeq = redeemSeq
 	}
 	txnCache.AllocationUpdates = append(txnCache.AllocationUpdates, updateAlloc)
