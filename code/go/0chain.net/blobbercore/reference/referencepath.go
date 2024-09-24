@@ -264,7 +264,11 @@ func GetRefs(ctx context.Context, allocationID, path, offsetPath, _type string, 
 		}
 		dbQuery = dbQuery.Order("path")
 	} else {
-		dbQuery = tx.Model(&Ref{}).Where("allocation_id = ? AND path LIKE ?", allocationID, path+"/%")
+		listPath := path
+		if path != "/" {
+			listPath = path + "/"
+		}
+		dbQuery = tx.Model(&Ref{}).Where("allocation_id = ? AND path LIKE ?", allocationID, listPath+"%")
 		if _type != "" {
 			dbQuery = dbQuery.Where("type = ?", _type)
 		}
