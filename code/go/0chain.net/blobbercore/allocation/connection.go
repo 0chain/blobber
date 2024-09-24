@@ -246,6 +246,7 @@ func GetHasher(connectionID, pathHash string) *filestore.CommitHasher {
 // DeleteConnectionObjEntry remove the connectionID entry from map
 // If the given connectionID is not present, then it is no-op.
 func DeleteConnectionObjEntry(connectionID string) {
+	logging.Logger.Info("DeleteConnectionObjEntry", zap.String("connection_id", connectionID))
 	connectionObjMutex.Lock()
 	connectionObj, ok := connectionProcessor[connectionID]
 	if ok {
@@ -262,6 +263,7 @@ func cleanConnectionObj() {
 	for connectionID, connectionObj := range connectionProcessor {
 		diff := time.Since(connectionObj.UpdatedAt)
 		if diff >= ConnectionObjTimeout {
+			logging.Logger.Info("cleanConnectionObj", zap.String("connection_id", connectionID), zap.Duration("diff", diff))
 			// Stop the context and hash worker
 			connectionObj.cnclCtx()
 			for _, change := range connectionObj.changes {
