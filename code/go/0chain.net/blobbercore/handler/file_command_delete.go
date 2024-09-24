@@ -6,11 +6,13 @@ import (
 	"net/http"
 
 	"github.com/0chain/gosdk/constants"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
 // DeleteFileCommand command for deleting file
@@ -50,12 +52,22 @@ func (cmd *DeleteFileCommand) IsValidated(ctx context.Context, req *http.Request
 	cmd.connectionID = connectionID
 	var err error
 	lookUpHash := reference.GetReferenceLookup(allocationObj.ID, path)
-	cmd.existingFileRef, err = reference.GetLimitedRefFieldsByLookupHashWith(ctx, allocationObj.ID, lookUpHash, []string{"path", "name", "size", "hash", "fixed_merkle_root"})
+	cmd.existingFileRef, err = reference.GetLimitedRefFieldsByLookupHashWith(ctx, allocationObj.ID, lookUpHash, []string{"path", "name", "size", "hash", "fixed_merkle_root", "type"})
 	if err != nil {
-		if errors.Is(gorm.ErrRecordNotFound, err) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return common.ErrFileWasDeleted
 		}
 		return common.NewError("bad_db_operation", err.Error())
+	}
+	if allocationObj.StorageVersion == 1 && cmd.existingFileRef.Type == reference.DIRECTORY {
+		isEmpty, err := reference.IsDirectoryEmpty(ctx, path)
+		if err != nil {
+			return err
+		}
+		if !isEmpty {
+			logging.Logger.Error("directory_not_empty", zap.String("path", path))
+			return common.NewError("invalid_reference_path", "directory is not empty")
+		}
 	}
 	cmd.existingFileRef.LookupHash = lookUpHash
 	return nil
