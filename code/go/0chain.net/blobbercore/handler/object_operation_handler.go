@@ -685,7 +685,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	if allocationObj.AllocationRoot == "" {
 		latestWriteMarkerEntity = nil
 	} else {
-		latestWriteMarkerEntity, err = writemarker.GetWriteMarkerEntity(ctx,
+		latestWriteMarkerEntity, err = writemarker.GetWriteMarkerEntity(ctx, allocationID,
 			allocationObj.AllocationRoot)
 		if err != nil {
 			return nil, common.NewErrorf("latest_write_marker_read_error",
@@ -975,7 +975,7 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 	if allocationObj.AllocationRoot == "" {
 		latestWriteMarkerEntity = nil
 	} else {
-		latestWriteMarkerEntity, err = writemarker.GetWriteMarkerEntity(ctx,
+		latestWriteMarkerEntity, err = writemarker.GetWriteMarkerEntity(ctx, allocationID,
 			allocationObj.AllocationRoot)
 		if err != nil {
 			return nil, common.NewErrorf("latest_write_marker_read_error",
@@ -1872,7 +1872,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	var result blobberhttp.CommitResult
 
 	var latestWriteMarkerEntity *writemarker.WriteMarkerEntity
-	latestWriteMarkerEntity, err = writemarker.GetWriteMarkerEntity(ctx,
+	latestWriteMarkerEntity, err = writemarker.GetWriteMarkerEntity(ctx, allocationID,
 		allocationObj.AllocationRoot)
 	if err != nil {
 		return nil, common.NewErrorf("latest_write_marker_read_error",

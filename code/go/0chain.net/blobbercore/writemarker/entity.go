@@ -136,11 +136,11 @@ func (wm *WriteMarkerEntity) OnChain() bool {
 }
 
 // GetWriteMarkerEntity get WriteMarkerEntity from postgres
-func GetWriteMarkerEntity(ctx context.Context, allocation_root string) (*WriteMarkerEntity, error) {
+func GetWriteMarkerEntity(ctx context.Context, allocationID, allocationRoot string) (*WriteMarkerEntity, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	wm := &WriteMarkerEntity{}
 	err := db.Table((WriteMarkerEntity{}).TableName()).
-		Where("allocation_root=?", allocation_root).
+		Where("allocation_root=? AND allocation_id=?", allocationRoot, allocationID).
 		Order("sequence desc").
 		Take(wm).Error
 	if err != nil {
@@ -190,7 +190,7 @@ func GetWriteMarkersInRange(ctx context.Context, allocationID string, startAlloc
 	// seq of start allocation root
 	startWM := WriteMarkerEntity{}
 	err := db.Table((WriteMarkerEntity{}).TableName()).
-		Where("allocation_root=? AND timestamp=?", startAllocationRoot, startTimestamp).
+		Where("allocation_root=? AND timestamp=? AND allocation_id=?", startAllocationRoot, startTimestamp).
 		Select("sequence").
 		Take(&startWM).Error
 
@@ -202,7 +202,7 @@ func GetWriteMarkersInRange(ctx context.Context, allocationID string, startAlloc
 	// seq of end allocation root
 	endWM := WriteMarkerEntity{}
 	err = db.Table((WriteMarkerEntity{}).TableName()).
-		Where("allocation_root=?", endAllocationRoot).
+		Where("allocation_root=? AND allocation_id=?", endAllocationRoot, allocationID).
 		Select("sequence").
 		Order("sequence desc").
 		Take(&endWM).Error
