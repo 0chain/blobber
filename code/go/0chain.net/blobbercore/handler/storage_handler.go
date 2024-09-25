@@ -708,8 +708,8 @@ func (fsh *StorageHandler) getReferencePathV2(ctx context.Context, r *http.Reque
 		return
 	}
 	allocMu := lock.GetMutex(allocation.Allocation{}.TableName(), allocationId)
-	allocMu.Lock()
-	defer allocMu.Unlock()
+	allocMu.RLock()
+	defer allocMu.RUnlock()
 	now := time.Now()
 
 	trie := allocationObj.GetTrie()

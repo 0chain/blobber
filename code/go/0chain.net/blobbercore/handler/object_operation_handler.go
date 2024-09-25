@@ -1047,6 +1047,7 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 		ctx, writeMarker.AllocationRoot, clientKey, &numFiles, maxFiles, writeMarker.Timestamp, trie)
 	defer func() {
 		if !commitSuccess {
+			logging.Logger.Error("Rolling back the changes", zap.String("allocation_id", allocationID))
 			trie.Rollback()
 		}
 	}()
@@ -1073,10 +1074,12 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 	}
 
 	if writemarkerEntity.WM.Size != size {
-		return nil, common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker size %v does not match the connection size %v", writemarkerEntity.WM.Size, connectionObj.Size))
+		logging.Logger.Error("write_marker_validation_failed", zap.Any("write_marker_size", writemarkerEntity.WM.Size), zap.Any("connection_size", size), zap.String("allocation_id", allocationId))
+		return nil, common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker size %v does not match the connection size %v", writemarkerEntity.WM.Size, size))
 	}
 
 	if latestWriteMarkerEntity != nil && latestWriteMarkerEntity.WM.ChainSize+size != writeMarker.ChainSize {
+		logging.Logger.Error("write_marker_validation_failed", zap.Any("write_marker_size", latestWriteMarkerEntity.WM.ChainSize+size), zap.Any("connection_size", writeMarker.ChainSize), zap.String("allocation_id", allocationId))
 		return nil, common.NewErrorf("invalid_chain_size",
 			"Invalid chain size. expected:%v got %v", latestWriteMarkerEntity.WM.ChainSize+connectionObj.Size, writeMarker.ChainSize)
 	} else if latestWriteMarkerEntity == nil && size != writeMarker.ChainSize {
