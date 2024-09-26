@@ -1087,8 +1087,8 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 			"Invalid chain size. expected:%v got %v", connectionObj.Size, writeMarker.ChainSize)
 	}
 
-	allocationRoot := hex.EncodeToString(trie.Root())
-	fileMetaRoot := allocationRoot
+	fileMetaRoot := hex.EncodeToString(trie.Root())
+	allocationRoot := encryption.Hash(fileMetaRoot + allocationID)
 	if allocationRoot != writeMarker.AllocationRoot {
 		result.AllocationRoot = allocationObj.AllocationRoot
 		if latestWriteMarkerEntity != nil {
@@ -1122,6 +1122,7 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 	db := datastore.GetStore().GetTransaction(ctx)
 	writemarkerEntity.Latest = true
 	if err = db.Create(writemarkerEntity).Error; err != nil {
+		logging.Logger.Error("write_marker_error", zap.String("allocation_id", allocationID), zap.Error(err))
 		return nil, common.NewError("write_marker_error", "Error persisting the write marker")
 	}
 	allocationObj.AllocationRoot = allocationRoot
@@ -2020,8 +2021,8 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	}
 	if trie != nil {
 		var node wmpt.Node
-		if len(allocationRoot) > 0 {
-			decodedRoot, _ := hex.DecodeString(allocationRoot)
+		if len(fileMetaRoot) > 0 {
+			decodedRoot, _ := hex.DecodeString(fileMetaRoot)
 			node = wmpt.NewHashNode(decodedRoot, alloc.NumBlocks)
 		}
 		trie.RollbackTrie(node)

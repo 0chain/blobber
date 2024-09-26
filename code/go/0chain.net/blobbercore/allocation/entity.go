@@ -91,10 +91,10 @@ func (Allocation) TableName() string {
 func (a *Allocation) GetTrie() *wmpt.WeightedMerkleTrie {
 	trie := Repo.getTrie(a.ID)
 	if trie == nil {
-		if a.AllocationRoot == "" {
+		if a.FileMetaRoot == "" {
 			trie = wmpt.New(nil, datastore.GetBlockStore())
 		} else {
-			decodedRoot, _ := hex.DecodeString(a.AllocationRoot)
+			decodedRoot, _ := hex.DecodeString(a.FileMetaRoot)
 			trie = wmpt.New(wmpt.NewHashNode(decodedRoot, a.NumBlocks), datastore.GetBlockStore())
 		}
 		Repo.setTrie(a.ID, trie)
