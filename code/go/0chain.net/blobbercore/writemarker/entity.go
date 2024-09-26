@@ -190,7 +190,7 @@ func GetWriteMarkersInRange(ctx context.Context, allocationID string, startAlloc
 	// seq of start allocation root
 	startWM := WriteMarkerEntity{}
 	err := db.Table((WriteMarkerEntity{}).TableName()).
-		Where("allocation_root=? AND timestamp=? AND allocation_id=?", startAllocationRoot, startTimestamp).
+		Where("allocation_root=? AND timestamp=?", startAllocationRoot, startTimestamp).
 		Select("sequence").
 		Take(&startWM).Error
 

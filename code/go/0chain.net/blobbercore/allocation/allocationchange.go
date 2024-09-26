@@ -301,9 +301,7 @@ func (cc *AllocationChangeCollector) ApplyChangesV2(ctx context.Context, allocat
 				logging.Logger.Error("ApplyChangesV2Error", zap.Error(err))
 				return err
 			}
-			if sizeChange > 0 {
-				atomic.AddInt64(&cc.Size, sizeChange)
-			}
+			atomic.AddInt64(&cc.Size, sizeChange)
 			return nil
 		})
 

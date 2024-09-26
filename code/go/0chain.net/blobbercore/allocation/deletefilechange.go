@@ -43,7 +43,10 @@ func (nf *DeleteFileChange) ApplyChange(ctx context.Context, rootRef *reference.
 }
 
 func (nf *DeleteFileChange) ApplyChangeV2(_ context.Context, _, _ string, numFiles *atomic.Int32, _ common.Timestamp, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) (int64, error) {
-	var changeSize int64
+	var (
+		changeSize int64
+		refType    string
+	)
 	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		ref, err := reference.GetLimitedRefFieldsByLookupHashWith(ctx, nf.AllocationID, nf.LookupHash, []string{"id", "type", "size"})
 		if err != nil {
@@ -65,8 +68,9 @@ func (nf *DeleteFileChange) ApplyChangeV2(_ context.Context, _, _ string, numFil
 			LookupHash: nf.LookupHash,
 			Type:       ref.Type,
 		}
+		refType = ref.Type
 		collector.DeleteRefRecord(deleteRecord)
-		changeSize = ref.Size
+		changeSize = -ref.Size
 		return nil
 	}, &sql.TxOptions{
 		ReadOnly: true,
@@ -77,10 +81,12 @@ func (nf *DeleteFileChange) ApplyChangeV2(_ context.Context, _, _ string, numFil
 		}
 		return 0, err
 	}
-	decodedKey, _ := hex.DecodeString(nf.LookupHash)
-	err = trie.Update(decodedKey, nil, 0)
-	if err != nil && err != wmpt.ErrNotFound {
-		return 0, err
+	if refType == reference.FILE {
+		decodedKey, _ := hex.DecodeString(nf.LookupHash)
+		err = trie.Update(decodedKey, nil, 0)
+		if err != nil && err != wmpt.ErrNotFound {
+			return 0, err
+		}
 	}
 	numFiles.Add(-1)
 	return changeSize, nil
