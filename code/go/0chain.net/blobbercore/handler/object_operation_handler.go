@@ -1090,6 +1090,7 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 	fileMetaRoot := hex.EncodeToString(trie.Root())
 	allocationRoot := encryption.Hash(fileMetaRoot + allocationID)
 	if allocationRoot != writeMarker.AllocationRoot {
+		logging.Logger.Error("root_mismatch", zap.String("allocation_root", allocationRoot), zap.String("write_marker_allocation_root", writeMarker.AllocationRoot), zap.String("alloc_root", allocationObj.AllocationRoot), zap.Int64("prev_weight", prevWeight), zap.Int64("new_weight", newWeight), zap.Int64("diff", diff), zap.String("allocation_id", allocationId))
 		result.AllocationRoot = allocationObj.AllocationRoot
 		if latestWriteMarkerEntity != nil {
 			result.WriteMarker = latestWriteMarkerEntity
