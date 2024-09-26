@@ -1939,7 +1939,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	} else {
 		trie = allocationObj.GetTrie()
 		allocationRoot = writeMarker.AllocationRoot
-		fileMetaRoot = allocationRoot
+		fileMetaRoot = writeMarker.FileMetaRoot
 	}
 
 	if allocationRoot != writeMarker.AllocationRoot {

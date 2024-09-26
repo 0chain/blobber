@@ -229,6 +229,14 @@ func (wme *WriteMarkerEntity) VerifyRollbackMarker(ctx context.Context, dbAlloca
 		return common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker allocation root %v does not match the previous allocation root of latest write marker %v", wme.WM.AllocationRoot, latestWM.WM.PreviousAllocationRoot))
 	}
 
+	prevWM, err := GetWriteMarkerEntity(ctx, dbAllocation.ID, latestWM.WM.PreviousAllocationRoot)
+	if err != nil {
+		return common.NewError("write_marker_validation_failed", "Error getting previous write marker. "+err.Error())
+	}
+	if wme.WM.FileMetaRoot != prevWM.WM.FileMetaRoot {
+		return common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker file meta root %v does not match the file meta root of previous write marker %v", wme.WM.FileMetaRoot, prevWM.WM.FileMetaRoot))
+	}
+
 	if wme.WM.Timestamp != latestWM.WM.Timestamp {
 		return common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker timestamp %v does not match the timestamp of latest write marker %v", wme.WM.Timestamp, latestWM.WM.Timestamp))
 	}
