@@ -54,7 +54,7 @@ func (nf *DeleteFileChange) ApplyChangeV2(_ context.Context, _, _ string, numFil
 			return err
 		}
 		if ref.Type == reference.DIRECTORY {
-			isEmpty, err := reference.IsDirectoryEmpty(ctx, nf.Path)
+			isEmpty, err := reference.IsDirectoryEmpty(ctx, nf.AllocationID, nf.Path)
 			if err != nil {
 				logging.Logger.Error("deleted_object_error", zap.Error(err))
 				return err

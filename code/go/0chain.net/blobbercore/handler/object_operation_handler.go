@@ -1281,7 +1281,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 	}
 
 	if objectRef.Type != reference.FILE {
-		isEmpty, err := reference.IsDirectoryEmpty(ctx, objectRef.Path)
+		isEmpty, err := reference.IsDirectoryEmpty(ctx, allocationID, objectRef.Path)
 		if err != nil {
 			return nil, common.NewError("invalid_operation", "Error checking if directory is empty "+err.Error())
 		}
@@ -1374,7 +1374,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Cannot copy to the same parent directory.")
 	}
 	if allocationObj.StorageVersion == 1 && objectRef.Type == reference.DIRECTORY {
-		isEmpty, err := reference.IsDirectoryEmpty(ctx, objectRef.Path)
+		isEmpty, err := reference.IsDirectoryEmpty(ctx, allocationID, objectRef.Path)
 		if err != nil {
 			return nil, err
 		}
@@ -1497,7 +1497,7 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (any
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Cannot move to the same parent directory.")
 	}
 	if allocationObj.StorageVersion == 1 && objectRef.Type == reference.DIRECTORY {
-		isEmpty, err := reference.IsDirectoryEmpty(ctx, objectRef.Path)
+		isEmpty, err := reference.IsDirectoryEmpty(ctx, allocationID, objectRef.Path)
 		if err != nil {
 			return nil, err
 		}

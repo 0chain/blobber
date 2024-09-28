@@ -136,7 +136,7 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 	}
 	fileref.AllocationRoot = alloc.AllocationRoot
 	if fileref.Type == reference.DIRECTORY {
-		fileref.IsEmpty, err = reference.IsDirectoryEmpty(ctx, fileref.Path)
+		fileref.IsEmpty, err = reference.IsDirectoryEmpty(ctx, allocationID, fileref.Path)
 		if err != nil {
 			return nil, common.NewError("invalid_parameters", "Invalid path. "+err.Error())
 		}

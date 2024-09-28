@@ -134,7 +134,7 @@ func (rf *RenameFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, c
 		return 0, common.NewError("invalid_reference_path", err.Error())
 	}
 	if ref.Type == reference.DIRECTORY {
-		isEmpty, err := reference.IsDirectoryEmpty(ctx, ref.Path)
+		isEmpty, err := reference.IsDirectoryEmpty(ctx, rf.AllocationID, ref.Path)
 		if err != nil {
 			return 0, common.NewError("invalid_reference_path", err.Error())
 		}

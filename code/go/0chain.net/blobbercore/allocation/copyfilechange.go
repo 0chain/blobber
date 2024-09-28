@@ -136,7 +136,7 @@ func (rf *CopyFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, cli
 
 		rf.Type = srcRef.Type
 		if srcRef.Type == reference.DIRECTORY {
-			isEmpty, err := reference.IsDirectoryEmpty(ctx, srcRef.Path)
+			isEmpty, err := reference.IsDirectoryEmpty(ctx, rf.AllocationID, srcRef.Path)
 			if err != nil {
 				return err
 			}

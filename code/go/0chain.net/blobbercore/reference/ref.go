@@ -763,10 +763,10 @@ func UpdateCustomMeta(ctx context.Context, ref *Ref, customMeta string) error {
 	return db.Exec("UPDATE reference_objects SET custom_meta = ? WHERE id = ?", customMeta, ref.ID).Error
 }
 
-func IsDirectoryEmpty(ctx context.Context, path string) (bool, error) {
+func IsDirectoryEmpty(ctx context.Context, allocationID, path string) (bool, error) {
 	db := datastore.GetStore().GetTransaction(ctx)
 	var ref Ref
-	err := db.Model(&Ref{}).Select("id").Where("parent_path = ?", path).Take(&ref).Error
+	err := db.Model(&Ref{}).Select("id").Where("allocation_id=? AND parent_path = ?", allocationID, path).Take(&ref).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return true, nil

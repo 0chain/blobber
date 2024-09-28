@@ -155,7 +155,7 @@ func (rf *MoveFileChange) ApplyChangeV2(ctx context.Context, allocationRoot, cli
 			return common.NewError("invalid_reference_path", "file already exists")
 		}
 		if srcRef.Type == reference.DIRECTORY {
-			isEmpty, err := reference.IsDirectoryEmpty(ctx, srcRef.Path)
+			isEmpty, err := reference.IsDirectoryEmpty(ctx, rf.AllocationID, srcRef.Path)
 			if err != nil {
 				return err
 			}
