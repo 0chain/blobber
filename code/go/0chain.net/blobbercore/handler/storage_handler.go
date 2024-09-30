@@ -943,6 +943,9 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 		refs, totalPages, newOffsetPath, err = reference.GetRefs(
 			ctx, allocationID, path, offsetPath, fileType, level, pageLimit, offsetTime, pathRef,
 		)
+		if refs != nil {
+			logging.Logger.Info("GetRefs: regular", zap.Int("refs", len(*refs)), zap.Int("totalPages", totalPages), zap.String("newOffsetPath", newOffsetPath), zap.Error(err))
+		}
 
 	case refType == "updated":
 		refs, totalPages, newOffsetPath, newOffsetDate, err = reference.GetUpdatedRefs(
