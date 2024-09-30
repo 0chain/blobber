@@ -2,7 +2,7 @@ package reference
 
 import (
 	"context"
-	"errors"
+	"database/sql"
 	"fmt"
 	"math"
 	"path/filepath"
@@ -39,41 +39,33 @@ func init() {
 		field := refType.Field(i)
 		dirListTag := field.Tag.Get(DIR_LIST_TAG)
 
-		if dirListTag != "" {
+		if dirListTag != "" && dirListTag != "is_empty" && dirListTag != "allocation_version" {
 			dirListFields = append(dirListFields, dirListTag)
 		}
 	}
-	dirListFields = append(dirListFields, "parent_path")
+	dirListFields = append(dirListFields, "parent_path", "id")
 }
 
 type Ref struct {
 	ID                      int64  `gorm:"column:id;primaryKey"`
-	FileID                  string `gorm:"column:file_id" dirlist:"file_id" filelist:"file_id"`
+	ParentID                *int64 `gorm:"column:parent_id"`
 	Type                    string `gorm:"column:type;size:1" dirlist:"type" filelist:"type"`
 	AllocationID            string `gorm:"column:allocation_id;size:64;not null;index:idx_path_alloc,priority:1;index:idx_parent_path_alloc,priority:1;index:idx_validation_alloc,priority:1" dirlist:"allocation_id" filelist:"allocation_id"`
 	LookupHash              string `gorm:"column:lookup_hash;size:64;not null;index:idx_lookup_hash" dirlist:"lookup_hash" filelist:"lookup_hash"`
 	Name                    string `gorm:"column:name;size:100;not null;index:idx_name_gin" dirlist:"name" filelist:"name"` // uses GIN tsvector index for full-text search
 	Path                    string `gorm:"column:path;size:1000;not null;index:idx_path_alloc,priority:2;index:path_idx;index:idx_path_gin_trgm" dirlist:"path" filelist:"path"`
 	FileMetaHash            string `gorm:"column:file_meta_hash;size:64;not null" dirlist:"file_meta_hash" filelist:"file_meta_hash"`
-	Hash                    string `gorm:"column:hash;size:64;not null" dirlist:"hash" filelist:"hash"`
 	NumBlocks               int64  `gorm:"column:num_of_blocks;not null;default:0" dirlist:"num_of_blocks" filelist:"num_of_blocks"`
-	PathHash                string `gorm:"column:path_hash;size:64;not null" dirlist:"path_hash" filelist:"path_hash"`
 	ParentPath              string `gorm:"column:parent_path;size:999;index:idx_parent_path_alloc,priority:2"`
 	PathLevel               int    `gorm:"column:level;not null;default:0"`
 	CustomMeta              string `gorm:"column:custom_meta;not null" filelist:"custom_meta" dirlist:"custom_meta"`
-	ValidationRoot          string `gorm:"column:validation_root;size:64;not null;index:idx_validation_alloc,priority:2" filelist:"validation_root"`
-	PrevValidationRoot      string `gorm:"column:prev_validation_root" filelist:"prev_validation_root" json:"prev_validation_root"`
-	ValidationRootSignature string `gorm:"column:validation_root_signature;size:64" filelist:"validation_root_signature" json:"validation_root_signature,omitempty"`
 	Size                    int64  `gorm:"column:size;not null;default:0" dirlist:"size" filelist:"size"`
-	FixedMerkleRoot         string `gorm:"column:fixed_merkle_root;size:64;not null" filelist:"fixed_merkle_root"`
 	ActualFileSize          int64  `gorm:"column:actual_file_size;not null;default:0" dirlist:"actual_file_size" filelist:"actual_file_size"`
 	ActualFileHashSignature string `gorm:"column:actual_file_hash_signature;size:64" filelist:"actual_file_hash_signature"  json:"actual_file_hash_signature,omitempty"`
 	ActualFileHash          string `gorm:"column:actual_file_hash;size:64;not null" filelist:"actual_file_hash"`
 	MimeType                string `gorm:"column:mimetype;size:255;not null" filelist:"mimetype"`
-	AllocationRoot          string `gorm:"column:allocation_root;size:64;not null"`
 	ThumbnailSize           int64  `gorm:"column:thumbnail_size;not null;default:0" filelist:"thumbnail_size"`
 	ThumbnailHash           string `gorm:"column:thumbnail_hash;size:64;not null" filelist:"thumbnail_hash"`
-	PrevThumbnailHash       string `gorm:"column:prev_thumbnail_hash" filelist:"prev_thumbnail_hash"`
 	ActualThumbnailSize     int64  `gorm:"column:actual_thumbnail_size;not null;default:0" filelist:"actual_thumbnail_size"`
 	ActualThumbnailHash     string `gorm:"column:actual_thumbnail_hash;size:64;not null" filelist:"actual_thumbnail_hash"`
 	EncryptedKey            string `gorm:"column:encrypted_key;size:64" filelist:"encrypted_key"`
@@ -84,11 +76,14 @@ type Ref struct {
 	UpdatedAt               common.Timestamp `gorm:"column:updated_at;index:idx_updated_at,sort:desc;" dirlist:"updated_at" filelist:"updated_at"`
 
 	DeletedAt         gorm.DeletedAt `gorm:"column:deleted_at"` // soft deletion
-	IsPrecommit       bool           `gorm:"column:is_precommit;not null;default:false" filelist:"is_precommit" dirlist:"is_precommit"`
 	ChunkSize         int64          `gorm:"column:chunk_size;not null;default:65536" dirlist:"chunk_size" filelist:"chunk_size"`
 	NumUpdates        int64          `gorm:"column:num_of_updates" json:"num_of_updates"`
 	NumBlockDownloads int64          `gorm:"column:num_of_block_downloads" json:"num_of_block_downloads"`
 	FilestoreVersion  int            `gorm:"column:filestore_version" json:"-"`
+	DataHash          string         `gorm:"column:data_hash" filelist:"data_hash"`
+	DataHashSignature string         `gorm:"column:data_hash_signature" filelist:"data_hash_signature"`
+	AllocationVersion int64          `gorm:"allocation_version" dirlist:"allocation_version" filelist:"allocation_version"`
+	IsEmpty           bool           `gorm:"-" dirlist:"is_empty"`
 	HashToBeComputed  bool           `gorm:"-"`
 	prevID            int64          `gorm:"-"`
 }
@@ -117,34 +112,27 @@ func (Ref) TableName() string {
 
 type PaginatedRef struct { //Gorm smart select fields.
 	ID                      int64  `gorm:"column:id" json:"id,omitempty"`
-	FileID                  string `gorm:"file_id" json:"file_id"`
 	Type                    string `gorm:"column:type" json:"type,omitempty"`
 	AllocationID            string `gorm:"column:allocation_id" json:"allocation_id,omitempty"`
 	LookupHash              string `gorm:"column:lookup_hash" json:"lookup_hash,omitempty"`
 	Name                    string `gorm:"column:name" json:"name,omitempty"`
 	Path                    string `gorm:"column:path" json:"path,omitempty"`
-	Hash                    string `gorm:"column:hash" json:"hash,omitempty"`
-	NumBlocks               int64  `gorm:"column:num_of_blocks" json:"num_blocks,omitempty"`
-	PathHash                string `gorm:"column:path_hash" json:"path_hash,omitempty"`
+	NumBlocks               int64  `gorm:"column:num_of_blocks" json:"num_of_blocks,omitempty"`
 	ParentPath              string `gorm:"column:parent_path" json:"parent_path,omitempty"`
 	PathLevel               int    `gorm:"column:level" json:"level,omitempty"`
 	CustomMeta              string `gorm:"column:custom_meta" json:"custom_meta,omitempty"`
-	ValidationRootSignature string `gorm:"column:validation_root_signature" json:"validation_root_signature,omitempty"`
-	ValidationRoot          string `gorm:"column:validation_root" json:"validation_root,omitempty"`
 	Size                    int64  `gorm:"column:size" json:"size,omitempty"`
-	FixedMerkleRoot         string `gorm:"column:fixed_merkle_root" json:"fixed_merkle_root,omitempty"`
 	ActualFileSize          int64  `gorm:"column:actual_file_size" json:"actual_file_size,omitempty"`
 	ActualFileHashSignature string `gorm:"column:actual_file_hash_signature" json:"actual_file_hash_signature,omitempty"`
 	ActualFileHash          string `gorm:"column:actual_file_hash" json:"actual_file_hash,omitempty"`
 	MimeType                string `gorm:"column:mimetype" json:"mimetype,omitempty"`
-	AllocationRoot          string `gorm:"column:allocation_root" json:"allocation_root,omitempty"`
 	ThumbnailSize           int64  `gorm:"column:thumbnail_size" json:"thumbnail_size,omitempty"`
 	ThumbnailHash           string `gorm:"column:thumbnail_hash" json:"thumbnail_hash,omitempty"`
 	ActualThumbnailSize     int64  `gorm:"column:actual_thumbnail_size" json:"actual_thumbnail_size,omitempty"`
 	ActualThumbnailHash     string `gorm:"column:actual_thumbnail_hash" json:"actual_thumbnail_hash,omitempty"`
 	EncryptedKey            string `gorm:"column:encrypted_key" json:"encrypted_key,omitempty"`
 	EncryptedKeyPoint       string `gorm:"column:encrypted_key_point" json:"encrypted_key_point,omitempty"`
-	FileMetaHash            string `gorm:"column:file_meta_hash;size:64;not null" dirlist:"file_meta_hash" filelist:"file_meta_hash"`
+	FileMetaHash            string `gorm:"column:file_meta_hash;size:64;not null" json:"file_meta_hash"`
 
 	CreatedAt common.Timestamp `gorm:"column:created_at" json:"created_at,omitempty"`
 	UpdatedAt common.Timestamp `gorm:"column:updated_at" json:"updated_at,omitempty"`
@@ -158,49 +146,127 @@ func GetReferenceLookup(allocationID, path string) string {
 }
 
 func NewDirectoryRef() *Ref {
-	return &Ref{Type: DIRECTORY, IsPrecommit: true}
+	return &Ref{Type: DIRECTORY}
 }
 
 func NewFileRef() *Ref {
-	return &Ref{Type: FILE, IsPrecommit: true}
+	return &Ref{Type: FILE}
 }
 
 // Mkdir create dirs if they don't exits. do nothing if dir exists. last dir will be return without child
-func Mkdir(ctx context.Context, allocationID, destpath string) (*Ref, error) {
-	var dirRef *Ref
+func Mkdir(ctx context.Context, allocationID, destpath string, allocationVersion int64, ts common.Timestamp, collector QueryCollector) (*Ref, error) {
+	var err error
 	db := datastore.GetStore().GetTransaction(ctx)
-	// cleaning path to avoid edge case issues: append '/' prefix if not added and removing suffix '/' if added
-	destpath = strings.TrimSuffix(filepath.Clean("/"+destpath), "/")
-	dirs := strings.Split(destpath, "/")
-
-	for i := range dirs {
-		currentPath := filepath.Join("/", filepath.Join(dirs[:i+1]...))
-		ref, err := GetReference(ctx, allocationID, currentPath)
-		if err == nil {
-			dirRef = ref
-			continue
-		}
-
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			// unexpected sql error
+	if destpath != "/" {
+		destpath = strings.TrimSuffix(filepath.Clean("/"+destpath), "/")
+	}
+	destLookupHash := GetReferenceLookup(allocationID, destpath)
+	var destRef *Ref
+	cachedRef := collector.GetFromCache(destLookupHash)
+	if cachedRef != nil {
+		destRef = cachedRef
+	} else {
+		destRef, err = GetReferenceByLookupHashWithNewTransaction(destLookupHash)
+		if err != nil && err != gorm.ErrRecordNotFound {
 			return nil, err
 		}
+		if destRef != nil {
+			destRef.LookupHash = destLookupHash
+			defer collector.AddToCache(destRef)
+		}
+	}
+	if destRef != nil {
+		if destRef.Type != DIRECTORY {
+			return nil, common.NewError("invalid_dir_tree", "parent path is not a directory")
+		}
+		return destRef, nil
+	}
+	fields, err := common.GetAllParentPaths(destpath)
+	if err != nil {
+		logging.Logger.Error("mkdir: failed to get all parent paths", zap.Error(err), zap.String("destpath", destpath))
+		return nil, err
+	}
+	parentLookupHashes := make([]string, 0, len(fields))
+	for i := 0; i < len(fields); i++ {
+		parentLookupHashes = append(parentLookupHashes, GetReferenceLookup(allocationID, fields[i]))
+	}
+	var parentRefs []*Ref
+	collector.LockTransaction()
+	defer collector.UnlockTransaction()
+	cachedRef = collector.GetFromCache(destLookupHash)
+	if cachedRef != nil {
+		if cachedRef.Type != DIRECTORY {
+			return nil, common.NewError("invalid_dir_tree", "parent path is not a directory")
+		}
+		return cachedRef, nil
+	} else {
+		logging.Logger.Info("noEntryFound: ", zap.String("destLookupHash", destLookupHash), zap.String("destpath", destpath))
+	}
 
-		// dir doesn't exists , create it
+	tx := db.Model(&Ref{}).Select("id", "path", "type")
+	for i := 0; i < len(fields); i++ {
+		tx = tx.Or(Ref{LookupHash: parentLookupHashes[i]})
+	}
+	err = tx.Order("path").Find(&parentRefs).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, err
+	}
+	var (
+		parentID   int64
+		parentPath = "/"
+	)
+	if len(parentRefs) > 0 {
+		parentID = parentRefs[len(parentRefs)-1].ID
+		parentPath = parentRefs[len(parentRefs)-1].Path
+		for i := 0; i < len(parentRefs); i++ {
+			if parentRefs[i].Type != DIRECTORY {
+				return nil, common.NewError("invalid_dir_tree", "parent path is not a directory")
+			}
+			if parentRefs[i].ID == 0 {
+				return nil, common.NewError("invalid_dir_tree", "parent path not found")
+			}
+		}
+	}
+	if destpath != "/" {
+		fields = append(fields, destpath)
+		parentLookupHashes = append(parentLookupHashes, destLookupHash)
+	}
+
+	for i := len(parentRefs); i < len(fields); i++ {
+		logging.Logger.Info("mkdir: creating directory", zap.String("path", fields[i]), zap.Int("parentID", int(parentID)))
+		var parentIDRef *int64
+		if parentID > 0 {
+			parentIDRef = &parentID
+		} else if parentPath != "/" {
+			return nil, common.NewError("invalid_dir_tree", "parent path not found")
+		}
 		newRef := NewDirectoryRef()
 		newRef.AllocationID = allocationID
-		newRef.Path = currentPath
-		newRef.ParentPath = filepath.Join("/", filepath.Join(dirs[:i]...))
-		newRef.Name = dirs[i]
-		newRef.Type = DIRECTORY
+		newRef.Path = fields[i]
+		if newRef.Path != "/" {
+			newRef.ParentPath = parentPath
+		}
+		newRef.Name = filepath.Base(fields[i])
 		newRef.PathLevel = i + 1
-		newRef.LookupHash = GetReferenceLookup(allocationID, newRef.Path)
+		newRef.ParentID = parentIDRef
+		newRef.LookupHash = parentLookupHashes[i]
+		newRef.CreatedAt = ts
+		newRef.UpdatedAt = ts
+		newRef.FileMetaHash = encryption.FastHash(newRef.GetFileMetaHashData())
+		newRef.AllocationVersion = allocationVersion
 		err = db.Create(newRef).Error
 		if err != nil {
 			return nil, err
 		}
+		collector.AddToCache(newRef)
+		parentID = newRef.ID
+		parentPath = newRef.Path
+	}
 
-		dirRef = newRef
+	dirRef := &Ref{
+		AllocationID: allocationID,
+		ID:           parentID,
+		Path:         parentPath,
 	}
 
 	return dirRef, nil
@@ -262,6 +328,16 @@ func GetReferenceByLookupHash(ctx context.Context, allocationID, pathHash string
 	return ref, nil
 }
 
+func GetPaginatedRefByLookupHash(ctx context.Context, pathHash string) (*PaginatedRef, error) {
+	ref := &PaginatedRef{}
+	db := datastore.GetStore().GetTransaction(ctx)
+	err := db.Model(&Ref{}).Where(&Ref{LookupHash: pathHash}).Take(ref).Error
+	if err != nil {
+		return nil, err
+	}
+	return ref, nil
+}
+
 func GetReferenceByLookupHashForDownload(ctx context.Context, allocationID, pathHash string) (*Ref, error) {
 	ref := &Ref{}
 	db := datastore.GetStore().GetTransaction(ctx)
@@ -307,6 +383,22 @@ func IsRefExist(ctx context.Context, allocationID, path string) (bool, error) {
 	return Found, nil
 }
 
+func GetObjectSizeByLookupHash(ctx context.Context, lookupHash string) (int64, error) {
+	db := datastore.GetStore().GetTransaction(ctx)
+	var size int64
+	err := db.Model(&Ref{}).
+		Select("size").
+		Where("lookup_hash = ?", lookupHash).
+		Take(&size).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return 0, nil
+		}
+		return 0, err
+	}
+	return size, nil
+}
+
 // GetRefsTypeFromPaths Give list of paths it will return refs of respective path with only Type and Path selected in sql query
 func GetRefsTypeFromPaths(ctx context.Context, allocationID string, paths []string) (refs []*Ref, err error) {
 	if len(paths) == 0 {
@@ -342,7 +434,7 @@ func GetSubDirsFromPath(p string) []string {
 func GetRefWithChildren(ctx context.Context, parentRef *Ref, allocationID, path string, offset, pageLimit int) (*Ref, error) {
 	var refs []*Ref
 	t := datastore.GetStore().GetTransaction(ctx)
-	db := t.Where(Ref{ParentPath: path, AllocationID: allocationID})
+	db := t.Where(Ref{ParentID: &parentRef.ID})
 	err := db.Order("path").
 		Offset(offset).
 		Limit(pageLimit).
@@ -415,43 +507,38 @@ func (r *Ref) GetFileMetaHashData() string {
 
 func (fr *Ref) GetFileHashData() string {
 	return fmt.Sprintf(
-		"%s:%s:%s:%s:%d:%s:%s:%d:%s:%d:%s",
+		"%s:%s:%s:%s:%d:%d:%s:%d",
 		fr.AllocationID,
 		fr.Type, // don't need to add it as well
 		fr.Name, // don't see any utility as fr.Path below has name in it
 		fr.Path,
 		fr.Size,
-		fr.ValidationRoot,
-		fr.FixedMerkleRoot,
 		fr.ActualFileSize,
 		fr.ActualFileHash,
 		fr.ChunkSize,
-		fr.FileID,
 	)
 }
 
 func (r *Ref) GetHashData() string {
-	return fmt.Sprintf("%s:%s:%s", r.AllocationID, r.Path, r.FileID)
+	return fmt.Sprintf("%s:%s", r.AllocationID, r.Path)
 }
 
 func (fr *Ref) CalculateFileHash(ctx context.Context, saveToDB bool, collector QueryCollector) (string, error) {
 	fr.FileMetaHash = encryption.Hash(fr.GetFileMetaHashData())
-	fr.Hash = encryption.Hash(fr.GetFileHashData())
 	fr.NumBlocks = int64(math.Ceil(float64(fr.Size*1.0) / float64(fr.ChunkSize)))
 	fr.PathLevel = len(strings.Split(strings.TrimRight(fr.Path, "/"), "/"))
 	fr.LookupHash = GetReferenceLookup(fr.AllocationID, fr.Path)
-	fr.PathHash = fr.LookupHash
 
 	var err error
 	if saveToDB && fr.HashToBeComputed {
 		err = fr.SaveFileRef(ctx, collector)
 	}
-	return fr.Hash, err
+	return fr.FileMetaHash, err
 }
 
 func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool, collector QueryCollector) (h string, err error) {
 	if !r.HashToBeComputed {
-		h = r.Hash
+		h = r.FileMetaHash
 		return
 	}
 
@@ -464,9 +551,7 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool, collector Que
 		}
 	}()
 
-	childHashes := make([]string, l)
 	childFileMetaHashes := make([]string, l)
-	childPathHashes := make([]string, l)
 	var refNumBlocks, size, actualSize int64
 
 	for i, childRef := range r.Children {
@@ -478,22 +563,18 @@ func (r *Ref) CalculateDirHash(ctx context.Context, saveToDB bool, collector Que
 		}
 
 		childFileMetaHashes[i] = childRef.FileMetaHash
-		childHashes[i] = childRef.Hash
-		childPathHashes[i] = childRef.PathHash
 		refNumBlocks += childRef.NumBlocks
 		size += childRef.Size
 		actualSize += childRef.ActualFileSize
 	}
 
 	r.FileMetaHash = encryption.Hash(r.Path + strings.Join(childFileMetaHashes, ":"))
-	r.Hash = encryption.Hash(r.GetHashData() + strings.Join(childHashes, ":"))
-	r.PathHash = encryption.Hash(strings.Join(childPathHashes, ":"))
 	r.NumBlocks = refNumBlocks
 	r.Size = size
 	r.ActualFileSize = actualSize
 	r.PathLevel = len(GetSubDirsFromPath(r.Path)) + 1
 	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
-	return r.Hash, err
+	return r.FileMetaHash, err
 }
 
 func (r *Ref) CalculateHash(ctx context.Context, saveToDB bool, collector QueryCollector) (string, error) {
@@ -549,17 +630,8 @@ func (r *Ref) UpdatePath(newPath, parentPath string) {
 	r.LookupHash = GetReferenceLookup(r.AllocationID, r.Path)
 }
 
-func DeleteReference(ctx context.Context, refID int64, pathHash string) error {
-	if refID <= 0 {
-		return common.NewError("invalid_ref_id", "Invalid reference ID to delete")
-	}
-	db := datastore.GetStore().GetTransaction(ctx)
-	return db.Where("path_hash = ?", pathHash).Delete(&Ref{ID: refID}).Error
-}
-
 func (r *Ref) SaveFileRef(ctx context.Context, collector QueryCollector) error {
 	r.prevID = r.ID
-	r.IsPrecommit = true
 	r.NumUpdates += 1
 	if r.ID > 0 {
 		deleteRef := &Ref{ID: r.ID}
@@ -573,7 +645,6 @@ func (r *Ref) SaveFileRef(ctx context.Context, collector QueryCollector) error {
 
 func (r *Ref) SaveDirRef(ctx context.Context, collector QueryCollector) error {
 	r.prevID = r.ID
-	r.IsPrecommit = true
 	r.NumUpdates += 1
 	if r.ID > 0 {
 		deleteRef := &Ref{ID: r.ID}
@@ -674,4 +745,49 @@ func GetListingFieldsMap(refEntity interface{}, tagName string) map[string]inter
 func UpdateCustomMeta(ctx context.Context, ref *Ref, customMeta string) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	return db.Exec("UPDATE reference_objects SET custom_meta = ? WHERE id = ?", customMeta, ref.ID).Error
+}
+
+func IsDirectoryEmpty(ctx context.Context, id int64) (bool, error) {
+	db := datastore.GetStore().GetTransaction(ctx)
+	var ref Ref
+	err := db.Model(&Ref{}).Select("id").Where("parent_id = ?", &id).Take(&ref).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return true, nil
+		}
+		return false, err
+	}
+	if ref.ID > 0 {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func GetReferenceByLookupHashWithNewTransaction(lookupHash string) (*Ref, error) {
+	var ref *Ref
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		txn := datastore.GetStore().GetTransaction(ctx)
+		return txn.Model(&Ref{}).Select("id", "type").Where("lookup_hash = ?", lookupHash).Take(&ref).Error
+	}, &sql.TxOptions{
+		ReadOnly: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return ref, nil
+}
+
+func GetFullReferenceByLookupHashWithNewTransaction(lookupHash string) (*Ref, error) {
+	var ref *Ref
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		txn := datastore.GetStore().GetTransaction(ctx)
+		return txn.Model(&Ref{}).Where("lookup_hash = ?", lookupHash).Take(&ref).Error
+	}, &sql.TxOptions{
+		ReadOnly: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return ref, nil
 }

@@ -41,7 +41,7 @@ func UseRecovery(h http.Handler) http.Handler {
 		defer func() {
 			if err := recover(); err != nil {
 				escapedUrl := sanitizeString(r.URL.String())
-				logging.Logger.Error("[recover]http", zap.String("url", escapedUrl), zap.Any("err", err))
+				logging.Logger.Error("[recover]http", zap.String("url", escapedUrl), zap.Any("err", err), zap.Stack("recover_stack"))
 			}
 		}()
 

@@ -57,10 +57,15 @@ const (
 	MerkleChunkSize = 64
 	ChunkSize       = 64 * KB
 	BufferSize      = 80 * ChunkSize
+	ThumbnailSuffix = "_thumbnail"
 )
 
 func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error) {
-	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, fileData.FilePathHash, conID)
+	fileHash := fileData.LookupHash
+	if fileData.IsThumbnail {
+		fileHash = fileData.LookupHash + ThumbnailSuffix
+	}
+	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, fileHash, conID)
 	var (
 		initialSize int64
 	)
@@ -157,6 +162,17 @@ func (fs *FileStore) MoveToFilestore(allocID, hash string, version int) error {
 	}
 
 	_ = os.Rename(preCommitPath, fPath)
+
+	// Check if thumbnail exists
+	thumbPath := fs.getPreCommitPathForFile(allocID, hash+ThumbnailSuffix, version)
+	if _, err := os.Stat(thumbPath); err == nil {
+		thumbFilePath, err := fs.GetPathForFile(allocID, hash+ThumbnailSuffix, version)
+		if err != nil {
+			return common.NewError("get_file_path_error", err.Error())
+		}
+		_ = os.Rename(thumbPath, thumbFilePath)
+	}
+
 	return nil
 }
 
@@ -179,6 +195,14 @@ func (fs *FileStore) DeleteFromFilestore(allocID, hash string, version int) erro
 	}
 	fs.incrDecrAllocFileSizeAndNumber(allocID, -stat.Size(), -1)
 
+	thumbPath, err := fs.GetPathForFile(allocID, hash+ThumbnailSuffix, version)
+	if err != nil {
+		return common.NewError("get_file_path_error", err.Error())
+	}
+	if _, err := os.Stat(thumbPath); err == nil {
+		os.Remove(thumbPath) //nolint:errcheck
+	}
+
 	return nil
 }
 
@@ -193,15 +217,13 @@ func (fs *FileStore) DeletePreCommitDir(allocID string) error {
 }
 
 func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData) (_ bool, err error) {
-
-	logging.Logger.Info("Committing write", zap.String("allocation_id", allocID), zap.Any("file_data", fileData))
-	filePathHash := encryption.Hash(fileData.Path)
-	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, filePathHash, conID)
-
-	fileHash := fileData.ValidationRoot
+	now := time.Now()
+	logging.Logger.Debug("Committing write", zap.String("allocation_id", allocID), zap.Any("file_data", fileData))
+	fileHash := fileData.LookupHash
 	if fileData.IsThumbnail {
-		fileHash = fileData.ThumbnailHash
+		fileHash = fileData.LookupHash + ThumbnailSuffix
 	}
+	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, fileHash, conID)
 
 	preCommitPath := fs.getPreCommitPathForFile(allocID, fileHash, VERSION)
 
@@ -255,7 +277,7 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 		return true, nil
 	}
 
-	key := getKey(allocID, fileData.ValidationRoot)
+	key := getKey(allocID, fileData.LookupHash)
 	l, _ := contentHashMapLock.GetLock(key)
 	l.Lock()
 	defer func() {
@@ -270,41 +292,18 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	}
 
 	fileSize := rStat.Size()
-	now := time.Now()
 	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
 	defer cancel()
-	err = fileData.Hasher.Wait(ctx, conID, allocID, fileData.Name, filePathHash)
+	err = fileData.Hasher.Wait(ctx)
 	if err != nil {
 		return false, common.NewError("hasher_wait_error", err.Error())
 	}
-	elapsedWait := time.Since(now)
-	_, err = r.Seek(fileSize, io.SeekStart)
-	if err != nil {
-		return false, common.NewError("seek_error", err.Error())
+	md5Hash := fileData.Hasher.GetMd5Hash()
+	if md5Hash != fileData.DataHash {
+		return false, common.NewError("hash_mismatch",
+			fmt.Sprintf("calculated hash does not match with expected hash. Expected %s, got %s.",
+				fileData.DataHash, md5Hash))
 	}
-	fmtRootBytes, err := fileData.Hasher.fmt.CalculateRootAndStoreNodes(r)
-	if err != nil {
-		return false, common.NewError("fmt_hash_calculation_error", err.Error())
-	}
-
-	validationRootBytes, err := fileData.Hasher.vt.CalculateRootAndStoreNodes(r, fileSize)
-	if err != nil {
-		return false, common.NewError("validation_hash_calculation_error", err.Error())
-	}
-	fmtRoot := hex.EncodeToString(fmtRootBytes)
-	validationRoot := hex.EncodeToString(validationRootBytes)
-	elapsedRoot := time.Since(now) - elapsedWait
-	if fmtRoot != fileData.FixedMerkleRoot {
-		err = common.NewError("fixed_merkle_root_mismatch",
-			fmt.Sprintf("Expected %s got %s", fileData.FixedMerkleRoot, fmtRoot))
-		return false, err
-	}
-	if validationRoot != fileData.ValidationRoot {
-		err = common.NewError("validation_root_mismatch",
-			"calculated validation root does not match with client's validation root")
-		return false, err
-	}
-
 	err = os.Rename(tempFilePath, preCommitPath)
 	if err != nil {
 		return false, common.NewError("write_error", err.Error())
@@ -321,8 +320,79 @@ func (fs *FileStore) CommitWrite(allocID, conID string, fileData *FileInputData)
 	// 5. Move: It is Copy + Delete. Delete will not delete file if ref exists in database. i.e. copy would create
 	// ref that refers to this file therefore it will be skipped
 	fs.incrDecrAllocFileSizeAndNumber(allocID, fileSize, 1)
-	logging.Logger.Info("Committing write done", zap.String("file_path", fileData.Path), zap.Duration("elapsed_wait", elapsedWait), zap.Duration("elapsed_root", elapsedRoot), zap.Duration("elapsed_total", time.Since(now)))
+	logging.Logger.Info("Committing write done", zap.String("file_path", fileData.Path), zap.String("lookup_hash", fileData.LookupHash), zap.Duration("elapsed_total", time.Since(now)))
 	return true, nil
+}
+
+func (fs *FileStore) CopyFile(allocationID, oldFileLookupHash, newFileLookupHash string) error {
+	if oldFileLookupHash == newFileLookupHash {
+		return nil
+	}
+	var err error
+	oldObjectPath, err := fs.GetPathForFile(allocationID, oldFileLookupHash, VERSION)
+	if err != nil {
+		return common.NewError("get_file_path_error", err.Error())
+	}
+	oldFile, err := os.Open(oldObjectPath)
+	if err != nil {
+		return common.NewError("file_open_error", err.Error())
+	}
+	defer oldFile.Close()
+	stat, err := oldFile.Stat()
+	if err != nil {
+		return common.NewError("file_stat_error", err.Error())
+	}
+	size := stat.Size()
+
+	newObjectPath := fs.getPreCommitPathForFile(allocationID, newFileLookupHash, VERSION)
+	err = createDirs(filepath.Dir(newObjectPath))
+	if err != nil {
+		return common.NewError("blob_object_precommit_dir_creation_error", err.Error())
+	}
+	newFile, err := os.Create(newObjectPath)
+	if err != nil {
+		return common.NewError("file_create_error", err.Error())
+	}
+	defer func() {
+		newFile.Close()
+		if err != nil {
+			os.Remove(newObjectPath) //nolint:errcheck
+		}
+	}()
+	bufSize := BufferSize
+	if size < int64(bufSize) {
+		bufSize = int(size)
+	}
+	copyBuf := make([]byte, bufSize)
+	_, err = io.CopyBuffer(newFile, oldFile, copyBuf)
+	if err != nil {
+		return common.NewError("file_copy_error", err.Error())
+	}
+	// copy thumbnail if exists
+	oldThumbPath := fs.getPreCommitPathForFile(allocationID, oldFileLookupHash+ThumbnailSuffix, VERSION)
+	if _, err := os.Stat(oldThumbPath); err == nil {
+		newThumbPath := fs.getPreCommitPathForFile(allocationID, newFileLookupHash+ThumbnailSuffix, VERSION)
+		oldThumbFile, err := os.Open(oldThumbPath)
+		if err != nil {
+			return common.NewError("file_open_error", err.Error())
+		}
+		defer oldThumbFile.Close()
+		newThumbFile, err := os.Create(newThumbPath)
+		if err != nil {
+			return common.NewError("file_create_error", err.Error())
+		}
+		defer func() {
+			newThumbFile.Close()
+			if err != nil {
+				os.Remove(newThumbPath) //nolint:errcheck
+			}
+		}()
+		_, err = io.Copy(newThumbFile, oldThumbFile)
+		if err != nil {
+			return common.NewError("file_copy_error", err.Error())
+		}
+	}
+	return nil
 }
 
 func (fs *FileStore) GetFilePathSize(allocID, filehash, thumbHash string, version int) (int64, int64, error) {
@@ -435,6 +505,7 @@ func (fs *FileStore) DeleteAllocation(allocID string) {
 func (fs *FileStore) GetFileThumbnail(readBlockIn *ReadBlockInput) (*FileDownloadResponse, error) {
 	var fileObjectPath string
 	var err error
+	readBlockIn.Hash += ThumbnailSuffix
 	startBlock := readBlockIn.StartBlockNum
 	if startBlock < 0 {
 		return nil, common.NewError("invalid_block_number", "Invalid block number. Start block number cannot be negative")
@@ -515,7 +586,6 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 	}
 
 	startBlock := readBlockIn.StartBlockNum
-	endBlock := readBlockIn.StartBlockNum + readBlockIn.NumBlocks - 1
 
 	if startBlock < 0 {
 		return nil, common.NewError("invalid_block_number", "Invalid block number. Start block number cannot be negative")
@@ -558,26 +628,6 @@ func (fs *FileStore) GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadRes
 	nodesSize := getNodesSize(filesize, util.MaxMerkleLeavesSize)
 	vmp := &FileDownloadResponse{}
 
-	if readBlockIn.VerifyDownload {
-		vpOffset := int64(FMTSize)
-		if readBlockIn.FilestoreVersion == 1 {
-			vpOffset += readBlockIn.FileSize
-		}
-		vp := validationTreeProof{
-			dataSize: readBlockIn.FileSize,
-			offset:   vpOffset,
-		}
-
-		logging.Logger.Debug("calling GetMerkleProofOfMultipleIndexes", zap.Any("readBlockIn", readBlockIn), zap.Any("vmp", vmp))
-		nodes, indexes, err := vp.GetMerkleProofOfMultipleIndexes(file, nodesSize, startBlock, endBlock)
-		if err != nil {
-			return nil, common.NewError("get_merkle_proof_error", err.Error())
-		}
-
-		vmp.Nodes = nodes
-		vmp.Indexes = indexes
-	}
-	logging.Logger.Info("filestore_version", zap.Int("version", readBlockIn.FilestoreVersion))
 	fileOffset := int64(startBlock) * ChunkSize
 	if readBlockIn.FilestoreVersion == 1 {
 		_, err = file.Seek(fileOffset, io.SeekStart)
@@ -796,7 +846,7 @@ func (fs *FileStore) getAllocDir(allocID string) string {
 }
 
 func (fs *FileStore) GetPathForFile(allocID, hash string, version int) (string, error) {
-	if len(allocID) != 64 || len(hash) != 64 {
+	if len(allocID) != 64 {
 		return "", errors.New("length of allocationID/hash must be 64")
 	}
 	var versionStr string

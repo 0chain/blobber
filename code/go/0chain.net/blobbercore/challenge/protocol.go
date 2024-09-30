@@ -109,9 +109,6 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	blockNum := int64(0)
 	var objectPath *reference.ObjectPath
 	if rootRef != nil {
-		if rootRef.Hash != allocationObj.AllocationRoot {
-			logging.Logger.Error("root_mismatch", zap.Any("allocation_root", allocationObj.AllocationRoot), zap.Any("latest_write_marker", wms[len(wms)-1].WM.AllocationRoot), zap.Any("root_ref_hash", rootRef.Hash))
-		}
 		if rootRef.NumBlocks > 0 {
 			r := rand.New(rand.NewSource(cr.RandomNumber))
 			blockNum = r.Int63n(rootRef.NumBlocks)

@@ -106,7 +106,7 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 				changes: make(map[string]*ConnectionChange),
 			}
 			connectionProcessor["connection_id"].changes[pathHash] = &ConnectionChange{
-				hasher: filestore.GetNewCommitHasher(2310),
+				hasher: filestore.NewCommitHasher(2310),
 			}
 			change := &UploadFileChanger{
 				BaseFileChanger: BaseFileChanger{

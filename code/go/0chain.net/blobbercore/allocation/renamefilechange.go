@@ -6,31 +6,37 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 
 	"go.uber.org/zap"
 )
 
 type RenameFileChange struct {
-	ConnectionID string `json:"connection_id"`
-	AllocationID string `json:"allocation_id"`
-	Path         string `json:"path"`
-	NewName      string `json:"new_name"`
-	Name         string `json:"name"`
-	Type         string `json:"type"`
+	ConnectionID  string `json:"connection_id"`
+	AllocationID  string `json:"allocation_id"`
+	Path          string `json:"path"`
+	NewName       string `json:"new_name"`
+	Name          string `json:"name"`
+	Type          string `json:"type"`
+	CustomMeta    string `json:"custom_meta"`
+	MimeType      string `json:"mimetype"`
+	newLookupHash string `json:"-"`
 }
 
 func (rf *RenameFileChange) DeleteTempFile() error {
 	return nil
 }
 
-func (rf *RenameFileChange) applyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
-	allocationRoot string, ts common.Timestamp, _ map[string]string) (*reference.Ref, error) {
-
+func (rf *RenameFileChange) applyChange(ctx context.Context,
+	ts common.Timestamp, allocationVersion int64, collector reference.QueryCollector) error {
+	collector.LockTransaction()
+	defer collector.UnlockTransaction()
 	if rf.Path == "/" {
-		return nil, common.NewError("invalid_operation", "cannot rename root path")
+		return common.NewError("invalid_operation", "cannot rename root path")
 	}
 
 	newPath := filepath.Join(filepath.Dir(rf.Path), rf.NewName)
@@ -40,79 +46,45 @@ func (rf *RenameFileChange) applyChange(ctx context.Context, rootRef *reference.
 	}
 
 	if isFilePresent {
-		return nil, common.NewError("invalid_reference_path", "file already exists")
+		return common.NewError("invalid_reference_path", "file already exists")
 	}
-
-	affectedRef, err := rootRef.GetSrcPath(rf.Path)
+	oldFileLookupHash := reference.GetReferenceLookup(rf.AllocationID, rf.Path)
+	ref, err := reference.GetReferenceByLookupHash(ctx, rf.AllocationID, oldFileLookupHash)
 	if err != nil {
-		return nil, err
+		return common.NewError("invalid_reference_path", err.Error())
 	}
-	affectedRef.HashToBeComputed = true
-	affectedRef.Name = rf.NewName
-	affectedRef.Path = newPath
-	affectedRef.UpdatedAt = ts
-	if affectedRef.Type == reference.FILE {
-		affectedRef.IsPrecommit = true
-	} else {
-		rf.processChildren(ctx, affectedRef, ts)
-	}
-
-	parentPath := filepath.Dir(rf.Path)
-	fields, err := common.GetPathFields(parentPath)
-	if err != nil {
-		return nil, err
-	}
-
-	rootRef.UpdatedAt = ts
-	rootRef.HashToBeComputed = true
-	dirRef := rootRef
-
-	for i := 0; i < len(fields); i++ {
-		found := false
-		for _, child := range dirRef.Children {
-			if child.Name == fields[i] {
-				dirRef = child
-				dirRef.UpdatedAt = ts
-				dirRef.HashToBeComputed = true
-				found = true
-				break
-			}
+	if ref.Type == reference.DIRECTORY {
+		isEmpty, err := reference.IsDirectoryEmpty(ctx, ref.ID)
+		if err != nil {
+			return common.NewError("invalid_reference_path", err.Error())
 		}
-
-		if !found {
-			return nil, common.NewError("invalid_reference_path", "Invalid reference path from the blobber")
+		if !isEmpty {
+			return common.NewError("invalid_reference_path", "Directory is not empty")
 		}
 	}
-
-	found := false
-	for i, child := range dirRef.Children {
-		if child.Path == rf.Path {
-			dirRef.RemoveChild(i)
-			dirRef.AddChild(affectedRef)
-			found = true
-			break
-		}
+	rf.Type = ref.Type
+	deleteRef := &reference.Ref{
+		ID:         ref.ID,
+		LookupHash: oldFileLookupHash,
+		Type:       ref.Type,
 	}
-	if !found {
-		return nil, common.NewError("file_not_found", "File to rename not found in blobber")
+	collector.DeleteRefRecord(deleteRef)
+	ref.Name = rf.NewName
+	ref.Path = newPath
+	ref.ID = 0
+	ref.LookupHash = reference.GetReferenceLookup(rf.AllocationID, newPath)
+	ref.UpdatedAt = ts
+	ref.FileMetaHash = encryption.Hash(ref.GetFileMetaHashData())
+	if rf.CustomMeta != "" {
+		ref.CustomMeta = rf.CustomMeta
 	}
-
-	return rootRef, nil
-}
-
-func (rf *RenameFileChange) processChildren(ctx context.Context, curRef *reference.Ref, ts common.Timestamp) {
-	for _, childRef := range curRef.Children {
-		childRef.UpdatedAt = ts
-		childRef.HashToBeComputed = true
-		newPath := filepath.Join(curRef.Path, childRef.Name)
-		childRef.UpdatePath(newPath, curRef.Path)
-		if childRef.Type == reference.FILE {
-			childRef.IsPrecommit = true
-		}
-		if childRef.Type == reference.DIRECTORY {
-			rf.processChildren(ctx, childRef, ts)
-		}
+	if rf.MimeType != "" {
+		ref.MimeType = rf.MimeType
 	}
+	ref.AllocationVersion = allocationVersion
+	collector.CreateRefRecord(ref)
+	rf.newLookupHash = ref.LookupHash
+	return nil
 }
 
 func (rf *RenameFileChange) Marshal() (string, error) {
@@ -129,7 +101,18 @@ func (rf *RenameFileChange) Unmarshal(input string) error {
 }
 
 func (rf *RenameFileChange) CommitToFileStore(ctx context.Context, mut *sync.Mutex) error {
-	return nil
+	if rf.Type == reference.DIRECTORY {
+		return nil
+	}
+	if rf.newLookupHash == "" {
+		return common.NewError("invalid_reference_path", "new lookup hash is empty")
+	}
+	oldFileLookupHash := reference.GetReferenceLookup(rf.AllocationID, rf.Path)
+	err := filestore.GetFileStore().CopyFile(rf.AllocationID, oldFileLookupHash, rf.newLookupHash)
+	if err != nil {
+		logging.Logger.Error("CommitToFileStore: CopyFile", zap.Error(err))
+	}
+	return err
 }
 
 func (rf *RenameFileChange) GetPath() []string {

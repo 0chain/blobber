@@ -251,16 +251,14 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 			validationRoot, fixedMerkleRoot, err := generateRandomData(fPath, int64(size))
 			require.Nil(t, err)
 			pathHash := encryption.Hash(test.remotePath)
-			hasher := GetNewCommitHasher(0)
+			hasher := NewCommitHasher(0)
 			fid := &FileInputData{
-				Name:            test.fileName,
-				Path:            test.remotePath,
-				ValidationRoot:  validationRoot,
-				FixedMerkleRoot: fixedMerkleRoot,
-				ChunkSize:       64 * KB,
-				FilePathHash:    pathHash,
-				Hasher:          hasher,
-				Size:            int64(size),
+				Name:         test.fileName,
+				Path:         test.remotePath,
+				ChunkSize:    64 * KB,
+				FilePathHash: pathHash,
+				Hasher:       hasher,
+				Size:         int64(size),
 			}
 
 			f, err := os.Open(fPath)
@@ -338,7 +336,7 @@ func TestDeletePreCommitDir(t *testing.T) {
 	validationRoot, fixedMerkleRoot, err := generateRandomData(fPath, int64(size))
 	require.Nil(t, err)
 	pathHash := encryption.Hash(remotePath)
-	hasher := GetNewCommitHasher(int64(size))
+	hasher := NewCommitHasher(int64(size))
 	fid := &FileInputData{
 		Name:            fileName,
 		Path:            remotePath,
@@ -383,7 +381,7 @@ func TestDeletePreCommitDir(t *testing.T) {
 
 	fid.ValidationRoot = validationRoot
 	fid.FixedMerkleRoot = fixedMerkleRoot
-	hasher = GetNewCommitHasher(int64(size))
+	hasher = NewCommitHasher(int64(size))
 	fid.Hasher = hasher
 
 	// Write file to temp location
@@ -446,7 +444,7 @@ func TestStorageUploadUpdate(t *testing.T) {
 	validationRoot, fixedMerkleRoot, err := generateRandomData(fPath, int64(size))
 	require.Nil(t, err)
 	pathHash := encryption.Hash(remotePath)
-	hasher := GetNewCommitHasher(int64(size))
+	hasher := NewCommitHasher(int64(size))
 	fid := &FileInputData{
 		Name:            fileName,
 		Path:            remotePath,
@@ -834,7 +832,7 @@ func TestValidationRoot(t *testing.T) {
 	fs, cleanUp := setupStorage(t)
 	defer cleanUp()
 	fPath := filepath.Join(fs.mp, randString(10)+".txt")
-	cH := GetNewCommitHasher(size)
+	cH := NewCommitHasher(size)
 	_, err := cH.Write(thumbnailBytes)
 	require.Nil(t, err)
 
@@ -897,7 +895,7 @@ func generateRandomData(fPath string, size int64) (string, string, error) {
 	}
 	defer f.Close()
 
-	cH := GetNewCommitHasher(size)
+	cH := NewCommitHasher(size)
 	_, err = cH.Write(p)
 	if err != nil {
 		return "", "", err
@@ -938,7 +936,7 @@ func generateRandomDataAndStoreNodes(fPath string, size int64) (string, string, 
 	}
 	defer f.Close()
 
-	cH := GetNewCommitHasher(size)
+	cH := NewCommitHasher(size)
 	_, err = cH.Write(p)
 	if err != nil {
 		return "", "", err
