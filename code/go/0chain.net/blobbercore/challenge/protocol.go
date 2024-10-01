@@ -21,6 +21,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/blobber/code/go/0chain.net/core/util"
+	"github.com/0chain/common/core/util/wmpt"
 	sdkUtil "github.com/0chain/gosdk/core/util"
 	"github.com/remeh/sizedwaitgroup"
 	"gorm.io/gorm"
@@ -339,6 +340,8 @@ func (cr *ChallengeEntity) SaveChallengeResult(ctx context.Context, t *transacti
 
 func (cr *ChallengeEntity) getPostDataV2(ctx context.Context, allocationObj *allocation.Allocation) (map[string]any, error) {
 	trie := allocationObj.GetTrie()
+	copyTrie := wmpt.New(trie.CopyRoot(filestore.COLLAPSE_DEPTH), datastore.GetBlockStore())
+
 	var (
 		blockNum     = int64(0)
 		postData     = make(map[string]interface{})
@@ -346,14 +349,13 @@ func (cr *ChallengeEntity) getPostDataV2(ctx context.Context, allocationObj *all
 		objectSize   int64
 		proofGenTime int64 = -1
 	)
-	if trie.Weight() > 0 {
+	if copyTrie.Weight() > 0 {
 		r := rand.New(rand.NewSource(cr.RandomNumber))
-		blockNum = r.Int63n(int64(trie.Weight()))
+		blockNum = r.Int63n(int64(copyTrie.Weight()))
 		blockNum++
 		cr.BlockNum = blockNum
-
 		logging.Logger.Info("[challenge]rand: ", zap.Uint64("trie.NumBlocks", trie.Weight()), zap.Any("blockNum", blockNum), zap.Any("challenge_id", cr.ChallengeID), zap.Any("random_seed", cr.RandomNumber))
-		key, objectProof, err := trie.GetBlockProof(uint64(blockNum))
+		key, objectProof, err := copyTrie.GetBlockProof(uint64(blockNum))
 		if err != nil {
 			return nil, err
 		}
@@ -367,6 +369,12 @@ func (cr *ChallengeEntity) getPostDataV2(ctx context.Context, allocationObj *all
 		}
 		cr.RefID = ref.ID
 		postData["object_proof"] = objectProof
+		fileMetaRootBytes := copyTrie.Root()
+		fileMetaRoot := hex.EncodeToString(fileMetaRootBytes)
+		if fileMetaRoot != allocationObj.FileMetaRoot {
+			logging.Logger.Error("root_mismatch", zap.Any("file_meta_root", allocationObj.FileMetaRoot), zap.Any("file_meta_root", fileMetaRoot))
+			return nil, common.NewError("root_mismatch", "File meta root mismatch")
+		}
 	}
 	cr.RespondedAllocationRoot = allocationObj.AllocationRoot
 	if blockNum > 0 {
