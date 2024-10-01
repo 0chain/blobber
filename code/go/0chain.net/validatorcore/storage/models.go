@@ -322,11 +322,6 @@ func (cr *ChallengeRequest) verifyBlockNum(challengeObj *Challenge) error {
 
 func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationObj *Allocation) error {
 	logging.Logger.Info("Verifying object path", zap.String("challenge_id", challengeObj.ID), zap.Int64("seed", challengeObj.RandomNumber), zap.Int("storage_version", cr.StorageVersion))
-	defer func() {
-		if r := recover(); r != nil {
-			logging.Logger.Error("Panic in VerifyChallenge", zap.Any("recover", r), zap.Stack("recover_stack"))
-		}
-	}()
 	if cr.ObjPath != nil && cr.StorageVersion == 0 {
 		err := cr.ObjPath.Verify(challengeObj.AllocationID, challengeObj.RandomNumber)
 		if err != nil {
@@ -363,7 +358,7 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 		if len(cr.ObjectProof) == 0 && latestWM.ChainSize == 0 {
 			return nil
 		}
-		err = cr.verifyObjectProof(latestWM, challengeObj.BlobberID, allocationObj.OwnerPublicKey)
+		err = cr.verifyObjectProof(latestWM, challengeObj.BlobberID, allocationObj.OwnerPublicKey, challengeObj.RandomNumber)
 		if err != nil {
 			logging.Logger.Error("Failed to verify object proof", zap.String("challenge_id", challengeObj.ID), zap.Error(err))
 			return err
@@ -449,7 +444,7 @@ func (vt *ValidationTicket) Sign() error {
 	return err
 }
 
-func (cr *ChallengeRequest) verifyObjectProof(latestWM *writemarker.WriteMarker, blobberID, OwnerPublicKey string) error {
+func (cr *ChallengeRequest) verifyObjectProof(latestWM *writemarker.WriteMarker, blobberID, OwnerPublicKey string, challengeRand int64) error {
 	if len(cr.ObjectProof) == 0 {
 		return common.NewError("invalid_object_proof", "Object proof is missing")
 	}
@@ -459,10 +454,13 @@ func (cr *ChallengeRequest) verifyObjectProof(latestWM *writemarker.WriteMarker,
 	if cr.ChallengeProof == nil {
 		return common.NewError("invalid_object_proof", "Challenge proof is missing")
 	}
+	rootBlocks := latestWM.ChainSize / CHUNK_SIZE
+	r := rand.New(rand.NewSource(challengeRand))
+	blockNum := r.Int63n(rootBlocks)
+	blockNum++
 
 	trie := wmpt.New(nil, nil)
-	blockNum := uint64(cr.ChallengeProof.LeafInd)
-	hash, value, err := trie.VerifyBlockProof(blockNum, cr.ObjectProof)
+	hash, value, err := trie.VerifyBlockProof(uint64(blockNum), cr.ObjectProof)
 	if err != nil {
 		return common.NewError("invalid_object_proof", "Failed to verify the object proof. "+err.Error())
 	}
