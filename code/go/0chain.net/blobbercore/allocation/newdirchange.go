@@ -2,6 +2,7 @@ package allocation
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"sync/atomic"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/common/core/util/wmpt"
 	"gorm.io/gorm"
 
@@ -109,11 +111,30 @@ func (nf *NewDir) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKe
 			return 0, common.NewError("invalid_parent_path", "parent path is not a directory")
 		}
 		newRef := reference.NewDirectoryRef()
+		newRef.LookupHash = reference.GetReferenceLookup(nf.AllocationID, nf.Path)
+		var refResult struct {
+			ID int64
+		}
+		err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+			tx := datastore.GetStore().GetTransaction(ctx)
+			return tx.Model(&reference.Ref{}).Select("id").Where("lookup_hash = ?", newRef.LookupHash).Take(&refResult).Error
+		}, &sql.TxOptions{
+			ReadOnly: true,
+		})
+		if err != nil && err != gorm.ErrRecordNotFound {
+			return 0, err
+		}
+		if refResult.ID > 0 {
+			collector.LockTransaction()
+			defer collector.UnlockTransaction()
+			txn := datastore.GetStore().GetTransaction(ctx)
+			err = txn.Exec("UPDATE refs SET custom_meta=? WHERE lookup_hash=?", nf.CustomMeta, newRef.LookupHash).Error
+			return 0, err
+		}
 		newRef.AllocationID = nf.AllocationID
 		newRef.Path = nf.Path
 		newRef.Name = filepath.Base(nf.Path)
 		newRef.ParentPath = parentPath
-		newRef.LookupHash = reference.GetReferenceLookup(nf.AllocationID, nf.Path)
 		newRef.CreatedAt = ts
 		newRef.UpdatedAt = ts
 		newRef.AllocationRoot = allocationRoot

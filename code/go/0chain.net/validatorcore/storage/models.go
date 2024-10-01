@@ -321,7 +321,12 @@ func (cr *ChallengeRequest) verifyBlockNum(challengeObj *Challenge) error {
 }
 
 func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationObj *Allocation) error {
-	logging.Logger.Info("Verifying object path", zap.String("challenge_id", challengeObj.ID), zap.Int64("seed", challengeObj.RandomNumber))
+	logging.Logger.Info("Verifying object path", zap.String("challenge_id", challengeObj.ID), zap.Int64("seed", challengeObj.RandomNumber), zap.Int("storage_version", cr.StorageVersion))
+	defer func() {
+		if r := recover(); r != nil {
+			logging.Logger.Error("Panic in VerifyChallenge", zap.Any("recover", r), zap.Stack("recover_stack"))
+		}
+	}()
 	if cr.ObjPath != nil && cr.StorageVersion == 0 {
 		err := cr.ObjPath.Verify(challengeObj.AllocationID, challengeObj.RandomNumber)
 		if err != nil {
