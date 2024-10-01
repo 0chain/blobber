@@ -359,7 +359,7 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 		if len(cr.ObjectProof) == 0 && latestWM.ChainSize == 0 {
 			return nil
 		}
-		err = cr.verifyObjectProof(latestWM, challengeObj.BlobberID, allocationObj.OwnerPublicKey, challengeObj.RandomNumber)
+		err = cr.verifyObjectProof(latestWM, challengeObj.BlobberID, cr.WriteMarkers[len(cr.WriteMarkers)-1].ClientPublicKey, challengeObj.RandomNumber)
 		if err != nil {
 			logging.Logger.Error("Failed to verify object proof", zap.String("challenge_id", challengeObj.ID), zap.Error(err))
 			return err
@@ -445,7 +445,7 @@ func (vt *ValidationTicket) Sign() error {
 	return err
 }
 
-func (cr *ChallengeRequest) verifyObjectProof(latestWM *writemarker.WriteMarker, blobberID, OwnerPublicKey string, challengeRand int64) error {
+func (cr *ChallengeRequest) verifyObjectProof(latestWM *writemarker.WriteMarker, blobberID, ownerPublicKey string, challengeRand int64) error {
 	if len(cr.ObjectProof) == 0 {
 		return common.NewError("invalid_object_proof", "Object proof is missing")
 	}
@@ -481,8 +481,9 @@ func (cr *ChallengeRequest) verifyObjectProof(latestWM *writemarker.WriteMarker,
 	// verify fixed merkle root
 	hashData := fmt.Sprintf("%s:%s:%s:%s", cr.Meta.ActualFileHash, cr.Meta.ValidationRoot, cr.Meta.FixedMerkleRoot, blobberID)
 	validationRootHash := encryption.Hash(hashData)
-	verify, err := encryption.Verify(OwnerPublicKey, cr.Meta.ValidationRootSignature, validationRootHash)
+	verify, err := encryption.Verify(ownerPublicKey, cr.Meta.ValidationRootSignature, validationRootHash)
 	if err != nil {
+		logging.Logger.Error("Failed to verify the validation root signature", zap.Error(err), zap.String("validation_root", cr.Meta.ValidationRoot), zap.String("validation_root_signature", cr.Meta.ValidationRootSignature), zap.String("owner_public_key", ownerPublicKey))
 		return common.NewError("invalid_object_proof", "Failed to verify the validation root signature. "+err.Error())
 	}
 	if !verify {
