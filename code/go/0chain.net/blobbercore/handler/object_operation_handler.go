@@ -482,7 +482,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			FilestoreVersion: fileref.FilestoreVersion,
 			StorageVersion:   int(alloc.StorageVersion),
 		}
-		if alloc.StorageVersion == 1 {
+		if alloc.IsStorageV2() {
 			rbi.Hash = fileref.LookupHash
 			rbi.IsPrecommit = fileref.AllocationRoot == alloc.AllocationRoot
 		}
@@ -509,7 +509,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			FilestoreVersion: fileref.FilestoreVersion,
 			StorageVersion:   int(alloc.StorageVersion),
 		}
-		if alloc.StorageVersion == 1 {
+		if alloc.IsStorageV2() {
 			rbi.Hash = fileref.LookupHash
 			rbi.IsPrecommit = fileref.AllocationRoot == alloc.AllocationRoot
 		}
@@ -1373,7 +1373,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 	if objectRef.ParentPath == destPath || objectRef.Path == destPath {
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Cannot copy to the same parent directory.")
 	}
-	if allocationObj.StorageVersion == 1 && objectRef.Type == reference.DIRECTORY {
+	if allocationObj.IsStorageV2() && objectRef.Type == reference.DIRECTORY {
 		isEmpty, err := reference.IsDirectoryEmpty(ctx, allocationID, objectRef.Path)
 		if err != nil {
 			return nil, err
@@ -1407,7 +1407,7 @@ func (fsh *StorageHandler) CopyObject(ctx context.Context, r *http.Request) (int
 			}
 		}
 	}
-	if allocationObj.StorageVersion == 1 {
+	if allocationObj.IsStorageV2() {
 		destPath = newPath
 	}
 
@@ -1496,7 +1496,7 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (any
 	if filepath.Dir(objectRef.Path) == destPath {
 		return nil, common.NewError("invalid_parameters", "Invalid destination path. Cannot move to the same parent directory.")
 	}
-	if allocationObj.StorageVersion == 1 && objectRef.Type == reference.DIRECTORY {
+	if allocationObj.IsStorageV2() && objectRef.Type == reference.DIRECTORY {
 		isEmpty, err := reference.IsDirectoryEmpty(ctx, allocationID, objectRef.Path)
 		if err != nil {
 			return nil, err
@@ -1531,7 +1531,7 @@ func (fsh *StorageHandler) MoveObject(ctx context.Context, r *http.Request) (any
 		}
 	}
 
-	if allocationObj.StorageVersion == 1 {
+	if allocationObj.IsStorageV2() {
 		destPath = newPath
 	}
 
@@ -1906,7 +1906,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	defer cancel()
 	c := datastore.GetStore().CreateTransaction(timeoutCtx)
 	txn := datastore.GetStore().GetTransaction(c)
-	if allocationObj.StorageVersion == 0 {
+	if !allocationObj.IsStorageV2() {
 		err = allocation.ApplyRollback(c, allocationID)
 	} else {
 		err = allocation.ApplyRollbackV2(c, allocationID, allocationObj.AllocationRoot, int64(latestWriteMarkerEntity.WM.Timestamp))
@@ -1924,7 +1924,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	)
 
 	//get allocation root and ref
-	if allocationObj.StorageVersion == 0 {
+	if !allocationObj.IsStorageV2() {
 		rootRef, err := reference.GetLimitedRefFieldsByPath(c, allocationID, "/", []string{"hash", "file_meta_hash"})
 		if err != nil && err != gorm.ErrRecordNotFound {
 			txn.Rollback()

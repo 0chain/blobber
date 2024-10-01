@@ -11,6 +11,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/validatorcore/storage/writemarker"
+	"github.com/0chain/common/core/util/wmpt"
 	"github.com/0chain/gosdk/core/util"
 
 	"github.com/mitchellh/mapstructure"
@@ -45,6 +46,27 @@ type DirMetaData struct {
 	NumBlocks    int64            `json:"num_of_blocks" mapstructure:"num_of_blocks"`
 	AllocationID string           `json:"allocation_id" mapstructure:"allocation_id"`
 	Children     []ObjectEntity   `json:"-"`
+}
+
+type RefMeta struct {
+	LookupHash              string `json:"lookup_hash"`
+	Path                    string `json:"path"`
+	ActualFileSize          int64  `json:"actual_file_size"`
+	ActualFileHashSignature string `json:"actual_file_hash_signature"`
+	ActualFileHash          string `json:"actual_file_hash"`
+	ValidationRoot          string `json:"validation_root"`
+	ValidationRootSignature string `json:"validation_root_signature"`
+	FixedMerkleRoot         string `json:"fixed_merkle_root"`
+	Size                    int64  `json:"size"`
+	FileMetaHash            string `json:"file_meta_hash"`
+}
+
+func (rm *RefMeta) GetFileMetaHashData(allocationID string) string {
+	return fmt.Sprintf(
+		"%s:%s:%d:%d:%s",
+		allocationID,
+		rm.Path, rm.Size,
+		rm.ActualFileSize, rm.ActualFileHash)
 }
 
 func (r *DirMetaData) GetHash() string {
@@ -284,6 +306,9 @@ type ChallengeRequest struct {
 	ObjPath        *ObjectPath                      `json:"object_path,omitempty"`
 	WriteMarkers   []*writemarker.WriteMarkerEntity `json:"write_markers,omitempty"`
 	ChallengeProof *ChallengeProof                  `json:"challenge_proof"`
+	ObjectProof    []byte                           `json:"object_proof"`
+	Meta           *RefMeta                         `json:"meta"`
+	StorageVersion int                              `json:"storage_version"`
 }
 
 func (cr *ChallengeRequest) verifyBlockNum(challengeObj *Challenge) error {
@@ -297,7 +322,7 @@ func (cr *ChallengeRequest) verifyBlockNum(challengeObj *Challenge) error {
 
 func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationObj *Allocation) error {
 	logging.Logger.Info("Verifying object path", zap.String("challenge_id", challengeObj.ID), zap.Int64("seed", challengeObj.RandomNumber))
-	if cr.ObjPath != nil {
+	if cr.ObjPath != nil && cr.StorageVersion == 0 {
 		err := cr.ObjPath.Verify(challengeObj.AllocationID, challengeObj.RandomNumber)
 		if err != nil {
 			return common.NewError("challenge_validation_failed", "Failed to verify the object path."+err.Error())
@@ -328,22 +353,34 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 		}
 	}
 	latestWM := cr.WriteMarkers[len(cr.WriteMarkers)-1].WM
-	if cr.ObjPath != nil {
-		rootRef := cr.ObjPath.RootObject
-		allocationRootCalculated := cr.ObjPath.RootHash
 
-		if latestWM.AllocationRoot != allocationRootCalculated {
-			return common.NewError("challenge_validation_failed", fmt.Sprintf("Allocation root does not match expected %s got %s", allocationRootCalculated, latestWM.AllocationRoot))
-		}
-
-		if rootRef.NumBlocks == 0 {
+	if cr.StorageVersion == 1 {
+		if len(cr.ObjectProof) == 0 && latestWM.ChainSize == 0 {
 			return nil
 		}
-	} else {
-		if latestWM.AllocationRoot != "" || latestWM.PreviousAllocationRoot != "" {
-			return common.NewError("challenge_validation_failed", "Allocation root is not empty")
+		err = cr.verifyObjectProof(latestWM, challengeObj.BlobberID, allocationObj.OwnerPublicKey)
+		if err != nil {
+			logging.Logger.Error("Failed to verify object proof", zap.String("challenge_id", challengeObj.ID), zap.Error(err))
+			return err
 		}
-		return nil
+	} else {
+		if cr.ObjPath != nil {
+			rootRef := cr.ObjPath.RootObject
+			allocationRootCalculated := cr.ObjPath.RootHash
+
+			if latestWM.AllocationRoot != allocationRootCalculated {
+				return common.NewError("challenge_validation_failed", fmt.Sprintf("Allocation root does not match expected %s got %s", allocationRootCalculated, latestWM.AllocationRoot))
+			}
+
+			if rootRef.NumBlocks == 0 {
+				return nil
+			}
+		} else {
+			if latestWM.AllocationRoot != "" || latestWM.PreviousAllocationRoot != "" {
+				return common.NewError("challenge_validation_failed", "Allocation root is not empty")
+			}
+			return nil
+		}
 	}
 
 	if cr.ChallengeProof == nil {
@@ -357,7 +394,12 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 
 	logging.Logger.Info("Verifying data block and merkle path", zap.String("challenge_id", challengeObj.ID))
 	fHash := encryption.ShaHash(cr.ChallengeProof.Data)
-	fixedMerkleRoot, _ := hex.DecodeString(cr.ObjPath.Meta.FixedMerkleRoot)
+	var fixedMerkleRoot []byte
+	if cr.StorageVersion == 0 {
+		fixedMerkleRoot, _ = hex.DecodeString(cr.ObjPath.Meta.FixedMerkleRoot)
+	} else {
+		fixedMerkleRoot, _ = hex.DecodeString(cr.Meta.FixedMerkleRoot)
+	}
 	fmp := &util.FixedMerklePath{
 		LeafHash: fHash,
 		RootHash: fixedMerkleRoot,
@@ -400,4 +442,44 @@ func (vt *ValidationTicket) Sign() error {
 	signature, err := node.Self.Sign(hash)
 	vt.Signature = signature
 	return err
+}
+
+func (cr *ChallengeRequest) verifyObjectProof(latestWM *writemarker.WriteMarker, blobberID, OwnerPublicKey string) error {
+	if len(cr.ObjectProof) == 0 {
+		return common.NewError("invalid_object_proof", "Object proof is missing")
+	}
+	if cr.Meta == nil {
+		return common.NewError("invalid_object_proof", "Object meta is missing")
+	}
+	if cr.ChallengeProof == nil {
+		return common.NewError("invalid_object_proof", "Challenge proof is missing")
+	}
+
+	trie := wmpt.New(nil, nil)
+	blockNum := uint64(cr.ChallengeProof.LeafInd)
+	hash, value, err := trie.VerifyBlockProof(blockNum, cr.ObjectProof)
+	if err != nil {
+		return common.NewError("invalid_object_proof", "Failed to verify the object proof. "+err.Error())
+	}
+	fileMetaRoot := hex.EncodeToString(hash)
+	if latestWM.FileMetaRoot != fileMetaRoot {
+		return common.NewError("invalid_object_proof", "File meta root does not match with the object proof")
+	}
+	fileMetaHash := hex.EncodeToString(value)
+	metaHash := encryption.Hash(cr.Meta.GetFileMetaHashData(latestWM.AllocationID))
+	if metaHash != fileMetaHash {
+		return common.NewError("invalid_object_proof", "File meta hash does not match with the object proof")
+	}
+	cr.Meta.FileMetaHash = fileMetaHash
+	// verify fixed merkle root
+	hashData := fmt.Sprintf("%s:%s:%s:%s", cr.Meta.ActualFileHash, cr.Meta.ValidationRoot, cr.Meta.FixedMerkleRoot, blobberID)
+	validationRootHash := encryption.Hash(hashData)
+	verify, err := encryption.Verify(OwnerPublicKey, cr.Meta.ValidationRootSignature, validationRootHash)
+	if err != nil {
+		return common.NewError("invalid_object_proof", "Failed to verify the validation root signature. "+err.Error())
+	}
+	if !verify {
+		return common.NewError("invalid_object_proof", "Validation root signature is invalid")
+	}
+	return nil
 }

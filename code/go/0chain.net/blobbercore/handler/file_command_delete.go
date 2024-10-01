@@ -59,7 +59,7 @@ func (cmd *DeleteFileCommand) IsValidated(ctx context.Context, req *http.Request
 		}
 		return common.NewError("bad_db_operation", err.Error())
 	}
-	if allocationObj.StorageVersion == 1 && cmd.existingFileRef.Type == reference.DIRECTORY {
+	if allocationObj.IsStorageV2() && cmd.existingFileRef.Type == reference.DIRECTORY {
 		isEmpty, err := reference.IsDirectoryEmpty(ctx, allocationObj.ID, path)
 		if err != nil {
 			return err

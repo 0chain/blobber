@@ -32,6 +32,7 @@ var pendingMapLock = common.GetNewLocker()
 
 const (
 	TableNameAllocation = "allocations"
+	StorageV2           = 1
 	CanUploadMask       = uint16(1)  // 0000 0001
 	CanDeleteMask       = uint16(2)  // 0000 0010
 	CanUpdateMask       = uint16(4)  // 0000 0100
@@ -125,6 +126,10 @@ func (a *Allocation) CanCopy() bool {
 
 func (a *Allocation) CanRename() bool {
 	return (a.FileOptions & CanRenameMask) > 0
+}
+
+func (a *Allocation) IsStorageV2() bool {
+	return a.StorageVersion == StorageV2
 }
 
 // RestDurationInTimeUnits returns number (float point) of time units until

@@ -155,6 +155,19 @@ type PaginatedRef struct { //Gorm smart select fields.
 	ChunkSize int64 `gorm:"column:chunk_size" json:"chunk_size"`
 }
 
+type RefMeta struct {
+	LookupHash              string `json:"lookup_hash"`
+	Path                    string `json:"path"`
+	ActualFileSize          int64  `json:"actual_file_size"`
+	ActualFileHashSignature string `json:"actual_file_hash_signature"`
+	ActualFileHash          string `json:"actual_file_hash"`
+	ValidationRoot          string `json:"validation_root"`
+	ValidationRootSignature string `json:"validation_root_signature"`
+	FixedMerkleRoot         string `json:"fixed_merkle_root"`
+	Size                    int64  `json:"size"`
+	FileMetaHash            string `json:"file_meta_hash"`
+}
+
 // GetReferenceLookup hash(allocationID + ":" + path)
 func GetReferenceLookup(allocationID, path string) string {
 	return encryption.Hash(allocationID + ":" + path)
