@@ -309,6 +309,7 @@ type ChallengeRequest struct {
 	ObjectProof    []byte                           `json:"object_proof"`
 	Meta           *RefMeta                         `json:"meta"`
 	StorageVersion int                              `json:"storage_version"`
+	BlockNum       int64                            `json:"block_num"`
 }
 
 func (cr *ChallengeRequest) verifyBlockNum(challengeObj *Challenge) error {
@@ -458,6 +459,9 @@ func (cr *ChallengeRequest) verifyObjectProof(latestWM *writemarker.WriteMarker,
 	r := rand.New(rand.NewSource(challengeRand))
 	blockNum := r.Int63n(rootBlocks)
 	blockNum++
+	if blockNum != cr.BlockNum {
+		return common.NewError("invalid_object_proof", fmt.Sprintf("Block num does not match with the challenge block num %d %d", cr.BlockNum, blockNum))
+	}
 
 	trie := wmpt.New(nil, nil)
 	hash, value, err := trie.VerifyBlockProof(uint64(blockNum), cr.ObjectProof)

@@ -369,6 +369,7 @@ func (cr *ChallengeEntity) getPostDataV2(ctx context.Context, allocationObj *all
 		}
 		cr.RefID = ref.ID
 		postData["object_proof"] = objectProof
+		postData["block_num"] = blockNum
 		fileMetaRootBytes := copyTrie.Root()
 		fileMetaRoot := hex.EncodeToString(fileMetaRootBytes)
 		if fileMetaRoot != allocationObj.FileMetaRoot {
