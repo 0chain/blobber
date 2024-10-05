@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
@@ -67,6 +68,7 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	sn.StakePoolSettings.ServiceCharge = config.Configuration.ServiceCharge
 
 	sn.IsEnterprise = config.Configuration.IsEnterprise
+	sn.StorageVersion = allocation.StorageV2
 
 	return sn, nil
 }
