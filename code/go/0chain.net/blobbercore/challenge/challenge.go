@@ -162,12 +162,10 @@ func validateOnValidators(ctx context.Context, c *ChallengeEntity) error {
 	return nil
 }
 
-func (c *ChallengeEntity) getCommitTransaction(ctx context.Context) (*transaction.Transaction, error) {
-	createdTime := common.ToTime(c.CreatedAt)
+func (c ChallengeEntity) generateChallengeResponse() (*ChallengeResponse, error) {
 
 	logging.Logger.Info("[challenge]verify: ",
-		zap.Any("challenge_id", c.ChallengeID),
-		zap.Time("created", createdTime))
+		zap.Any("challenge_id", c.ChallengeID))
 
 	currentRound := roundInfo.CurrentRound + int64(float64(roundInfo.LastRoundDiff)*(float64(time.Since(roundInfo.CurrentRoundCaptureTime).Milliseconds())/float64(GetRoundInterval.Milliseconds())))
 	logging.Logger.Info("[challenge]commit",
@@ -182,15 +180,7 @@ func (c *ChallengeEntity) getCommitTransaction(ctx context.Context) (*transactio
 	)
 
 	if currentRound-c.RoundCreatedAt > config.StorageSCConfig.ChallengeCompletionTime {
-		c.CancelChallenge(ctx, ErrExpiredCCT)
-		return nil, nil
-	}
-
-	txn, err := transaction.NewTransactionEntity()
-	if err != nil {
-		logging.Logger.Error("[challenge]createTxn", zap.Error(err))
-		c.CancelChallenge(ctx, err)
-		return nil, nil
+		return nil, common.NewError("challenge_expired", "Challenge has expired")
 	}
 
 	sn := &ChallengeResponse{}
@@ -200,22 +190,5 @@ func (c *ChallengeEntity) getCommitTransaction(ctx context.Context) (*transactio
 			sn.ValidationTickets = append(sn.ValidationTickets, vt)
 		}
 	}
-
-	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CHALLENGE_RESPONSE, sn, 0)
-	if err != nil {
-		logging.Logger.Info("Failed submitting challenge to the mining network", zap.String("err:", err.Error()))
-		c.CancelChallenge(ctx, err)
-		return nil, nil
-	}
-
-	err = UpdateChallengeTimingTxnSubmission(c.ChallengeID, txn.CreationDate)
-	if err != nil {
-		logging.Logger.Error("[challengetiming]txn_submission",
-			zap.Any("challenge_id", c.ChallengeID),
-			zap.Time("created", createdTime),
-			zap.Any("txn_submission", txn.CreationDate),
-			zap.Error(err))
-	}
-
-	return txn, nil
+	return sn, nil
 }

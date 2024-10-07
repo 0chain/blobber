@@ -220,7 +220,7 @@ func RegisterValidator() {
 			continue
 		}
 
-		Logger.Info("Transaction for adding validator accepted and verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", out))
+		Logger.Info("Transaction for adding validator accepted and verified", zap.String("txn_hash", hash), zap.Any("txn_output", out))
 		break
 	}
 }
