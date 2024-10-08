@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/0chain/gosdk/core/client"
 	"net/http"
 	"time"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/0chain/gosdk/zcncore"
 	"go.uber.org/zap"
 
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -79,7 +79,7 @@ func HomepageHandler(w http.ResponseWriter, r *http.Request) {
 	)
 
 	fmt.Fprintf(w, "<div>Miners ...\n")
-	network := zcncore.GetNetwork()
+	network, _ := client.GetNetwork(context.Background())
 	for _, miner := range network.Miners {
 		fmt.Fprintf(w, "%v\n", miner)
 	}
