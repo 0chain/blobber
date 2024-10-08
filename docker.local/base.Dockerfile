@@ -1,4 +1,4 @@
-FROM golang:1.22.1-alpine3.18 as blobber_base
+FROM golang:1.22.0-alpine3.18 as blobber_base
 
 LABEL zchain="blobber"
 
