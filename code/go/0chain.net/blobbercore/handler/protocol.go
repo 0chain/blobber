@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
+	"github.com/0chain/gosdk/core/client"
 	coreTxn "github.com/0chain/gosdk/core/transaction"
 	"sync"
 
@@ -121,7 +122,7 @@ func sendSmartContractBlobberAdd() (*coreTxn.Transaction, error) {
 	})
 	if err != nil {
 		logging.Logger.Error("Failed to set blobber on the blockchain",
-			zap.String("err:", err.Error()))
+			zap.String("err:", err.Error()), zap.Any("Txn", txn), zap.Any("ClientFee", client.TxnFee()))
 		return nil, err
 	}
 
