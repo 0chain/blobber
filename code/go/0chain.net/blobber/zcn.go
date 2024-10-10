@@ -82,7 +82,7 @@ func setupServerChain() error {
 	chain.SetServerChain(serverChain)
 
 	if err := client.InitSDK(node.Self.GetWalletString(), serverChain.BlockWorker, config.Configuration.ChainID, config.Configuration.SignatureScheme,
-		0, false, true, config.Configuration.MinConfirmation, config.Configuration.MinSubmit); err != nil {
+		0, false, true); err != nil {
 		return err
 	}
 
