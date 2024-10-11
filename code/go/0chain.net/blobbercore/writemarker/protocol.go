@@ -135,6 +135,7 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context, startSeq int64) 
 	}
 
 	var out, hash string
+	var nonce int64
 	txn := &transaction.Transaction{}
 	sn := &CommitConnection{}
 	sn.AllocationRoot = wme.WM.AllocationRoot
@@ -155,8 +156,7 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context, startSeq int64) 
 
 	if sn.AllocationRoot == sn.PrevAllocationRoot {
 		// get nonce of prev WM
-		var prevWM *WriteMarkerEntity
-		prevWM, err = GetPreviousWM(ctx, sn.AllocationRoot, wme.WM.Timestamp)
+		_, err = GetPreviousWM(ctx, sn.AllocationRoot, wme.WM.Timestamp)
 		if err != nil {
 			wme.StatusMessage = "Error getting previous write marker. " + err.Error()
 			if err := wme.UpdateStatus(ctx, Failed, "Error getting previous write marker. "+err.Error(), "", startSeq, wme.Sequence); err != nil {
@@ -164,11 +164,13 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context, startSeq int64) 
 			}
 			return err
 		}
-		hash, out, prevWM.CloseTxnNonce, txn, err = transaction.SmartContractTxn(STORAGE_CONTRACT_ADDRESS, transaction.SmartContractTxnData{
-			Name:      CLOSE_CONNECTION_SC_NAME,
-			InputArgs: sn,
-		})
+
 	}
+
+	hash, out, nonce, txn, err = transaction.SmartContractTxn(STORAGE_CONTRACT_ADDRESS, transaction.SmartContractTxnData{
+		Name:      CLOSE_CONNECTION_SC_NAME,
+		InputArgs: sn,
+	})
 	if err != nil {
 		Logger.Error("Failed during sending close connection to the miner. ", zap.String("err:", err.Error()))
 		wme.Status = Failed
@@ -180,7 +182,7 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context, startSeq int64) 
 	}
 
 	wme.CloseTxnID = txn.Hash
-	wme.CloseTxnNonce = txn.TransactionNonce
+	wme.CloseTxnNonce = nonce
 	wme.Status = Committed
 	wme.StatusMessage = out
 	err = wme.UpdateStatus(ctx, Committed, out, hash, startSeq, wme.Sequence)
