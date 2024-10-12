@@ -5,8 +5,9 @@ import (
 )
 
 const (
-	CHUNK_SIZE = 64 * 1024
-	VERSION    = 1
+	CHUNK_SIZE     = 64 * 1024
+	VERSION        = 1
+	COLLAPSE_DEPTH = 3
 )
 
 type FileInputData struct {
@@ -15,6 +16,7 @@ type FileInputData struct {
 	ValidationRoot  string
 	FixedMerkleRoot string
 	ThumbnailHash   string
+	Hash            string
 
 	// ChunkSize chunk size
 	ChunkSize int64
@@ -23,11 +25,12 @@ type FileInputData struct {
 	//Upload-Offset indicates a byte offset within a resource. The value MUST be a non-negative integer.
 	UploadOffset int64
 	//IsFinal  the request is final chunk
-	IsFinal      bool
-	IsThumbnail  bool
-	FilePathHash string
-	Size         int64
-	Hasher       *CommitHasher
+	IsFinal        bool
+	IsThumbnail    bool
+	FilePathHash   string
+	Size           int64
+	Hasher         *CommitHasher
+	StorageVersion int
 }
 
 type FileOutputData struct {
@@ -57,6 +60,7 @@ type FileStorer interface {
 	DeleteFromFilestore(allocID, hash string, version int) error
 	DeletePreCommitDir(allocID string) error
 	DeleteAllocation(allocID string)
+	CopyFile(allocationID, oldFileLookupHash, newFileLookupHash string) error
 	// GetFileBlock Get blocks of file starting from blockNum upto numBlocks. blockNum can't be less than 1.
 	GetFileBlock(readBlockIn *ReadBlockInput) (*FileDownloadResponse, error)
 	GetBlocksMerkleTreeForChallenge(cri *ChallengeReadBlockInput) (*ChallengeResponse, error)
@@ -107,6 +111,7 @@ type ReadBlockInput struct {
 	VerifyDownload   bool
 	IsPrecommit      bool
 	FilestoreVersion int
+	StorageVersion   int
 }
 
 type ChallengeResponse struct {

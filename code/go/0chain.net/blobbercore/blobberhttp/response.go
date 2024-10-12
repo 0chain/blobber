@@ -5,6 +5,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/common/core/util/wmpt"
 )
 
 // swagger:model ConnectionResult
@@ -19,12 +20,20 @@ type CommitResult struct {
 	WriteMarker    *writemarker.WriteMarkerEntity `json:"write_marker"`
 	Success        bool                           `json:"success"`
 	ErrorMessage   string                         `json:"error_msg,omitempty"`
+	Trie           *wmpt.WeightedMerkleTrie       `json:"-"`
 	//Result         []*UploadResult         `json:"result"`
 }
 
 // swagger:model ReferencePathResult
 type ReferencePathResult struct {
 	*reference.ReferencePath
+	LatestWM *writemarker.WriteMarker `json:"latest_write_marker"`
+	Version  string                   `json:"version"`
+}
+
+// swagger:model ReferencePathResultV2
+type ReferencePathResultV2 struct {
+	Path     []byte                   `json:"path"`
 	LatestWM *writemarker.WriteMarker `json:"latest_write_marker"`
 	Version  string                   `json:"version"`
 }

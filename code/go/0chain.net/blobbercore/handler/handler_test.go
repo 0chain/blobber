@@ -644,7 +644,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				lookUpHash := reference.GetReferenceLookup(alloc.ID, path)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","name","path","hash","size","validation_root","fixed_merkle_root","type" FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","name","path","size","type" FROM "reference_objects" WHERE`)).
 					WithArgs(lookUpHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"type"}).
@@ -727,7 +727,7 @@ func TestHandlers_Requiring_Signature(t *testing.T) {
 					)
 
 				lookUpHash := reference.GetReferenceLookup(alloc.ID, path)
-				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","name","path","hash","size","validation_root","fixed_merkle_root" FROM "reference_objects" WHERE`)).
+				mock.ExpectQuery(regexp.QuoteMeta(`SELECT "id","name","path","size","type" FROM "reference_objects" WHERE`)).
 					WithArgs(lookUpHash).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"type", "name"}).

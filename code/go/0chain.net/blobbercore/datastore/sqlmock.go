@@ -81,8 +81,8 @@ func (store *Sqlmock) GetTransaction(ctx context.Context) *EnhancedDB {
 	return nil
 }
 
-func (store *Sqlmock) WithNewTransaction(f func(ctx context.Context) error) error {
-	ctx := store.CreateTransaction(context.TODO())
+func (store *Sqlmock) WithNewTransaction(f func(ctx context.Context) error, opts ...*sql.TxOptions) error {
+	ctx := store.CreateTransaction(context.TODO(), opts...)
 	defer ctx.Done()
 
 	tx := store.GetTransaction(ctx)

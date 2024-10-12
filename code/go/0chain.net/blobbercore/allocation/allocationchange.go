@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -13,6 +15,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/common/core/util/wmpt"
 	"github.com/0chain/gosdk/constants"
 	"golang.org/x/sync/errgroup"
 
@@ -34,6 +37,7 @@ type AllocationChangeProcessor interface {
 	DeleteTempFile() error
 	ApplyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange, allocationRoot string,
 		ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error)
+	ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, ts common.Timestamp, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) (int64, error)
 	GetPath() []string
 	Marshal() (string, error)
 	Unmarshal(string) error
@@ -74,6 +78,7 @@ type AllocationChange struct {
 	Input        string                    `gorm:"column:input"`
 	FilePath     string                    `gorm:"-"`
 	LookupHash   string                    `gorm:"column:lookup_hash;size:64"`
+	AllocationID string                    `gorm:"-" json:"-"`
 	datastore.ModelWithTS
 }
 
@@ -275,8 +280,45 @@ func (cc *AllocationChangeCollector) ApplyChanges(ctx context.Context, allocatio
 	if err != nil {
 		return rootRef, err
 	}
-	err = collector.Finalize(ctx)
+	//Ignore ref cache for version 1 of storage
+	err = collector.Finalize(ctx, "", "")
 	return rootRef, err
+}
+
+func (cc *AllocationChangeCollector) ApplyChangesV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, maxFileChange int32, ts common.Timestamp, trie *wmpt.WeightedMerkleTrie) error {
+	now := time.Now()
+	collector := reference.NewCollector(len(cc.Changes))
+	eg, _ := errgroup.WithContext(context.TODO())
+	eg.SetLimit(10)
+	cc.Size = 0
+	for idx, change := range cc.Changes {
+		change.AllocationID = cc.AllocationID
+		changeIndex := idx
+		eg.Go(func() error {
+			changeProcessor := cc.AllocationChanges[changeIndex]
+			sizeChange, err := changeProcessor.ApplyChangeV2(ctx, allocationRoot, clientPubKey, numFiles, ts, trie, collector)
+			if err != nil {
+				logging.Logger.Error("ApplyChangesV2Error", zap.Error(err))
+				return err
+			}
+			atomic.AddInt64(&cc.Size, sizeChange)
+			return nil
+		})
+
+	}
+	err := eg.Wait()
+	if err != nil {
+		logging.Logger.Error("ApplyChangesV2", zap.Error(err))
+		return err
+	}
+	if numFiles.Load() > int32(maxFileChange) {
+		return common.NewError("max_file_change", "Max file change exceeded "+strconv.Itoa(int(maxFileChange)))
+	}
+	elapsedApplyChanges := time.Since(now)
+	err = collector.Finalize(ctx, cc.AllocationID, allocationRoot)
+	elapsedFinalize := time.Since(now) - elapsedApplyChanges
+	logging.Logger.Info("ApplyChangesV2", zap.String("allocation_id", cc.AllocationID), zap.Duration("elapsed_apply_changes", elapsedApplyChanges), zap.Duration("elapsed_finalize", elapsedFinalize), zap.Int("changes", len(cc.Changes)))
+	return err
 }
 
 func (a *AllocationChangeCollector) CommitToFileStore(ctx context.Context) error {
@@ -313,10 +355,30 @@ type Result struct {
 }
 
 // TODO: Need to speed up this function
-func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
+func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context, allocationObj *Allocation) error {
 
 	logging.Logger.Info("Move to filestore", zap.String("allocation_id", a.AllocationID))
-	err := deleteFromFileStore(ctx, a.AllocationID)
+	if allocationObj.IsRedeemRequired {
+		err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+			allocationObj.IsRedeemRequired = false
+
+			updateMap := map[string]interface{}{
+				"is_redeem_required": false,
+			}
+			updateOption := func(a *Allocation) {
+				a.IsRedeemRequired = false
+			}
+
+			if err := Repo.UpdateAllocation(ctx, allocationObj, updateMap, updateOption); err != nil {
+				return common.NewError("allocation_write_error", "Error persisting the allocation object")
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+	err := deleteFromFileStore(a.AllocationID)
 	if err != nil {
 		return err
 	}
@@ -393,7 +455,7 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context) error {
 	return err
 }
 
-func deleteFromFileStore(ctx context.Context, allocationID string) error {
+func deleteFromFileStore(allocationID string) error {
 	limitCh := make(chan struct{}, 10)
 	wg := &sync.WaitGroup{}
 	var results []Result
@@ -452,6 +514,140 @@ func deleteFromFileStore(ctx context.Context, allocationID string) error {
 			logging.Logger.Error("DeleteFromFileStore", zap.Error(err))
 			return err
 		}
+
+		return db.Model(&reference.Ref{}).Unscoped().
+			Delete(&reference.Ref{},
+				"allocation_id = ? AND deleted_at IS NOT NULL",
+				allocationID).Error
+	})
+}
+
+func (a *AllocationChangeCollector) MoveToFilestoreV2(ctx context.Context, allocationObj *Allocation, allocationRoot string) error {
+	logging.Logger.Info("Move to filestore v2", zap.String("allocation_id", a.AllocationID))
+	now := time.Now()
+	if allocationObj.IsRedeemRequired {
+		err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+			allocationObj.IsRedeemRequired = false
+
+			updateMap := map[string]interface{}{
+				"is_redeem_required": false,
+			}
+			updateOption := func(a *Allocation) {
+				a.IsRedeemRequired = false
+			}
+			tx := datastore.GetStore().GetTransaction(ctx)
+			if err := tx.Exec("SET LOCAL synchronous_commit TO OFF").Error; err != nil {
+				return err
+			}
+
+			if err := Repo.UpdateAllocation(ctx, allocationObj, updateMap, updateOption); err != nil {
+				return common.NewError("allocation_write_error", "Error persisting the allocation object")
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+	elapsedUpdateAllocation := time.Since(now)
+
+	var (
+		refs        []*reference.Ref
+		useRefCache bool
+		deletedRefs []*reference.Ref
+	)
+	refCache := reference.GetRefCache(a.AllocationID)
+	defer reference.DeleteRefCache(a.AllocationID)
+	if refCache != nil && refCache.AllocationRoot == allocationRoot {
+		useRefCache = true
+		refs = refCache.CreatedRefs
+		deletedRefs = refCache.DeletedRefs
+	} else if refCache != nil && refCache.AllocationRoot != allocationRoot {
+		logging.Logger.Error("Ref cache is not valid", zap.String("allocation_id", a.AllocationID), zap.String("ref_cache_root", refCache.AllocationRoot), zap.String("allocation_root", allocationRoot))
+	} else {
+		logging.Logger.Error("Ref cache is nil", zap.String("allocation_id", a.AllocationID))
+	}
+	err := deleteFromFileStoreV2(a.AllocationID, deletedRefs, useRefCache)
+	if err != nil {
+		return err
+	}
+	elapsedDeleteFromFilestore := time.Since(now) - elapsedUpdateAllocation
+
+	limitCh := make(chan struct{}, 12)
+	wg := &sync.WaitGroup{}
+	if !useRefCache {
+		tx := datastore.GetStore().GetTransaction(ctx)
+		err = tx.Model(&reference.Ref{}).Select("lookup_hash").Where("allocation_id=? AND allocation_root=? AND type=?", a.AllocationID, allocationRoot, reference.FILE).Find(&refs).Error
+		if err != nil {
+			logging.Logger.Error("Error while moving files to filestore", zap.Error(err))
+			return err
+		}
+	}
+
+	for _, ref := range refs {
+
+		limitCh <- struct{}{}
+		wg.Add(1)
+		refLookupHash := ref.LookupHash
+		go func() {
+			defer func() {
+				<-limitCh
+				wg.Done()
+			}()
+			err := filestore.GetFileStore().MoveToFilestore(a.AllocationID, refLookupHash, filestore.VERSION)
+			if err != nil {
+				logging.Logger.Error(fmt.Sprintf("Error while moving file: %s", err.Error()))
+			}
+
+		}()
+	}
+
+	wg.Wait()
+	elapsedMove := time.Since(now) - elapsedUpdateAllocation - elapsedDeleteFromFilestore
+	logging.Logger.Info("moveToFilestoreV2", zap.Duration("elapsedAllocation", elapsedUpdateAllocation), zap.Duration("elapsedDelete", elapsedDeleteFromFilestore), zap.Duration("elapsedMove", elapsedMove), zap.Duration("elapsedTotal", time.Since(now)), zap.Bool("useRefCache", useRefCache), zap.Int("createRefs", len(refs)), zap.Int("deleteRefs", len(deletedRefs)))
+	return nil
+}
+
+func deleteFromFileStoreV2(allocationID string, deletedRefs []*reference.Ref, useRefCache bool) error {
+	limitCh := make(chan struct{}, 12)
+	wg := &sync.WaitGroup{}
+	var results []*reference.Ref
+	if useRefCache {
+		results = deletedRefs
+	}
+
+	return datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		db := datastore.GetStore().GetTransaction(ctx)
+		if !useRefCache {
+			err := db.Model(&reference.Ref{}).Unscoped().Select("lookup_hash").
+				Where("allocation_id=? AND type=? AND deleted_at is not NULL", allocationID, reference.FILE).
+				Find(&results).Error
+			if err != nil && err != gorm.ErrRecordNotFound {
+				logging.Logger.Error("DeleteFromFileStore", zap.Error(err))
+				return err
+			}
+		}
+
+		for _, res := range results {
+			limitCh <- struct{}{}
+			wg.Add(1)
+			resLookupHash := res.LookupHash
+			go func() {
+				defer func() {
+					<-limitCh
+					wg.Done()
+				}()
+
+				err := filestore.GetFileStore().DeleteFromFilestore(allocationID, resLookupHash,
+					filestore.VERSION)
+				if err != nil {
+					logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
+						zap.String("validation_root", resLookupHash))
+				}
+			}()
+
+		}
+		wg.Wait()
 
 		return db.Model(&reference.Ref{}).Unscoped().
 			Delete(&reference.Ref{},

@@ -53,6 +53,12 @@ func SetupDefaultConfig() {
 
 	viper.SetDefault("max_dirs_files", 50000)
 	viper.SetDefault("max_objects_dir", 1000)
+	viper.SetDefault("max_objects_per_gb", 100000)
+	viper.SetDefault("kv.pebble_dir", "/pebble/data")
+	viper.SetDefault("kv.pebble_wal_dir", "/pebble/wal")
+	viper.SetDefault("kv.pebble_cache", 4*1024*1024*1024)
+	viper.SetDefault("kv.pebble_memtable_size", 256*1024*1024)
+	viper.SetDefault("kv.pebble_max_open_files", 10000)
 }
 
 /*SetupConfig - setup the configuration system */
@@ -136,6 +142,7 @@ type Config struct {
 
 	MaxAllocationDirFiles int
 	MaxObjectsInDir       int
+	MaxObjectsPerGB       int32
 
 	// DelegateWallet for pool owner.
 	DelegateWallet string `json:"delegate_wallet"`
@@ -157,7 +164,12 @@ type Config struct {
 	AutomaticUpdate       bool
 	BlobberUpdateInterval time.Duration
 
-	IsEnterprise bool
+	IsEnterprise       bool
+	PebbleDir          string
+	PebbleWALDir       string
+	PebbleCache        int64
+	PebbleMemtableSize int64
+	PebbleMaxOpenFiles int
 }
 
 /*Configuration of the system */
@@ -274,7 +286,7 @@ func ReadConfig(deploymentMode int) {
 		viper.GetInt("max_dirs_files")
 
 	Configuration.MaxObjectsInDir = viper.GetInt("max_objects_dir")
-
+	Configuration.MaxObjectsPerGB = viper.GetInt32("max_objects_per_gb")
 	Configuration.DelegateWallet = viper.GetString("delegate_wallet")
 	if w := Configuration.DelegateWallet; len(w) != 64 {
 		log.Fatal("invalid delegate wallet:", w)
@@ -302,6 +314,11 @@ func ReadConfig(deploymentMode int) {
 	Configuration.CommitZeroLimitDaily = viper.GetInt64("rate_limiters.commit_zero_limit_daily")
 
 	Configuration.IsEnterprise = viper.GetBool("is_enterprise")
+	Configuration.PebbleDir = viper.GetString("kv.pebble_dir")
+	Configuration.PebbleWALDir = viper.GetString("kv.pebble_wal_dir")
+	Configuration.PebbleCache = viper.GetInt64("kv.pebble_cache")
+	Configuration.PebbleMemtableSize = viper.GetInt64("kv.pebble_memtable_size")
+	Configuration.PebbleMaxOpenFiles = viper.GetInt("kv.pebble_max_open_files")
 }
 
 // StorageSCConfiguration will include all the required sc configs to operate blobber

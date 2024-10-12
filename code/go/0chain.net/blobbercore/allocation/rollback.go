@@ -28,6 +28,20 @@ func ApplyRollback(ctx context.Context, allocationID string) error {
 	return err
 }
 
+func ApplyRollbackV2(ctx context.Context, allocationID, allocationRoot string, timestamp int64) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+
+	err := db.Model(&reference.Ref{}).Unscoped().
+		Delete(&reference.Ref{},
+			"allocation_id=? AND allocation_root=? AND created_at=? AND deleted_at is NULL",
+			allocationID, allocationRoot, timestamp).Error
+	if err != nil {
+		return err
+	}
+
+	return db.Exec("UPDATE reference_objects SET deleted_at=NULL WHERE allocation_id=? AND deleted_at IS NOT NULL", allocationID).Error
+}
+
 func CommitRollback(allocationID string) error {
 
 	err := filestore.GetFileStore().DeletePreCommitDir(allocationID)
