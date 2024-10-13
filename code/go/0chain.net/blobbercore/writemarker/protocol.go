@@ -72,7 +72,7 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 		return common.NewError("write_marker_validation_failed", "Signature exceeds maximum length")
 	}
 
-	if wme.WM.AllocationRoot == dbAllocation.AllocationRoot {
+	if wme.WM.AllocationRoot == dbAllocation.AllocationRoot && dbAllocation.StorageVersion != 1 {
 		return common.NewError("write_marker_validation_failed", "Write Marker allocation root is the same as the allocation root on record")
 	}
 
@@ -154,7 +154,7 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context, startSeq int64) 
 		return err
 	}
 
-	if sn.AllocationRoot == sn.PrevAllocationRoot {
+	if sn.AllocationRoot == sn.PrevAllocationRoot && wme.WM.Version != MARKER_VERSION {
 		// get nonce of prev WM
 		_, err = GetPreviousWM(ctx, sn.AllocationRoot, wme.WM.Timestamp)
 		if err != nil {
@@ -223,6 +223,14 @@ func (wme *WriteMarkerEntity) VerifyRollbackMarker(ctx context.Context, dbAlloca
 
 	if wme.WM.AllocationRoot != latestWM.WM.PreviousAllocationRoot {
 		return common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker allocation root %v does not match the previous allocation root of latest write marker %v", wme.WM.AllocationRoot, latestWM.WM.PreviousAllocationRoot))
+	}
+
+	prevWM, err := GetWriteMarkerEntity(ctx, dbAllocation.ID, latestWM.WM.PreviousAllocationRoot)
+	if err != nil {
+		return common.NewError("write_marker_validation_failed", "Error getting previous write marker. "+err.Error())
+	}
+	if wme.WM.FileMetaRoot != prevWM.WM.FileMetaRoot {
+		return common.NewError("write_marker_validation_failed", fmt.Sprintf("Write Marker file meta root %v does not match the file meta root of previous write marker %v", wme.WM.FileMetaRoot, prevWM.WM.FileMetaRoot))
 	}
 
 	if wme.WM.Timestamp != latestWM.WM.Timestamp {

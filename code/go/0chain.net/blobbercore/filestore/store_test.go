@@ -289,6 +289,7 @@ func TestStoreStorageWriteAndCommit(t *testing.T) {
 			if test.differentHash {
 				fid.ValidationRoot = randString(64)
 			}
+			fid.Hash = fid.ValidationRoot
 			success, err := fs.CommitWrite(test.allocID, test.connID, fid)
 			errr := fs.MoveToFilestore(test.allocID, validationRoot, VERSION)
 			require.Nil(t, errr)
@@ -369,6 +370,7 @@ func TestDeletePreCommitDir(t *testing.T) {
 	}, int64(size))
 
 	// Commit file to pre-commit location
+	fid.Hash = fid.ValidationRoot
 	success, err := fs.CommitWrite(allocID, connID, fid)
 	require.Nil(t, err)
 	require.True(t, success)
@@ -402,7 +404,7 @@ func TestDeletePreCommitDir(t *testing.T) {
 		Offset:    0,
 		DataBytes: tF.Size(),
 	}, int64(size))
-
+	fid.Hash = fid.ValidationRoot
 	success, err = fs.CommitWrite(allocID, connID, fid)
 	require.Nil(t, err)
 	require.True(t, success)
@@ -477,6 +479,7 @@ func TestStorageUploadUpdate(t *testing.T) {
 	}, int64(size))
 
 	// Commit file to pre-commit location
+	fid.Hash = fid.ValidationRoot
 	success, err := fs.CommitWrite(allocID, connID, fid)
 
 	require.Nil(t, err)
@@ -524,6 +527,7 @@ func TestStorageUploadUpdate(t *testing.T) {
 	require.Nil(t, err)
 
 	// Commit thumbnail file to pre-commit location
+	fid.Hash = fid.ValidationRoot
 	success, err = fs.CommitWrite(allocID, connID, fid)
 	require.Nil(t, err)
 	require.True(t, success)
@@ -573,6 +577,7 @@ func TestStorageUploadUpdate(t *testing.T) {
 	fid.IsThumbnail = true
 	fid.Name = thumbFileName
 	// Commit thumbnail file to pre-commit location
+	fid.Hash = fid.ValidationRoot
 	success, err = fs.CommitWrite(allocID, connID, fid)
 	require.Nil(t, err)
 	require.True(t, success)

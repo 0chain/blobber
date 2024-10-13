@@ -183,7 +183,7 @@ func main() {
 			Handler:           rHandler, // Pass our instance of gorilla/mux in.
 		}
 	}
-	common.HandleShutdown(server)
+	go common.HandleShutdown(server)
 
 	initHandlers(r)
 

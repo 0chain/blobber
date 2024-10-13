@@ -44,6 +44,7 @@ type StorageNode struct {
 	PublicKey         string            `json:"-"`
 	StakePoolSettings StakePoolSettings `json:"stake_pool_settings"`
 	IsEnterprise      bool              `json:"is_enterprise"`
+	StorageVersion    int               `json:"storage_version"`
 }
 
 type BlobberAllocation struct {
@@ -65,6 +66,7 @@ type StorageAllocation struct {
 	WritePool      uint64               `json:"write_pool"`
 	FileOptions    uint16               `json:"file_options"`
 	StartTime      common.Timestamp     `json:"start_time"`
+	StorageVersion int                  `json:"storage_version"`
 
 	DataShards   int64 `json:"data_shards"`
 	ParityShards int64 `json:"parity_shards"`

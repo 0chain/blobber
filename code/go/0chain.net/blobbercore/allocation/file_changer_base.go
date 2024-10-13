@@ -11,7 +11,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 )
 
-// swagger:model BaseFileChanger 
+// swagger:model BaseFileChanger
 // BaseFileChanger base file change processor
 type BaseFileChanger struct {
 	//client side: unmarshal them from 'updateMeta'/'uploadMeta'
@@ -33,7 +33,6 @@ type BaseFileChanger struct {
 
 	//client side:
 	MimeType string `json:"mimetype,omitempty"`
-	//client side:
 	//client side:
 	FixedMerkleRoot string `json:"fixed_merkle_root,omitempty"`
 
@@ -61,6 +60,8 @@ type BaseFileChanger struct {
 	ChunkHash       string `json:"chunk_hash,omitempty"`
 	UploadOffset    int64  `json:"upload_offset,omitempty"` // It is next position that new incoming chunk should be append to
 	PathHash        string `json:"-"`                       // hash of path
+	LookupHash      string `json:"-"`                       // hash of allocation_id + path
+	storageVersion  int    `json:"-"`                       // storage version
 }
 
 // swagger:model UploadResult
@@ -123,10 +124,17 @@ func (fc *BaseFileChanger) DeleteTempFile() error {
 func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context, mut *sync.Mutex) error {
 
 	if fc.ThumbnailSize > 0 {
-		fileInputData := &filestore.FileInputData{}
+		fileInputData := &filestore.FileInputData{
+			StorageVersion: fc.storageVersion,
+		}
 		fileInputData.Name = fc.ThumbnailFilename
 		fileInputData.Path = fc.Path
 		fileInputData.ThumbnailHash = fc.ThumbnailHash
+		if fc.storageVersion == 0 {
+			fileInputData.Hash = fc.ThumbnailHash
+		} else {
+			fileInputData.Hash = fc.LookupHash
+		}
 		fileInputData.ChunkSize = fc.ChunkSize
 		fileInputData.IsThumbnail = true
 		_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fc.ConnectionID, fileInputData)
@@ -134,10 +142,17 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context, mut *sync.Mute
 			return common.NewError("file_store_error", "Error committing thumbnail to file store. "+err.Error())
 		}
 	}
-	fileInputData := &filestore.FileInputData{}
+	fileInputData := &filestore.FileInputData{
+		StorageVersion: fc.storageVersion,
+	}
 	fileInputData.Name = fc.Filename
 	fileInputData.Path = fc.Path
 	fileInputData.ValidationRoot = fc.ValidationRoot
+	if fc.storageVersion == 0 {
+		fileInputData.Hash = fc.ValidationRoot
+	} else {
+		fileInputData.Hash = fc.LookupHash
+	}
 	fileInputData.FixedMerkleRoot = fc.FixedMerkleRoot
 	fileInputData.ChunkSize = fc.ChunkSize
 	fileInputData.Size = fc.Size
