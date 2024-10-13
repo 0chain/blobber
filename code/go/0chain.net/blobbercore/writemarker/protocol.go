@@ -3,17 +3,15 @@ package writemarker
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/gosdk/constants"
+
+	"github.com/0chain/gosdk/core/transaction"
 
 	"go.uber.org/zap"
 )
@@ -25,7 +23,20 @@ type CommitConnection struct {
 	ChainData          []byte       `json:"chain_data"`
 }
 
-const timeGap = 180
+const (
+	ADD_BLOBBER_SC_NAME      = "add_blobber"
+	UPDATE_BLOBBER_SC_NAME   = "update_blobber_settings"
+	ADD_VALIDATOR_SC_NAME    = "add_validator"
+	CLOSE_CONNECTION_SC_NAME = "commit_connection"
+	READ_REDEEM              = "read_redeem"
+	CHALLENGE_RESPONSE       = "challenge_response"
+	BLOBBER_HEALTH_CHECK     = "blobber_health_check"
+	FINALIZE_ALLOCATION      = "finalize_allocation"
+	VALIDATOR_HEALTH_CHECK   = "validator_health_check"
+
+	STORAGE_CONTRACT_ADDRESS = "6dba10422e368813802877a85039d3985d96760ed844092319743fb3a76712d7"
+	timeGap                  = 180
+)
 
 // VerifyMarker verify WriteMarker's hash and check allocation_root if it is unique
 func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *allocation.Allocation, co *allocation.AllocationChangeCollector, latestWM *WriteMarkerEntity) error {
@@ -113,7 +124,7 @@ func (wme *WriteMarkerEntity) VerifyMarker(ctx context.Context, dbAllocation *al
 
 func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context, startSeq int64) error {
 	if len(wme.CloseTxnID) > 0 {
-		t, err := transaction.VerifyTransaction(wme.CloseTxnID, chain.GetServerChain())
+		t, err := transaction.VerifyTransaction(wme.CloseTxnID)
 		if err == nil {
 			wme.Status = Committed
 			wme.StatusMessage = t.TransactionOutput
@@ -123,19 +134,14 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context, startSeq int64) 
 		}
 	}
 
-	txn, err := transaction.NewTransactionEntity()
-	if err != nil {
-		wme.StatusMessage = "Error creating transaction entity. " + err.Error()
-		if err := wme.UpdateStatus(ctx, Failed, "Error creating transaction entity. "+err.Error(), "", startSeq, wme.Sequence); err != nil {
-			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
-		}
-		return err
-	}
-
+	var out, hash string
+	var nonce int64
+	txn := &transaction.Transaction{}
 	sn := &CommitConnection{}
 	sn.AllocationRoot = wme.WM.AllocationRoot
 	sn.PrevAllocationRoot = wme.WM.PreviousAllocationRoot
 	sn.WriteMarker = &wme.WM
+	var err error
 	err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		sn.ChainData, err = GetMarkersForChain(ctx, wme.WM.AllocationID, startSeq, wme.Sequence-1)
 		return err
@@ -150,8 +156,7 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context, startSeq int64) 
 
 	if sn.AllocationRoot == sn.PrevAllocationRoot && wme.WM.Version != MARKER_VERSION {
 		// get nonce of prev WM
-		var prevWM *WriteMarkerEntity
-		prevWM, err = GetPreviousWM(ctx, sn.AllocationRoot, wme.WM.Timestamp)
+		_, err = GetPreviousWM(ctx, sn.AllocationRoot, wme.WM.Timestamp)
 		if err != nil {
 			wme.StatusMessage = "Error getting previous write marker. " + err.Error()
 			if err := wme.UpdateStatus(ctx, Failed, "Error getting previous write marker. "+err.Error(), "", startSeq, wme.Sequence); err != nil {
@@ -159,10 +164,13 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context, startSeq int64) 
 			}
 			return err
 		}
-		err = txn.ExecuteRollbackWM(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CLOSE_CONNECTION_SC_NAME, sn, 0, prevWM.CloseTxnNonce)
-	} else {
-		err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CLOSE_CONNECTION_SC_NAME, sn, 0)
+
 	}
+
+	hash, out, nonce, txn, err = transaction.SmartContractTxn(STORAGE_CONTRACT_ADDRESS, transaction.SmartContractTxnData{
+		Name:      CLOSE_CONNECTION_SC_NAME,
+		InputArgs: sn,
+	})
 	if err != nil {
 		Logger.Error("Failed during sending close connection to the miner. ", zap.String("err:", err.Error()))
 		wme.Status = Failed
@@ -173,23 +181,11 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context, startSeq int64) 
 		return err
 	}
 
-	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-	t, err := transaction.VerifyTransactionWithNonce(txn.Hash, txn.GetTransaction().GetTransactionNonce())
 	wme.CloseTxnID = txn.Hash
-	wme.CloseTxnNonce = txn.GetTransaction().GetTransactionNonce()
-	if err != nil {
-		Logger.Error("Error verifying the close connection transaction", zap.String("err:", err.Error()), zap.String("txn", txn.Hash))
-		wme.Status = Failed
-		wme.StatusMessage = "Error verifying the close connection transaction." + err.Error()
-		// TODO Is this single try?
-		if err := wme.UpdateStatus(ctx, Failed, "Error verifying the close connection transaction."+err.Error(), txn.Hash, startSeq, wme.Sequence); err != nil {
-			Logger.Error("WriteMarkerEntity_UpdateStatus", zap.Error(err))
-		}
-		return err
-	}
+	wme.CloseTxnNonce = nonce
 	wme.Status = Committed
-	wme.StatusMessage = t.TransactionOutput
-	err = wme.UpdateStatus(ctx, Committed, t.TransactionOutput, t.Hash, startSeq, wme.Sequence)
+	wme.StatusMessage = out
+	err = wme.UpdateStatus(ctx, Committed, out, hash, startSeq, wme.Sequence)
 	return err
 }
 

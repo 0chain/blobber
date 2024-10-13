@@ -3,6 +3,8 @@ package handler
 import (
 	"sync"
 
+	coreTxn "github.com/0chain/gosdk/core/transaction"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -29,21 +31,17 @@ func getBlobberHealthCheckError() error {
 	return err
 }
 
-func BlobberHealthCheck() (*transaction.Transaction, error) {
+func BlobberHealthCheck() (*coreTxn.Transaction, error) {
 	if config.Configuration.Capacity == 0 {
 
 		setBlobberHealthCheckError(ErrBlobberHasRemoved)
 		return nil, ErrBlobberHasRemoved
 	}
 
-	txn, err := transaction.NewTransactionEntity()
-	if err != nil {
-		setBlobberHealthCheckError(err)
-		return nil, err
-	}
-
-	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
-		transaction.BLOBBER_HEALTH_CHECK, common.Now(), 0)
+	_, _, _, txn, err := coreTxn.SmartContractTxn(transaction.STORAGE_CONTRACT_ADDRESS, coreTxn.SmartContractTxnData{
+		Name:      transaction.BLOBBER_HEALTH_CHECK,
+		InputArgs: common.Now(),
+	})
 	if err != nil {
 		logging.Logger.Error("Failed to health check blobber on the blockchain",
 			zap.Error(err))
@@ -57,20 +55,10 @@ func BlobberHealthCheck() (*transaction.Transaction, error) {
 	return txn, nil
 }
 
-func ValidatorHealthCheck() (*transaction.Transaction, error) {
-
-	txn, err := transaction.NewTransactionEntity()
-
-	if err != nil {
-
-		return nil, err
-	}
-
-	if err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.VALIDATOR_HEALTH_CHECK, common.Now(), 0); err != nil {
-		logging.Logger.Error("Failed to health check validator on the blockchain",
-			zap.Error(err))
-		return nil, err
-	}
-
+func ValidatorHealthCheck() (*coreTxn.Transaction, error) {
+	_, _, _, txn, err := coreTxn.SmartContractTxn(transaction.STORAGE_CONTRACT_ADDRESS, coreTxn.SmartContractTxnData{
+		Name:      transaction.VALIDATOR_HEALTH_CHECK,
+		InputArgs: common.Now(),
+	})
 	return txn, err
 }

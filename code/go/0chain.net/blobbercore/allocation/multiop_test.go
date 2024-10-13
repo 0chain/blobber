@@ -13,8 +13,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/gosdk/core/client"
 	"github.com/0chain/gosdk/core/zcncrypto"
-	"github.com/0chain/gosdk/zboxcore/client"
 	mocket "github.com/selvatico/go-mocket"
 	"github.com/stretchr/testify/require"
 )
@@ -30,7 +30,7 @@ func TestMultiOp(t *testing.T) {
 	ts := time.Now().Add(time.Hour)
 	alloc := makeTestAllocation(common.Timestamp(ts.Unix()))
 	alloc.OwnerPublicKey = sch.GetPublicKey()
-	alloc.OwnerID = client.GetClientID()
+	alloc.OwnerID = client.ClientID()
 	datastore.MocketTheStore(t, true)
 	ctx := datastore.GetStore().CreateTransaction(context.TODO())
 	setupDbMock()
