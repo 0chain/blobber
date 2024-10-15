@@ -655,8 +655,8 @@ func (fsh *StorageHandler) getReferencePath(ctx context.Context, r *http.Request
 	if allocationObj.AllocationRoot == "" {
 		latestWM = nil
 	} else {
-		logging.Logger.Info("getReferencePath", zap.String("allocation_id", allocationID), zap.Any("root_ref", rootRef))
-		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationID, rootRef.AllocationRoot)
+		logging.Logger.Info("getReferencePath", zap.String("allocation_id", allocationID), zap.Any("root_ref", rootRef), zap.Any("AllocObj", allocationObj))
+		latestWM, err = writemarker.GetWriteMarkerEntity(ctx, allocationID, allocationObj.AllocationRoot)
 		if err != nil {
 			errCh <- common.NewError("latest_write_marker_read_error", "Error reading the latest write marker for allocation."+err.Error())
 			return
