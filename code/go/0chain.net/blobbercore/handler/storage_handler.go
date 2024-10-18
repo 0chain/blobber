@@ -1123,7 +1123,12 @@ func verifySignatureFromRequest(alloc, signV1, signV2, pbK string) (bool, error)
 	if len(sign) < 64 {
 		return false, nil
 	}
-	return encryption.Verify(pbK, sign, hash)
+	res, err := encryption.Verify(pbK, sign, hash)
+	if err != nil {
+		logging.Logger.Info("Jayash verifySignatureFromRequest", zap.String("hash", hash), zap.String("hashData", hashData), zap.String("sign", sign), zap.String("publicKey", pbK), zap.Error(err))
+		return false, err
+	}
+	return res, nil
 }
 
 // pathsFromReq retrieves paths value from request which can be represented as single "path" value or "paths" values,
