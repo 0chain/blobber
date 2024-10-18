@@ -1106,6 +1106,10 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 
 // verifySignatureFromRequest verifies signature passed as common.ClientSignatureHeader header.
 func verifySignatureFromRequest(alloc, signV1, signV2, pbK string) (bool, error) {
+	logging.Logger.Info("1Jayash verifySignatureFromRequest", zap.String("signV1", signV1), zap.String("signV2", signV2), zap.String("publicKey", pbK))
+	logging.Logger.Debug("2Jayash verifySignatureFromRequest", zap.String("signV1", signV1), zap.String("signV2", signV2), zap.String("publicKey", pbK))
+	logging.Logger.Error("3Jayash verifySignatureFromRequest", zap.String("signV1", signV1), zap.String("signV2", signV2), zap.String("publicKey", pbK))
+
 	var (
 		sign     string
 		hashData string
@@ -1123,7 +1127,12 @@ func verifySignatureFromRequest(alloc, signV1, signV2, pbK string) (bool, error)
 	if len(sign) < 64 {
 		return false, nil
 	}
-	return encryption.Verify(pbK, sign, hash)
+	res, err := encryption.Verify(pbK, sign, hash)
+	if err != nil {
+		logging.Logger.Info("Jayash verifySignatureFromRequest", zap.String("hash", hash), zap.String("hashData", hashData), zap.String("sign", sign), zap.String("publicKey", pbK), zap.Error(err))
+		return false, err
+	}
+	return res, nil
 }
 
 // pathsFromReq retrieves paths value from request which can be represented as single "path" value or "paths" values,
