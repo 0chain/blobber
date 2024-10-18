@@ -1106,6 +1106,10 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 
 // verifySignatureFromRequest verifies signature passed as common.ClientSignatureHeader header.
 func verifySignatureFromRequest(alloc, signV1, signV2, pbK string) (bool, error) {
+	logging.Logger.Info("1Jayash verifySignatureFromRequest", zap.String("signV1", signV1), zap.String("signV2", signV2), zap.String("publicKey", pbK))
+	logging.Logger.Debug("2Jayash verifySignatureFromRequest", zap.String("signV1", signV1), zap.String("signV2", signV2), zap.String("publicKey", pbK))
+	logging.Logger.Error("3Jayash verifySignatureFromRequest", zap.String("signV1", signV1), zap.String("signV2", signV2), zap.String("publicKey", pbK))
+
 	var (
 		sign     string
 		hashData string
