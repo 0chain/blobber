@@ -118,6 +118,7 @@ func TestBlobberCore_FileChangerUpload(t *testing.T) {
 					Size:           2310,
 					ChunkSize:      65536,
 					ConnectionID:   "connection_id",
+					IsFinal:        true,
 				},
 			}
 

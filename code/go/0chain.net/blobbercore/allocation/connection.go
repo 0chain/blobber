@@ -244,6 +244,11 @@ func DeleteConnectionObjEntry(connectionID string) {
 	connectionObj, ok := connectionProcessor[connectionID]
 	if ok {
 		connectionObj.cnclCtx()
+		for _, change := range connectionObj.changes {
+			if change.seqPQ != nil {
+				change.seqPQ.Done(seqpriorityqueue.UploadData{}, 1)
+			}
+		}
 	}
 	delete(connectionProcessor, connectionID)
 	connectionObjMutex.Unlock()

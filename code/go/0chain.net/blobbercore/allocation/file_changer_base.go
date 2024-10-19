@@ -122,7 +122,9 @@ func (fc *BaseFileChanger) DeleteTempFile() error {
 }
 
 func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context, mut *sync.Mutex) error {
-
+	if !fc.IsFinal {
+		return nil
+	}
 	if fc.ThumbnailSize > 0 {
 		fileInputData := &filestore.FileInputData{
 			StorageVersion: fc.storageVersion,
