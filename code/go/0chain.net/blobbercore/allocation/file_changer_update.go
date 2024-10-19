@@ -42,6 +42,9 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, rootRef *reference
 	if err != nil {
 		return nil, err
 	}
+	if !nf.IsFinal {
+		return rootRef, nil
+	}
 
 	rootRef.HashToBeComputed = true
 	rootRef.UpdatedAt = ts
@@ -113,6 +116,9 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, rootRef *reference
 func (nf *UpdateFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKey string, numFiles *atomic.Int32, ts common.Timestamp, trie *wmpt.WeightedMerkleTrie, collector reference.QueryCollector) (int64, error) {
 	if nf.AllocationID == "" {
 		return 0, common.NewError("invalid_allocation_id", "Allocation ID is empty")
+	}
+	if !nf.IsFinal {
+		return 0, nil
 	}
 
 	nf.LookupHash = reference.GetReferenceLookup(nf.AllocationID, nf.Path)
@@ -190,6 +196,9 @@ func (nf *UpdateFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, 
 }
 
 func (nf *UpdateFileChanger) CommitToFileStore(ctx context.Context, mut *sync.Mutex) error {
+	if !nf.IsFinal {
+		return nil
+	}
 	return nf.BaseFileChanger.CommitToFileStore(ctx, mut)
 }
 
