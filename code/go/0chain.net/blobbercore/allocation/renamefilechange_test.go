@@ -17,8 +17,9 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/gosdk/core/client"
+	coreNetwork "github.com/0chain/gosdk/core/conf"
 	"github.com/0chain/gosdk/core/zcncrypto"
-	"github.com/0chain/gosdk/zboxcore/client"
 	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
 	"github.com/0chain/gosdk/zcncore"
 	"github.com/DATA-DOG/go-sqlmock"
@@ -55,7 +56,7 @@ func setup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := zcncore.SetWalletInfo(string(wBlob), true); err != nil {
+	if err := zcncore.SetWalletInfo(string(wBlob), "bls0chain", false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -66,10 +67,10 @@ func setup(t *testing.T) {
 			},
 		),
 	)
-	server := httptest.NewServer(
+	_ = httptest.NewServer(
 		http.HandlerFunc(
 			func(w http.ResponseWriter, r *http.Request) {
-				n := zcncore.Network{Miners: []string{"miner 1"}, Sharders: []string{sharderServ.URL}}
+				n := coreNetwork.Network{Miners: []string{"miner 1"}, Sharders: []string{sharderServ.URL}}
 				blob, err := json.Marshal(n)
 				if err != nil {
 					t.Fatal(err)
@@ -82,9 +83,9 @@ func setup(t *testing.T) {
 		),
 	)
 
-	if err := zcncore.InitZCNSDK(server.URL, "ed25519"); err != nil {
-		t.Fatal(err)
-	}
+	//if err := client.InitSDK(server.URL, "ed25519"); err != nil {
+	//	t.Fatal(err)
+	//}
 }
 func setupMockForFileManagerInit(mock sqlmock.Sqlmock) {
 	mock.ExpectBegin()
@@ -151,7 +152,7 @@ func TestBlobberCore_RenameFile(t *testing.T) {
 	ts := time.Now().Add(time.Hour)
 	alloc := makeTestAllocation(common.Timestamp(ts.Unix()))
 	alloc.OwnerPublicKey = sch.GetPublicKey()
-	alloc.OwnerID = client.GetClientID()
+	alloc.OwnerID = client.ClientID()
 
 	testCases := []struct {
 		name            string

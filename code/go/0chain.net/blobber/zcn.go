@@ -10,8 +10,7 @@ import (
 	handleCommon "github.com/0chain/blobber/code/go/0chain.net/core/common/handler"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/0chain/gosdk/zboxcore/sdk"
-	"github.com/0chain/gosdk/zcncore"
+	"github.com/0chain/gosdk/core/client"
 	"go.uber.org/zap"
 	"time"
 )
@@ -82,15 +81,8 @@ func setupServerChain() error {
 	serverChain := chain.NewChainFromConfig()
 	chain.SetServerChain(serverChain)
 
-	if err := zcncore.InitZCNSDK(serverChain.BlockWorker, config.Configuration.SignatureScheme); err != nil {
-		return err
-	}
-	if err := zcncore.SetWalletInfo(node.Self.GetWalletString(), false); err != nil {
-		return err
-	}
-
-	if err := sdk.InitStorageSDK(node.Self.GetWalletString(), serverChain.BlockWorker, config.Configuration.ChainID, config.Configuration.SignatureScheme,
-		nil, 0); err != nil {
+	if err := client.InitSDK(node.Self.GetWalletString(), serverChain.BlockWorker, config.Configuration.ChainID, config.Configuration.SignatureScheme,
+		0, false, true); err != nil {
 		return err
 	}
 

@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"github.com/0chain/gosdk/zboxcore/sdk"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/zcn"
@@ -9,7 +10,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/errors"
 	"github.com/0chain/gosdk/constants"
-	"github.com/0chain/gosdk/zcncore"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -102,7 +102,7 @@ func Update(ctx context.Context, db *gorm.DB) error {
 }
 
 // ReloadFromChain load and refresh latest settings from blockchain
-func ReloadFromChain(ctx context.Context, db *gorm.DB) (*zcncore.Blobber, error) {
+func ReloadFromChain(ctx context.Context, db *gorm.DB) (*sdk.Blobber, error) {
 	if db == nil {
 		return nil, errors.Throw(constants.ErrInvalidParameter, "db")
 	}
@@ -115,7 +115,7 @@ func ReloadFromChain(ctx context.Context, db *gorm.DB) (*zcncore.Blobber, error)
 	}
 
 	Configuration.Capacity = int64(b.Capacity)
-	Configuration.NumDelegates = *b.StakePoolSettings.NumDelegates
+	Configuration.NumDelegates = b.StakePoolSettings.NumDelegates
 
 	if token, err := b.Terms.ReadPrice.ToToken(); err != nil {
 		return nil, err
@@ -129,6 +129,6 @@ func ReloadFromChain(ctx context.Context, db *gorm.DB) (*zcncore.Blobber, error)
 		Configuration.WritePrice = token
 	}
 
-	Configuration.ServiceCharge = *b.StakePoolSettings.ServiceCharge
+	Configuration.ServiceCharge = b.StakePoolSettings.ServiceCharge
 	return b, Update(ctx, db)
 }

@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/0chain/gosdk/core/transaction"
 	"strconv"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/gosdk/zcncore"
 )
 
 type storageScCB struct {
@@ -58,20 +58,24 @@ func (ssc *storageScCB) OnInfoAvailable(op int, status int, info string, errStr 
 }
 
 func setStorageScConfigFromChain() error {
-	cb := &storageScCB{
-		done: make(chan struct{}),
-	}
-	err := zcncore.GetStorageSCConfig(cb)
+	conf, err := transaction.GetConfig("storage_sc_config")
 	if err != nil {
 		return err
 	}
-	<-cb.done
-	if cb.err != nil {
+
+	maxChallengeCompletionRoundsString := conf.Fields["max_challenge_completion_rounds"]
+	maxChallengeCompletionRoundsInt, err := strconv.ParseInt(maxChallengeCompletionRoundsString, 10, 64)
+	if err != nil {
+		return err
+	}
+	maxFileSizeString := conf.Fields["max_file_size"]
+	maxFileSizeInt64, err := strconv.ParseInt(maxFileSizeString, 10, 64)
+	if err != nil {
 		return err
 	}
 
-	config.StorageSCConfig.ChallengeCompletionTime = cb.cct
-	config.StorageSCConfig.MaxFileSize = cb.mfs
+	config.StorageSCConfig.ChallengeCompletionTime = maxChallengeCompletionRoundsInt
+	config.StorageSCConfig.MaxFileSize = maxFileSizeInt64
 	return nil
 }
 

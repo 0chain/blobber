@@ -2,10 +2,12 @@ package challenge
 
 import (
 	"context"
+	"encoding/json"
+	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/gosdk/core/client"
+	coreTxn "github.com/0chain/gosdk/core/transaction"
 	"sync"
 	"time"
-
-	"github.com/0chain/gosdk/zcncore"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -95,7 +97,15 @@ func getRoundWorker(ctx context.Context) {
 }
 
 func setRound() {
-	currentRound, _ := zcncore.GetRoundFromSharders()
+	res, err := client.MakeSCRestAPICall("", "/v1/current-round", nil)
+	if err != nil {
+		logging.Logger.Error("getRoundWorker", zap.Error(err))
+	}
+	var currentRound int64
+	err = json.Unmarshal(res, &currentRound)
+	if err != nil {
+		logging.Logger.Error("getRoundWorker", zap.Error(err))
+	}
 
 	if roundInfo.LastRoundDiff == 0 {
 		roundInfo.LastRoundDiff = 1000
@@ -180,34 +190,32 @@ func commitOnChainWorker(ctx context.Context) {
 
 		logging.Logger.Info("committing_challenge_tickets", zap.Any("num", len(challenges)), zap.Any("challenges", challenges))
 
-		for _, challenge := range challenges {
-			chall := challenge
-			var (
-				txn *transaction.Transaction
-				err error
-			)
-			_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-				txn, err = chall.getCommitTransaction(ctx)
-				return err
-			})
+		for _, chall := range challenges {
+			createdTime := common.ToTime(chall.CreatedAt)
 
-			if txn != nil {
-				wg.Add(1)
-				go func(challenge *ChallengeEntity) {
-					defer func() {
-						wg.Done()
-						if r := recover(); r != nil {
-							logging.Logger.Error("verifyChallengeTransaction", zap.Any("err", r))
-						}
-					}()
-					_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-						err := challenge.VerifyChallengeTransaction(ctx, txn)
-						if err == nil || err != ErrEntityNotFound {
-							deleteChallenge(challenge.RoundCreatedAt)
-						}
-						return nil
-					})
-				}(&chall)
+			sn, err := chall.generateChallengeResponse()
+			if err != nil {
+				logging.Logger.Error("generateChallengeResponse", zap.Error(err))
+				continue
+			}
+
+			_, _, _, txn, err := coreTxn.SmartContractTxn(transaction.STORAGE_CONTRACT_ADDRESS, coreTxn.SmartContractTxnData{
+				Name:      transaction.CHALLENGE_RESPONSE,
+				InputArgs: sn,
+			})
+			if err != nil {
+				logging.Logger.Error("commitOnChainWorker", zap.Error(err))
+				deleteChallenge(chall.RoundCreatedAt)
+				continue
+			}
+
+			err = UpdateChallengeTimingTxnSubmission(chall.ChallengeID, common.Timestamp(txn.CreationDate))
+			if err != nil {
+				logging.Logger.Error("[challengetiming]txn_submission",
+					zap.Any("challenge_id", chall.ChallengeID),
+					zap.Time("created", createdTime),
+					zap.Any("txn_submission", txn.CreationDate),
+					zap.Error(err))
 			}
 		}
 		wg.Wait()
