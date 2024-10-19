@@ -40,8 +40,8 @@ github.com/0chain/common v1.13.1-0.20241001185522-0b1ed4df5613 h1:LUiQDX4+U29oAm
 github.com/0chain/common v1.13.1-0.20241001185522-0b1ed4df5613/go.mod h1:vHK9Q0/nz28PxmKsLSMLzEs5iK6QVgl1LxdDQdR7y6s=
 github.com/0chain/errors v1.0.3 h1:QQZPFxTfnMcRdt32DXbzRQIfGWmBsKoEdszKQDb0rRM=
 github.com/0chain/errors v1.0.3/go.mod h1:xymD6nVgrbgttWwkpSCfLLEJbFO6iHGQwk/yeSuYkIc=
-github.com/0chain/gosdk v1.17.10-0.20241013154424-8d9d162b1d4c h1:NszprzRY5//ek1gZkqT3uOhPYCH1OWfInTk7q+y606k=
-github.com/0chain/gosdk v1.17.10-0.20241013154424-8d9d162b1d4c/go.mod h1:OxXnxfqGJ9OIwX7WITV/A9ZctYorVMbaHuqkhERAImU=
+github.com/0chain/gosdk v1.17.12-0.20241019152558-ee202f914afd h1:Eb1gw3d4zxC30Ezv04okWbZW6MR+dTatDvWrlknxDTM=
+github.com/0chain/gosdk v1.17.12-0.20241019152558-ee202f914afd/go.mod h1:OxXnxfqGJ9OIwX7WITV/A9ZctYorVMbaHuqkhERAImU=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/DATA-DOG/go-sqlmock v1.5.0 h1:Shsta01QNfFxHCfpW6YH2STWB0MudeXXEWMr20OEh60=
