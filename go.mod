@@ -4,7 +4,7 @@ go 1.22.0
 
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.17.12-0.20241019152558-ee202f914afd
+	github.com/0chain/gosdk v1.17.12-0.20241019160820-24aad2c5153e
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.2
 	github.com/go-openapi/runtime v0.26.0
