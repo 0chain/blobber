@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/0chain/gosdk/zboxcore/sdk"
 	"io"
 	"net/http"
 	"strings"
@@ -41,11 +42,13 @@ func challengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 
 	time.Sleep(1 * time.Second)
 
-	allocationObj, err := GetProtocolImpl().VerifyAllocationTransaction(ctx, challengeObj.AllocationID)
+	sdkAlloc, err := sdk.GetAllocation(challengeObj.AllocationID)
 	if err != nil {
-		logging.Logger.Error("Error verifying the allocation from BC", zap.String("allocation_id", challengeObj.AllocationID), zap.Error(err))
+		logging.Logger.Error("Error getting allocation from chain", zap.String("allocation_id", challengeObj.AllocationID), zap.Error(err))
 		return nil, common.NewError("invalid_parameters", "Allocation could not be verified. "+err.Error())
 	}
+
+	allocationObj := sdkAllocToBlobberAlloc(sdkAlloc)
 
 	err = challengeRequest.VerifyChallenge(challengeObj, allocationObj)
 	if err != nil {
@@ -56,6 +59,19 @@ func challengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 	updateStats(true)
 
 	return ValidValidationTicket(challengeObj, challengeRequest.ChallengeID, challengeHash)
+}
+
+func sdkAllocToBlobberAlloc(sdkAlloc *sdk.Allocation) *Allocation {
+	return &Allocation{
+		ID:             sdkAlloc.ID,
+		DataShards:     sdkAlloc.DataShards,
+		ParityShards:   sdkAlloc.ParityShards,
+		Size:           sdkAlloc.Size,
+		Owner:          sdkAlloc.Owner,
+		OwnerPublicKey: sdkAlloc.OwnerPublicKey,
+		UsedSize:       sdkAlloc.Stats.UsedSize,
+		Expiration:     common.Timestamp(sdkAlloc.Expiration),
+	}
 }
 
 func NewChallengeRequest(r *http.Request) (*ChallengeRequest, string, error) {
