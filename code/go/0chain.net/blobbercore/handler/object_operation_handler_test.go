@@ -121,7 +121,7 @@ func TestDownloadFile(t *testing.T) {
 		if p.useAuthTicket {
 			authTicket := &marker.AuthTicket{
 				AllocationID: p.inData.allocationID,
-				ClientID:     client.ClientID(),
+				ClientID:     client.Wallet().ClientID,
 				Expiration:   int64(time.Duration(now) + 10000*time.Second),
 				OwnerID:      mockOwner.ClientID,
 				Timestamp:    int64(common.Now()),
@@ -292,7 +292,7 @@ func TestDownloadFile(t *testing.T) {
 
 	setupCtx := func(p parameters) context.Context {
 		ctx := context.TODO()
-		ctx = context.WithValue(ctx, constants.ContextKeyClient, client.ClientID())
+		ctx = context.WithValue(ctx, constants.ContextKeyClient, client.Wallet().ClientID)
 		ctx = context.WithValue(ctx, constants.ContextKeyAllocation, p.inData.allocationTx)
 		ctx = context.WithValue(ctx, constants.ContextKeyClientKey, client.PublicKey())
 
