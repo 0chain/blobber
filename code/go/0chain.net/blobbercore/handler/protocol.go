@@ -152,17 +152,17 @@ var ErrValidatorNotFound = errors.New("validator is not found")
 // SendHealthCheck send heartbeat to blockchain
 func SendHealthCheck(provider common.ProviderType) (string, error) {
 
-	var txn *coreTxn.Transaction
+	var hash string
 	var err error
 
 	switch provider {
 	case common.ProviderTypeBlobber:
-		txn, err = BlobberHealthCheck()
+		hash, err = BlobberHealthCheck()
 	case common.ProviderTypeValidator:
-		txn, err = ValidatorHealthCheck()
+		hash, err = ValidatorHealthCheck()
 	default:
 		return "", errors.New("unknown provider type")
 	}
 
-	return txn.Hash, err
+	return hash, err
 }
