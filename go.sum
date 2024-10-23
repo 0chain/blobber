@@ -36,12 +36,12 @@ cloud.google.com/go/storage v1.8.0/go.mod h1:Wv1Oy7z6Yz3DshWRJFhqM/UCfaWIRTdp0RX
 cloud.google.com/go/storage v1.10.0/go.mod h1:FLPqc6j+Ki4BU591ie1oL6qBQGu2Bl/tZ9ullr3+Kg0=
 cloud.google.com/go/storage v1.14.0/go.mod h1:GrKmX003DSIwi9o29oFT7YDnHYwZoctc3fOKtUw0Xmo=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
-github.com/0chain/common v1.13.1-0.20241001185522-0b1ed4df5613 h1:LUiQDX4+U29oAmNMahhKsmn+VOsvLvimy94sZLIt7Vs=
-github.com/0chain/common v1.13.1-0.20241001185522-0b1ed4df5613/go.mod h1:vHK9Q0/nz28PxmKsLSMLzEs5iK6QVgl1LxdDQdR7y6s=
+github.com/0chain/common v1.18.0 h1:vCkD869DR0zTZS4CDl5MMN3qixxyfTNxDDcHp7cTRrc=
+github.com/0chain/common v1.18.0/go.mod h1:vHK9Q0/nz28PxmKsLSMLzEs5iK6QVgl1LxdDQdR7y6s=
 github.com/0chain/errors v1.0.3 h1:QQZPFxTfnMcRdt32DXbzRQIfGWmBsKoEdszKQDb0rRM=
 github.com/0chain/errors v1.0.3/go.mod h1:xymD6nVgrbgttWwkpSCfLLEJbFO6iHGQwk/yeSuYkIc=
-github.com/0chain/gosdk v1.17.0-RC6 h1:NB4pfu0VbVWfQQEfnFqn5inaiQuyhSaUW7VwgH3LW8U=
-github.com/0chain/gosdk v1.17.0-RC6/go.mod h1:y7Ucdmv40VltqulZnncMNjNQ4piX5Dta5ujNmPmXnxg=
+github.com/0chain/gosdk v1.18.0-RC4 h1:0FoQA0+1Rz4ic1rZLUeKLeAe+zCSCst+5lYafrz2m7g=
+github.com/0chain/gosdk v1.18.0-RC4/go.mod h1:BJQPX/J6ShHV5ViGjh5aCooQD/aOhvBfnfkBOuSIFfQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/DATA-DOG/go-sqlmock v1.5.0 h1:Shsta01QNfFxHCfpW6YH2STWB0MudeXXEWMr20OEh60=
@@ -494,8 +494,8 @@ github.com/hashicorp/memberlist v0.1.3/go.mod h1:ajVTdAv/9Im8oMAAj5G31PhhMCZJV2p
 github.com/hashicorp/serf v0.8.2/go.mod h1:6hOLApaqBFA1NXqRQAsxw9QxuDEvNxSQRwA/JwenrHc=
 github.com/herumi/bls-go-binary v1.31.0 h1:L1goQ2tMtGgpXCg5AwHAdJQpLs/pfnWWEc3Wog6OhmI=
 github.com/herumi/bls-go-binary v1.31.0/go.mod h1:O4Vp1AfR4raRGwFeQpr9X/PQtncEicMoOe6BQt1oX0Y=
-github.com/hitenjain14/fasthttp v0.0.0-20240527123209-06019e79bff9 h1:Z6Mu2JCsW2hbqx91L0HNPRPQ10RyAFvPocQHlrRo1Jk=
-github.com/hitenjain14/fasthttp v0.0.0-20240527123209-06019e79bff9/go.mod h1:RZMcXy7u4S+E97IXYTe7WHZ3+mCYOh4vys8PkIGZeXk=
+github.com/hitenjain14/fasthttp v0.0.0-20240916135632-f9303a91736c h1:lDSIbcLu5TdT+uwb4wPzZgo1pQvKjP/tArL5QKjDJdI=
+github.com/hitenjain14/fasthttp v0.0.0-20240916135632-f9303a91736c/go.mod h1:RZMcXy7u4S+E97IXYTe7WHZ3+mCYOh4vys8PkIGZeXk=
 github.com/holiman/bloomfilter/v2 v2.0.3 h1:73e0e/V0tCydx14a0SCYS/EWCxgwLZ18CZcZKVu0fao=
 github.com/holiman/bloomfilter/v2 v2.0.3/go.mod h1:zpoh+gs7qcpqrHr3dB55AMiJwo0iURXE7ZOP9L9hSkA=
 github.com/holiman/uint256 v1.2.2-0.20230321075855-87b91420868c h1:DZfsyhDK1hnSS5lH8l+JggqzEleHteTYfutAiVlSUM8=
