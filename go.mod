@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.17.0-RC6
+	github.com/0chain/gosdk v1.17.10-0.20241005164427-3de74604f3b8
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.2
 	github.com/go-openapi/runtime v0.26.0
@@ -70,7 +70,7 @@ require (
 	github.com/aws/smithy-go v1.19.0 // indirect
 	github.com/hack-pad/go-webworkers v0.1.0 // indirect
 	github.com/hack-pad/safejs v0.1.1 // indirect
-	github.com/hitenjain14/fasthttp v0.0.0-20240527123209-06019e79bff9 // indirect
+	github.com/hitenjain14/fasthttp v0.0.0-20240916135632-f9303a91736c // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.51.0 // indirect
 )
