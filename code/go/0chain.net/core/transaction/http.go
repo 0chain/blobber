@@ -15,8 +15,8 @@ const (
 )
 
 var ErrNoTxnDetail = common.NewError("missing_transaction_detail", "No transaction detail was found on any of the sharders")
-var MakeSCRestAPICall func(scAddress string, relativePath string, params map[string]string) ([]byte, error) = MakeSCRestAPICallNoHandler
+var MakeSCRestAPICall func(scAddress string, relativePath string, params map[string]string, options ...string) ([]byte, error) = MakeSCRestAPICallNoHandler
 
-func MakeSCRestAPICallNoHandler(address string, path string, params map[string]string) ([]byte, error) {
-	return client.MakeSCRestAPICall(address, path, params)
+func MakeSCRestAPICallNoHandler(address string, path string, params map[string]string, options ...string) ([]byte, error) {
+	return client.MakeSCRestAPICall(address, path, params, options...)
 }

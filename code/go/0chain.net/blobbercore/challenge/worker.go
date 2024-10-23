@@ -97,7 +97,7 @@ func getRoundWorker(ctx context.Context) {
 }
 
 func setRound() {
-	res, err := client.MakeSCRestAPICall("", "/v1/current-round", nil)
+	res, err := client.MakeSCRestAPICall("", "/v1/current-round", nil, "")
 	if err != nil {
 		logging.Logger.Error("getRoundWorker", zap.Error(err))
 	}
