@@ -37,7 +37,7 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 	ts := time.Now().Add(time.Hour)
 	alloc := makeTestAllocation(common.Timestamp(ts.Unix()))
 	alloc.OwnerPublicKey = sch.GetPublicKey()
-	alloc.OwnerID = client.ClientID()
+	alloc.OwnerID = client.Wallet().ClientID
 
 	testCases := []struct {
 		name                string
