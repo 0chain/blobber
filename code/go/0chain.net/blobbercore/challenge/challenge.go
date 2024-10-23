@@ -198,7 +198,7 @@ func (c *ChallengeEntity) getCommitTransaction(ctx context.Context) (*coreTxn.Tr
 	_, _, _, txn, err := coreTxn.SmartContractTxn(transaction.STORAGE_CONTRACT_ADDRESS, coreTxn.SmartContractTxnData{
 		Name:      transaction.CHALLENGE_RESPONSE,
 		InputArgs: sn,
-	}, false)
+	}, true)
 	if err != nil {
 		logging.Logger.Info("Failed submitting challenge to the mining network", zap.String("err:", err.Error()))
 		c.CancelChallenge(ctx, err)
