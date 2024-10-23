@@ -631,6 +631,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	err = checkPendingMarkers(ctx, allocationObj.ID)
 	if err != nil {
+		fmt.Println("Error checking pending markers", err)
 		Logger.Error("Error checking pending markers", zap.Error(err))
 		return nil, common.NewError("pending_markers", "previous marker is still pending to be redeemed")
 	}
