@@ -211,10 +211,10 @@ func RegisterValidator() {
 		sn.StakePoolSettings.NumDelegates = config.Configuration.NumDelegates
 		sn.StakePoolSettings.ServiceCharge = config.Configuration.ServiceCharge
 
-		hash, out, _, _, err := coreTxn.SmartContractTxn(transaction.STORAGE_CONTRACT_ADDRESS, coreTxn.SmartContractTxnData{
+		hash, out, _, txn, err := coreTxn.SmartContractTxn(transaction.STORAGE_CONTRACT_ADDRESS, coreTxn.SmartContractTxnData{
 			Name:      transaction.ADD_VALIDATOR_SC_NAME,
 			InputArgs: sn,
-		})
+		}, true)
 		if err != nil {
 			Logger.Error("Add validator transaction could not be verified", zap.Any("err", err), zap.String("txn.Hash", hash))
 			continue

@@ -121,7 +121,7 @@ func sendSmartContractBlobberAdd() (*coreTxn.Transaction, error) {
 	_, _, _, txn, err := coreTxn.SmartContractTxn(transaction.STORAGE_CONTRACT_ADDRESS, coreTxn.SmartContractTxnData{
 		Name:      transaction.ADD_BLOBBER_SC_NAME,
 		InputArgs: sn,
-	})
+	}, true)
 	if err != nil {
 		logging.Logger.Error("Failed to set blobber on the blockchain",
 			zap.String("err:", err.Error()), zap.Any("Txn", txn), zap.Any("ClientFee", client.TxnFee()))
