@@ -199,7 +199,7 @@ func commitOnChainWorker(ctx context.Context) {
 				return err
 			})
 
-			if err != nil && txn != nil {
+			if txn != nil {
 				wg.Add(1)
 				go func(challenge *ChallengeEntity) {
 					defer func() {
