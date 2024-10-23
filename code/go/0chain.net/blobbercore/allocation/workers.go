@@ -315,7 +315,7 @@ func sendFinalizeAllocation(allocationID string) {
 		coreTxn.SmartContractTxnData{
 			Name:      transaction.FINALIZE_ALLOCATION,
 			InputArgs: request,
-		})
+		}, true)
 	if err != nil {
 		logging.Logger.Error("sending finalize allocation", zap.Error(err))
 		return

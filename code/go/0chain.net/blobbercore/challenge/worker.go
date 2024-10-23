@@ -3,7 +3,6 @@ package challenge
 import (
 	"context"
 	"encoding/json"
-	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/gosdk/core/client"
 	coreTxn "github.com/0chain/gosdk/core/transaction"
 	"sync"
@@ -12,7 +11,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/emirpasic/gods/maps/treemap"
 	"go.uber.org/zap"
 	"golang.org/x/sync/semaphore"
@@ -190,32 +188,34 @@ func commitOnChainWorker(ctx context.Context) {
 
 		logging.Logger.Info("committing_challenge_tickets", zap.Any("num", len(challenges)), zap.Any("challenges", challenges))
 
-		for _, chall := range challenges {
-			createdTime := common.ToTime(chall.CreatedAt)
-
-			sn, err := chall.generateChallengeResponse()
-			if err != nil {
-				logging.Logger.Error("generateChallengeResponse", zap.Error(err))
-				continue
-			}
-
-			_, _, _, txn, err := coreTxn.SmartContractTxn(transaction.STORAGE_CONTRACT_ADDRESS, coreTxn.SmartContractTxnData{
-				Name:      transaction.CHALLENGE_RESPONSE,
-				InputArgs: sn,
+		for _, challenge := range challenges {
+			chall := challenge
+			var (
+				txn *coreTxn.Transaction
+				err error
+			)
+			_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+				txn, err = chall.getCommitTransaction(ctx)
+				return err
 			})
-			if err != nil {
-				logging.Logger.Error("commitOnChainWorker", zap.Error(err))
-				deleteChallenge(chall.RoundCreatedAt)
-				continue
-			}
 
-			err = UpdateChallengeTimingTxnSubmission(chall.ChallengeID, common.Timestamp(txn.CreationDate))
-			if err != nil {
-				logging.Logger.Error("[challengetiming]txn_submission",
-					zap.Any("challenge_id", chall.ChallengeID),
-					zap.Time("created", createdTime),
-					zap.Any("txn_submission", txn.CreationDate),
-					zap.Error(err))
+			if txn != nil {
+				wg.Add(1)
+				go func(challenge *ChallengeEntity) {
+					defer func() {
+						wg.Done()
+						if r := recover(); r != nil {
+							logging.Logger.Error("verifyChallengeTransaction", zap.Any("err", r))
+						}
+					}()
+					_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+						err := challenge.VerifyChallengeTransaction(ctx, txn)
+						if err == nil || err != ErrEntityNotFound {
+							deleteChallenge(challenge.RoundCreatedAt)
+						}
+						return nil
+					})
+				}(&chall)
 			}
 		}
 		wg.Wait()

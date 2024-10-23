@@ -141,8 +141,8 @@ func TestDownloadFile(t *testing.T) {
 		}
 	}
 
-	makeMockMakeSCRestAPICall := func(t *testing.T, p parameters) func(scAddress string, relativePath string, params map[string]string) ([]byte, error) {
-		return func(scAddress string, relativePath string, params map[string]string) ([]byte, error) {
+	makeMockMakeSCRestAPICall := func(t *testing.T, p parameters) func(scAddress string, relativePath string, params map[string]string, options ...string) ([]byte, error) {
+		return func(scAddress string, relativePath string, params map[string]string, options ...string) ([]byte, error) {
 			require.New(t)
 			require.EqualValues(t, scAddress, transaction.STORAGE_CONTRACT_ADDRESS)
 			switch relativePath {

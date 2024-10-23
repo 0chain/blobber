@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	coreTxn "github.com/0chain/gosdk/core/transaction"
 	"sort"
 	"strconv"
 	"time"
@@ -162,10 +163,12 @@ func validateOnValidators(ctx context.Context, c *ChallengeEntity) error {
 	return nil
 }
 
-func (c ChallengeEntity) generateChallengeResponse() (*ChallengeResponse, error) {
+func (c *ChallengeEntity) getCommitTransaction(ctx context.Context) (*coreTxn.Transaction, error) {
+	createdTime := common.ToTime(c.CreatedAt)
 
 	logging.Logger.Info("[challenge]verify: ",
-		zap.Any("challenge_id", c.ChallengeID))
+		zap.Any("challenge_id", c.ChallengeID),
+		zap.Time("created", createdTime))
 
 	currentRound := roundInfo.CurrentRound + int64(float64(roundInfo.LastRoundDiff)*(float64(time.Since(roundInfo.CurrentRoundCaptureTime).Milliseconds())/float64(GetRoundInterval.Milliseconds())))
 	logging.Logger.Info("[challenge]commit",
@@ -180,7 +183,8 @@ func (c ChallengeEntity) generateChallengeResponse() (*ChallengeResponse, error)
 	)
 
 	if currentRound-c.RoundCreatedAt > config.StorageSCConfig.ChallengeCompletionTime {
-		return nil, common.NewError("challenge_expired", "Challenge has expired")
+		c.CancelChallenge(ctx, ErrExpiredCCT)
+		return nil, nil
 	}
 
 	sn := &ChallengeResponse{}
@@ -190,5 +194,25 @@ func (c ChallengeEntity) generateChallengeResponse() (*ChallengeResponse, error)
 			sn.ValidationTickets = append(sn.ValidationTickets, vt)
 		}
 	}
-	return sn, nil
+
+	_, _, _, txn, err := coreTxn.SmartContractTxn(transaction.STORAGE_CONTRACT_ADDRESS, coreTxn.SmartContractTxnData{
+		Name:      transaction.CHALLENGE_RESPONSE,
+		InputArgs: sn,
+	}, false)
+	if err != nil {
+		logging.Logger.Info("Failed submitting challenge to the mining network", zap.String("err:", err.Error()))
+		c.CancelChallenge(ctx, err)
+		return nil, nil
+	}
+
+	err = UpdateChallengeTimingTxnSubmission(c.ChallengeID, common.Timestamp(txn.CreationDate))
+	if err != nil {
+		logging.Logger.Error("[challengetiming]txn_submission",
+			zap.Any("challenge_id", c.ChallengeID),
+			zap.Time("created", createdTime),
+			zap.Any("txn_submission", txn.CreationDate),
+			zap.Error(err))
+	}
+
+	return txn, nil
 }

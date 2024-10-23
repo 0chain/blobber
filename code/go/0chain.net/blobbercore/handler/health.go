@@ -31,34 +31,41 @@ func getBlobberHealthCheckError() error {
 	return err
 }
 
-func BlobberHealthCheck() (*coreTxn.Transaction, error) {
+func BlobberHealthCheck() (string, error) {
 	if config.Configuration.Capacity == 0 {
 
 		setBlobberHealthCheckError(ErrBlobberHasRemoved)
-		return nil, ErrBlobberHasRemoved
+		return "", ErrBlobberHasRemoved
 	}
 
 	_, _, _, txn, err := coreTxn.SmartContractTxn(transaction.STORAGE_CONTRACT_ADDRESS, coreTxn.SmartContractTxnData{
 		Name:      transaction.BLOBBER_HEALTH_CHECK,
 		InputArgs: common.Now(),
-	})
-	if err != nil {
+	}, true)
+	if err != nil || txn == nil {
 		logging.Logger.Error("Failed to health check blobber on the blockchain",
 			zap.Error(err))
 		setBlobberHealthCheckError(err)
 
-		return nil, err
+		return "", err
 	}
 
 	setBlobberHealthCheckError(nil)
 
-	return txn, nil
+	return txn.Hash, nil
 }
 
-func ValidatorHealthCheck() (*coreTxn.Transaction, error) {
+func ValidatorHealthCheck() (string, error) {
 	_, _, _, txn, err := coreTxn.SmartContractTxn(transaction.STORAGE_CONTRACT_ADDRESS, coreTxn.SmartContractTxnData{
 		Name:      transaction.VALIDATOR_HEALTH_CHECK,
 		InputArgs: common.Now(),
-	})
-	return txn, err
+	}, true)
+
+	if err != nil || txn == nil {
+		logging.Logger.Error("Failed to health check validator on the blockchain",
+			zap.Error(err))
+		return "", err
+	}
+
+	return txn.Hash, err
 }

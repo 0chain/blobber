@@ -121,7 +121,7 @@ func sendSmartContractBlobberAdd() (*coreTxn.Transaction, error) {
 	_, _, _, txn, err := coreTxn.SmartContractTxn(transaction.STORAGE_CONTRACT_ADDRESS, coreTxn.SmartContractTxnData{
 		Name:      transaction.ADD_BLOBBER_SC_NAME,
 		InputArgs: sn,
-	})
+	}, true)
 	if err != nil {
 		logging.Logger.Error("Failed to set blobber on the blockchain",
 			zap.String("err:", err.Error()), zap.Any("Txn", txn), zap.Any("ClientFee", client.TxnFee()))
@@ -152,17 +152,17 @@ var ErrValidatorNotFound = errors.New("validator is not found")
 // SendHealthCheck send heartbeat to blockchain
 func SendHealthCheck(provider common.ProviderType) (string, error) {
 
-	var txn *coreTxn.Transaction
+	var hash string
 	var err error
 
 	switch provider {
 	case common.ProviderTypeBlobber:
-		txn, err = BlobberHealthCheck()
+		hash, err = BlobberHealthCheck()
 	case common.ProviderTypeValidator:
-		txn, err = ValidatorHealthCheck()
+		hash, err = ValidatorHealthCheck()
 	default:
 		return "", errors.New("unknown provider type")
 	}
 
-	return txn.Hash, err
+	return hash, err
 }
