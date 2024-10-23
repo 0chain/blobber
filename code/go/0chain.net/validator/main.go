@@ -211,7 +211,7 @@ func RegisterValidator() {
 		sn.StakePoolSettings.NumDelegates = config.Configuration.NumDelegates
 		sn.StakePoolSettings.ServiceCharge = config.Configuration.ServiceCharge
 
-		hash, out, _, txn, err := coreTxn.SmartContractTxn(transaction.STORAGE_CONTRACT_ADDRESS, coreTxn.SmartContractTxnData{
+		hash, out, _, _, err := coreTxn.SmartContractTxn(transaction.STORAGE_CONTRACT_ADDRESS, coreTxn.SmartContractTxnData{
 			Name:      transaction.ADD_VALIDATOR_SC_NAME,
 			InputArgs: sn,
 		}, true)
