@@ -6,7 +6,7 @@ toolchain go1.22.5
 
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.18.0-RC6.0.20241023193003-8d5ec2f50067
+	github.com/0chain/gosdk v1.18.0-RC3
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.2
 	github.com/go-openapi/runtime v0.26.0
@@ -101,7 +101,7 @@ require (
 )
 
 require (
-	github.com/0chain/common v1.18.0
+	github.com/0chain/common v1.13.1-0.20241024063045-ca6853425ce5
 	github.com/Luzifer/go-openssl/v3 v3.1.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/btcsuite/btcd v0.23.4 // indirect
