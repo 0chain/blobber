@@ -16,7 +16,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/gosdk/core/client"
 	"github.com/0chain/gosdk/core/zcncrypto"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/metadata"
@@ -30,14 +29,14 @@ func TestBlobberCore_MoveFile(t *testing.T) {
 	sch := zcncrypto.NewSignatureScheme("bls0chain")
 	mnemonic := "expose culture dignity plastic digital couple promote best pool error" +
 		" brush upgrade correct art become lobster nature moment obtain trial multiply arch miss toe"
-	_, err := sch.RecoverKeys(mnemonic)
+	w, err := sch.RecoverKeys(mnemonic)
 	if err != nil {
 		t.Fatal(err)
 	}
 	ts := time.Now().Add(time.Hour)
 	alloc := makeTestAllocation(common.Timestamp(ts.Unix()))
 	alloc.OwnerPublicKey = sch.GetPublicKey()
-	alloc.OwnerID = client.Wallet().ClientID
+	alloc.OwnerID = w.ClientID
 
 	testCases := []struct {
 		name                string
