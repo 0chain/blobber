@@ -155,7 +155,7 @@ func redeemWriteMarker(md *markerData) error {
 		return nil
 	}
 
-	wm, err := GetWriteMarkerEntity(ctx, alloc.AllocationRoot)
+	wm, err := GetWriteMarkerEntity(ctx, alloc.ID, alloc.AllocationRoot)
 	if err != nil {
 		logging.Logger.Error("Error redeeming the write marker.", zap.Any("allocation", allocationID), zap.Any("wm", alloc.AllocationRoot), zap.Any("error", err))
 		if err != gorm.ErrRecordNotFound {

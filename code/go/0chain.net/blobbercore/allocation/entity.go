@@ -2,12 +2,14 @@ package allocation
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/common/core/util/wmpt"
 	"gorm.io/gorm/clause"
 
 	"gorm.io/gorm"
@@ -30,6 +32,7 @@ var pendingMapLock = common.GetNewLocker()
 
 const (
 	TableNameAllocation = "allocations"
+	StorageV2           = 1
 	CanUploadMask       = uint16(1)  // 0000 0001
 	CanDeleteMask       = uint16(2)  // 0000 0010
 	CanUpdateMask       = uint16(4)  // 0000 0100
@@ -71,8 +74,12 @@ type Allocation struct {
 	// 00001000 - 8  - move
 	// 00010000 - 16 - copy
 	// 00100000 - 32 - rename
-	FileOptions uint16 `json:"file_options" gorm:"column:file_options;not null;default:63"`
-
+	FileOptions    uint16 `json:"file_options" gorm:"column:file_options;not null;default:63"`
+	StorageVersion uint8  `json:"storage_version" gorm:"column:storage_version"`
+	NumObjects     int32  `json:"num_objects" gorm:"column:num_objects"`
+	PrevNumObjects int32  `json:"prev_num_objects" gorm:"column:prev_num_objects"`
+	NumBlocks      uint64 `json:"num_blocks" gorm:"column:num_blocks"`
+	PrevNumBlocks  uint64 `json:"prev_num_blocks" gorm:"column:prev_num_blocks"`
 	// Has many terms
 	// If Preload("Terms") is required replace tag `gorm:"-"` with `gorm:"foreignKey:AllocationID"`
 	Terms []*Terms `gorm:"-"`
@@ -80,6 +87,20 @@ type Allocation struct {
 
 func (Allocation) TableName() string {
 	return TableNameAllocation
+}
+
+func (a *Allocation) GetTrie() *wmpt.WeightedMerkleTrie {
+	trie := Repo.getTrie(a.ID)
+	if trie == nil {
+		if a.FileMetaRoot == "" {
+			trie = wmpt.New(nil, datastore.GetBlockStore())
+		} else {
+			decodedRoot, _ := hex.DecodeString(a.FileMetaRoot)
+			trie = wmpt.New(wmpt.NewHashNode(decodedRoot, a.NumBlocks), datastore.GetBlockStore())
+		}
+		Repo.setTrie(a.ID, trie)
+	}
+	return trie
 }
 
 func (a *Allocation) CanUpload() bool {
@@ -105,6 +126,10 @@ func (a *Allocation) CanCopy() bool {
 
 func (a *Allocation) CanRename() bool {
 	return (a.FileOptions & CanRenameMask) > 0
+}
+
+func (a *Allocation) IsStorageV2() bool {
+	return a.StorageVersion == StorageV2
 }
 
 // RestDurationInTimeUnits returns number (float point) of time units until

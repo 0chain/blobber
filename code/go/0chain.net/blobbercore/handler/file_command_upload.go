@@ -19,6 +19,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/gosdk/constants"
 	"github.com/0chain/gosdk/zboxcore/fileref"
 )
@@ -160,6 +161,16 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, allocationObj 
 		cmd.reloadChange()
 		if fileOutputData.ContentSize != cmd.fileChanger.Size {
 			return result, common.NewError("upload_error", fmt.Sprintf("File size mismatch. Expected: %d, Actual: %d", cmd.fileChanger.Size, fileOutputData.ContentSize))
+		}
+		hash := cmd.fileChanger.ActualFileHashSignature + cmd.fileChanger.ValidationRoot
+		if allocationObj.IsStorageV2() {
+			hashData := fmt.Sprintf("%s:%s:%s:%s", cmd.fileChanger.ActualHash, cmd.fileChanger.ValidationRoot, cmd.fileChanger.FixedMerkleRoot, node.Self.ID)
+			hash = encryption.Hash(hashData)
+		}
+		verify, err := encryption.Verify(allocationObj.OwnerPublicKey, cmd.fileChanger.ValidationRootSignature, hash)
+		if err != nil || !verify {
+			logging.Logger.Error("UploadFileCommand.VerifySignature", zap.Error(err))
+			return result, common.NewError("upload_error", "Failed to verify validation root signature. ")
 		}
 	}
 

@@ -3,6 +3,8 @@ package handler
 import (
 	"sync"
 
+	coreTxn "github.com/0chain/gosdk/core/transaction"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -29,48 +31,41 @@ func getBlobberHealthCheckError() error {
 	return err
 }
 
-func BlobberHealthCheck() (*transaction.Transaction, error) {
+func BlobberHealthCheck() (string, error) {
 	if config.Configuration.Capacity == 0 {
 
 		setBlobberHealthCheckError(ErrBlobberHasRemoved)
-		return nil, ErrBlobberHasRemoved
+		return "", ErrBlobberHasRemoved
 	}
 
-	txn, err := transaction.NewTransactionEntity()
-	if err != nil {
-		setBlobberHealthCheckError(err)
-		return nil, err
-	}
-
-	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS,
-		transaction.BLOBBER_HEALTH_CHECK, common.Now(), 0)
-	if err != nil {
+	_, _, _, txn, err := coreTxn.SmartContractTxn(transaction.STORAGE_CONTRACT_ADDRESS, coreTxn.SmartContractTxnData{
+		Name:      transaction.BLOBBER_HEALTH_CHECK,
+		InputArgs: common.Now(),
+	}, true)
+	if err != nil || txn == nil {
 		logging.Logger.Error("Failed to health check blobber on the blockchain",
 			zap.Error(err))
 		setBlobberHealthCheckError(err)
 
-		return nil, err
+		return "", err
 	}
 
 	setBlobberHealthCheckError(nil)
 
-	return txn, nil
+	return txn.Hash, nil
 }
 
-func ValidatorHealthCheck() (*transaction.Transaction, error) {
+func ValidatorHealthCheck() (string, error) {
+	_, _, _, txn, err := coreTxn.SmartContractTxn(transaction.STORAGE_CONTRACT_ADDRESS, coreTxn.SmartContractTxnData{
+		Name:      transaction.VALIDATOR_HEALTH_CHECK,
+		InputArgs: common.Now(),
+	}, true)
 
-	txn, err := transaction.NewTransactionEntity()
-
-	if err != nil {
-
-		return nil, err
-	}
-
-	if err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.VALIDATOR_HEALTH_CHECK, common.Now(), 0); err != nil {
+	if err != nil || txn == nil {
 		logging.Logger.Error("Failed to health check validator on the blockchain",
 			zap.Error(err))
-		return nil, err
+		return "", err
 	}
 
-	return txn, err
+	return txn.Hash, err
 }

@@ -72,7 +72,7 @@ func (store *Mocket) Close() {
 	}
 }
 
-func (store *Mocket) CreateTransaction(ctx context.Context,opts ...*sql.TxOptions) context.Context {
+func (store *Mocket) CreateTransaction(ctx context.Context, opts ...*sql.TxOptions) context.Context {
 	db := store.db.Begin()
 	return context.WithValue(ctx, ContextKeyTransaction, EnhanceDB(db))
 }
@@ -86,8 +86,8 @@ func (store *Mocket) GetTransaction(ctx context.Context) *EnhancedDB {
 	return nil
 }
 
-func (store *Mocket) WithNewTransaction(f func(ctx context.Context) error) error {
-	ctx := store.CreateTransaction(context.TODO())
+func (store *Mocket) WithNewTransaction(f func(ctx context.Context) error, opts ...*sql.TxOptions) error {
+	ctx := store.CreateTransaction(context.TODO(), opts...)
 	defer ctx.Done()
 
 	tx := store.GetTransaction(ctx)

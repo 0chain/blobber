@@ -2,15 +2,15 @@ package challenge
 
 import (
 	"context"
+	"encoding/json"
+	"github.com/0chain/gosdk/core/client"
+	coreTxn "github.com/0chain/gosdk/core/transaction"
 	"sync"
 	"time"
-
-	"github.com/0chain/gosdk/zcncore"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/emirpasic/gods/maps/treemap"
 	"go.uber.org/zap"
 	"golang.org/x/sync/semaphore"
@@ -95,7 +95,15 @@ func getRoundWorker(ctx context.Context) {
 }
 
 func setRound() {
-	currentRound, _ := zcncore.GetRoundFromSharders()
+	res, err := client.MakeSCRestAPICall("", "/v1/current-round", nil, "")
+	if err != nil {
+		logging.Logger.Error("getRoundWorker", zap.Error(err))
+	}
+	var currentRound int64
+	err = json.Unmarshal(res, &currentRound)
+	if err != nil {
+		logging.Logger.Error("getRoundWorker", zap.Error(err))
+	}
 
 	if roundInfo.LastRoundDiff == 0 {
 		roundInfo.LastRoundDiff = 1000
@@ -183,7 +191,7 @@ func commitOnChainWorker(ctx context.Context) {
 		for _, challenge := range challenges {
 			chall := challenge
 			var (
-				txn *transaction.Transaction
+				txn *coreTxn.Transaction
 				err error
 			)
 			_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {

@@ -51,26 +51,13 @@ func Done() {
 func HandleShutdown(server *http.Server) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGQUIT)
-	go func() {
-		for sig := range c {
-			switch sig {
-			case syscall.SIGINT:
-				Done()
-				ctx, cancelf := context.WithTimeout(context.Background(), 5*time.Second)
-				if err := server.Shutdown(ctx); err != nil {
-					logging.Logger.Error("server failed to gracefully shuts down", zap.Error(err))
-				}
-				cancelf()
-			case syscall.SIGQUIT:
-				Done()
-				ctx, cancelf := context.WithTimeout(context.Background(), 5*time.Second)
-				if err := server.Shutdown(ctx); err != nil {
-					logging.Logger.Error("server failed to gracefully shuts down", zap.Error(err))
-				}
-				cancelf()
-			default:
-				//Logger.Debug("unhandled signal", zap.Any("signal", sig))
-			}
-		}
-	}()
+	<-c
+	ctx, cancelf := context.WithTimeout(context.Background(), 10*time.Second)
+	if err := server.Shutdown(ctx); err != nil && err != http.ErrServerClosed {
+		logging.Logger.Error("server failed to gracefully shuts down", zap.Error(err))
+	}
+	cancelf()
+	Done()
+	// wait for 20 seconds to allow the workers and database to shutdown
+	time.Sleep(20 * time.Second)
 }

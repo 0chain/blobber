@@ -7,6 +7,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/common/core/util/wmpt"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -31,12 +32,15 @@ func init() {
 	Repo = &Repository{
 		allocCache: allocCache,
 		allocLock:  make(map[string]*sync.Mutex),
+		trieMap:    make(map[string]*wmpt.WeightedMerkleTrie),
 	}
 }
 
 type Repository struct {
 	allocCache *lru.Cache[string, Allocation]
 	allocLock  map[string]*sync.Mutex
+	trieMap    map[string]*wmpt.WeightedMerkleTrie
+	trieLock   sync.RWMutex
 }
 
 type AllocationCache struct {
@@ -209,20 +213,17 @@ func (r *Repository) UpdateAllocationRedeem(ctx context.Context, allocationID, A
 
 	allocationUpdates := make(map[string]interface{})
 	allocationUpdates["latest_redeemed_write_marker"] = AllocationRoot
-	allocationUpdates["is_redeem_required"] = false
 	allocationUpdates["last_redeemed_sequence"] = redeemSeq
 	err = tx.Model(allocationObj).Updates(allocationUpdates).Error
 	if err != nil {
 		return err
 	}
 	allocationObj.LatestRedeemedWM = AllocationRoot
-	allocationObj.IsRedeemRequired = false
 	allocationObj.LastRedeemedSeq = redeemSeq
 	txnCache := cache[allocationID]
 	txnCache.Allocation = allocationObj
 	updateAlloc := func(a *Allocation) {
 		a.LatestRedeemedWM = AllocationRoot
-		a.IsRedeemRequired = false
 		a.LastRedeemedSeq = redeemSeq
 	}
 	txnCache.AllocationUpdates = append(txnCache.AllocationUpdates, updateAlloc)
@@ -360,4 +361,16 @@ func (r *Repository) setAllocToGlobalCache(a *Allocation) {
 
 func (r *Repository) DeleteAllocation(allocationID string) {
 	r.allocCache.Remove(allocationID)
+}
+
+func (r *Repository) getTrie(id string) *wmpt.WeightedMerkleTrie {
+	r.trieLock.RLock()
+	defer r.trieLock.RUnlock()
+	return r.trieMap[id]
+}
+
+func (r *Repository) setTrie(id string, trie *wmpt.WeightedMerkleTrie) {
+	r.trieLock.Lock()
+	defer r.trieLock.Unlock()
+	r.trieMap[id] = trie
 }

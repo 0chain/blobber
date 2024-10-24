@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/0chain/gosdk/core/client"
 	"net/http"
 	"time"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/0chain/gosdk/zcncore"
 	"go.uber.org/zap"
 
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -27,7 +27,7 @@ func objectTreeHandler(ctx context.Context, r *http.Request) (interface{}, int, 
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.GetObjectTree(ctx, r)
 	if err != nil {
-		if errors.Is(common.ErrNotFound, err) {
+		if errors.Is(err, common.ErrNotFound) {
 			return response, http.StatusNotFound, nil
 		}
 		Logger.Error("objectTreeHandler_request_failed", zap.Error(err))
@@ -43,7 +43,22 @@ func commitHandler(ctx context.Context, r *http.Request) (interface{}, int, erro
 
 	response, err := storageHandler.CommitWrite(ctx, r)
 	if err != nil {
-		if errors.Is(common.ErrFileWasDeleted, err) {
+		if errors.Is(err, common.ErrFileWasDeleted) {
+			return response, http.StatusNoContent, nil
+		}
+		Logger.Error("commitHandler_request_failed", zap.Error(err))
+		return nil, http.StatusBadRequest, err
+	}
+
+	return response, http.StatusOK, nil
+}
+
+func commitHandlerV2(ctx context.Context, r *http.Request) (any, int, error) {
+	ctx = setupHandlerContext(ctx, r)
+
+	response, err := storageHandler.CommitWriteV2(ctx, r)
+	if err != nil {
+		if errors.Is(err, common.ErrFileWasDeleted) {
 			return response, http.StatusNoContent, nil
 		}
 		Logger.Error("commitHandler_request_failed", zap.Error(err))
@@ -59,7 +74,7 @@ func rollbackHandler(ctx context.Context, r *http.Request) (interface{}, int, er
 
 	response, err := storageHandler.Rollback(ctx, r)
 	if err != nil {
-		if errors.Is(common.ErrFileWasDeleted, err) {
+		if errors.Is(err, common.ErrFileWasDeleted) {
 			return response, http.StatusNoContent, nil
 		}
 		Logger.Error("rollbackHandler_request_failed", zap.Error(err))
@@ -79,7 +94,7 @@ func HomepageHandler(w http.ResponseWriter, r *http.Request) {
 	)
 
 	fmt.Fprintf(w, "<div>Miners ...\n")
-	network := zcncore.GetNetwork()
+	network, _ := client.GetNetwork(context.Background())
 	for _, miner := range network.Miners {
 		fmt.Fprintf(w, "%v\n", miner)
 	}
@@ -154,6 +169,13 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 		}
 		err = tx.Commit().Error
 		if err != nil {
+			if blobberRes, ok := resp.(*blobberhttp.CommitResult); ok {
+				trie := blobberRes.Trie
+				if trie != nil {
+					trie.Rollback()
+					blobberRes.Trie = nil
+				}
+			}
 			Logger.Error("Error committing to meta store", zap.Error(err))
 			return resp, http.StatusInternalServerError, common.NewErrorf("commit_error",
 				"error committing to meta store: %v", err)
@@ -164,6 +186,11 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 		if blobberRes, ok := resp.(*blobberhttp.CommitResult); ok {
 			// Save the write marker data
 			writemarker.SaveMarkerData(allocationID, blobberRes.WriteMarker.WM.Timestamp, blobberRes.WriteMarker.WM.ChainLength)
+			trie := blobberRes.Trie
+			if trie != nil {
+				_ = trie.DeleteNodes()
+				blobberRes.Trie = nil
+			}
 		} else {
 			Logger.Error("Invalid response type for commit handler")
 			return resp, http.StatusInternalServerError, common.NewError("invalid_response_type", "Invalid response type for commit handler")

@@ -3,18 +3,12 @@ package storage
 import (
 	"context"
 	"encoding/json"
-	"sync"
-	"time"
-
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
-	"github.com/0chain/blobber/code/go/0chain.net/validatorcore/config"
-
 	"github.com/0chain/gosdk/constants"
-	"go.uber.org/zap"
+	"sync"
 )
 
 const CHUNK_SIZE = 64 * 1024
@@ -67,19 +61,6 @@ func GetProtocolImpl() *ValidatorProtocolImpl {
 // 	return txn.Hash, nil
 // }
 
-func (sp *ValidatorProtocolImpl) VerifyAllocationTransaction(ctx context.Context, allocationID string) (*Allocation, error) {
-	t, err := transaction.VerifyTransaction(allocationID, sp.ServerChain)
-	if err != nil {
-		return nil, common.NewError("invalid_allocation", "Invalid Allocation id. Allocation not found in blockchain. "+err.Error())
-	}
-	var allocationObj Allocation
-	err = json.Unmarshal([]byte(t.TransactionOutput), &allocationObj)
-	if err != nil {
-		return nil, common.NewError("transaction_output_decode_error", "Error decoding the allocation transaction output."+err.Error())
-	}
-	return &allocationObj, nil
-}
-
 func (sp *ValidatorProtocolImpl) VerifyChallengeTransaction(ctx context.Context, challengeRequest *ChallengeRequest) (*Challenge, error) {
 	blobberID := ctx.Value(constants.ContextKeyClient).(string)
 	if blobberID == "" {
@@ -124,29 +105,4 @@ type WalletCallback struct {
 func (wb *WalletCallback) OnWalletCreateComplete(status int, wallet, err string) {
 	wb.err = err
 	wb.wg.Done()
-}
-
-func (sp *ValidatorProtocolImpl) RegisterValidator(ctx context.Context) (*transaction.Transaction, error) {
-	time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-
-	txn, err := transaction.NewTransactionEntity()
-	if err != nil {
-		return nil, err
-	}
-
-	sn := &transaction.StorageNode{}
-	sn.ID = node.Self.ID
-	sn.BaseURL = node.Self.GetURLBase()
-	sn.StakePoolSettings.DelegateWallet = config.Configuration.DelegateWallet
-	sn.StakePoolSettings.NumDelegates = config.Configuration.NumDelegates
-	sn.StakePoolSettings.ServiceCharge = config.Configuration.ServiceCharge
-
-	logging.Logger.Info("Adding validator to the blockchain.")
-	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.ADD_VALIDATOR_SC_NAME, sn, 0)
-	if err != nil {
-		logging.Logger.Info("Failed during registering validator to the mining network", zap.String("err:", err.Error()))
-		return nil, err
-	}
-
-	return txn, nil
 }

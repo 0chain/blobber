@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	coreTxn "github.com/0chain/gosdk/core/transaction"
 	"sort"
 	"strconv"
 	"time"
@@ -162,7 +163,7 @@ func validateOnValidators(ctx context.Context, c *ChallengeEntity) error {
 	return nil
 }
 
-func (c *ChallengeEntity) getCommitTransaction(ctx context.Context) (*transaction.Transaction, error) {
+func (c *ChallengeEntity) getCommitTransaction(ctx context.Context) (*coreTxn.Transaction, error) {
 	createdTime := common.ToTime(c.CreatedAt)
 
 	logging.Logger.Info("[challenge]verify: ",
@@ -186,13 +187,6 @@ func (c *ChallengeEntity) getCommitTransaction(ctx context.Context) (*transactio
 		return nil, nil
 	}
 
-	txn, err := transaction.NewTransactionEntity()
-	if err != nil {
-		logging.Logger.Error("[challenge]createTxn", zap.Error(err))
-		c.CancelChallenge(ctx, err)
-		return nil, nil
-	}
-
 	sn := &ChallengeResponse{}
 	sn.ChallengeID = c.ChallengeID
 	for _, vt := range c.ValidationTickets {
@@ -201,14 +195,17 @@ func (c *ChallengeEntity) getCommitTransaction(ctx context.Context) (*transactio
 		}
 	}
 
-	err = txn.ExecuteSmartContract(transaction.STORAGE_CONTRACT_ADDRESS, transaction.CHALLENGE_RESPONSE, sn, 0)
+	_, _, _, txn, err := coreTxn.SmartContractTxn(transaction.STORAGE_CONTRACT_ADDRESS, coreTxn.SmartContractTxnData{
+		Name:      transaction.CHALLENGE_RESPONSE,
+		InputArgs: sn,
+	}, false)
 	if err != nil {
 		logging.Logger.Info("Failed submitting challenge to the mining network", zap.String("err:", err.Error()))
 		c.CancelChallenge(ctx, err)
 		return nil, nil
 	}
 
-	err = UpdateChallengeTimingTxnSubmission(c.ChallengeID, txn.CreationDate)
+	err = UpdateChallengeTimingTxnSubmission(c.ChallengeID, common.Timestamp(txn.CreationDate))
 	if err != nil {
 		logging.Logger.Error("[challengetiming]txn_submission",
 			zap.Any("challenge_id", c.ChallengeID),

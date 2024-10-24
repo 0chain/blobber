@@ -4,6 +4,11 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/common/core/util/storage"
+	"github.com/0chain/common/core/util/storage/kv"
+	"github.com/cockroachdb/pebble"
+	"github.com/cockroachdb/pebble/bloom"
 	"gorm.io/gorm"
 )
 
@@ -45,7 +50,7 @@ type Store interface {
 	CreateTransaction(ctx context.Context, opts ...*sql.TxOptions) context.Context
 	// GetTransaction get transaction from context
 	GetTransaction(ctx context.Context) *EnhancedDB
-	WithNewTransaction(f func(ctx context.Context) error) error
+	WithNewTransaction(f func(ctx context.Context) error, opts ...*sql.TxOptions) error
 	WithTransaction(ctx context.Context, f func(ctx context.Context) error) error
 	// Get db connection with user that creates roles and databases. Its dialactor does not contain database name
 	GetPgDB() (*gorm.DB, error)
@@ -53,7 +58,10 @@ type Store interface {
 	Close()
 }
 
-var instance Store
+var (
+	instance      Store
+	blockInstance storage.StorageAdapter
+)
 
 func init() {
 	instance = &postgresStore{}
@@ -61,6 +69,41 @@ func init() {
 
 func GetStore() Store {
 	return instance
+}
+
+func GetBlockStore() storage.StorageAdapter {
+	return blockInstance
+}
+
+func OpenBlockStore() error {
+	//TODO: read from config
+	pebbleDir := config.Configuration.PebbleDir
+	opts := &pebble.Options{
+		Cache:                    pebble.NewCache(config.Configuration.PebbleCache),
+		WALDir:                   config.Configuration.PebbleWALDir,
+		MemTableSize:             uint64(config.Configuration.PebbleMemtableSize),
+		MaxOpenFiles:             config.Configuration.PebbleMaxOpenFiles,
+		BytesPerSync:             1024 * 1024, //1MB
+		MaxConcurrentCompactions: func() int { return 4 },
+		Levels: []pebble.LevelOptions{
+			{TargetFileSize: 4 * 1024 * 1024, FilterPolicy: bloom.FilterPolicy(10)},
+			{TargetFileSize: 8 * 1024 * 1024, FilterPolicy: bloom.FilterPolicy(10)},
+			{TargetFileSize: 16 * 1024 * 1024, FilterPolicy: bloom.FilterPolicy(10)},
+			{TargetFileSize: 32 * 1024 * 1024, FilterPolicy: bloom.FilterPolicy(10)},
+			{TargetFileSize: 64 * 1024 * 1024, FilterPolicy: bloom.FilterPolicy(10)},
+			{TargetFileSize: 128 * 1024 * 1024, FilterPolicy: bloom.FilterPolicy(10)},
+			{TargetFileSize: 256 * 1024 * 1024},
+		},
+		WALBytesPerSync:             512 * 1024,       // 512kb
+		LBaseMaxBytes:               64 * 1024 * 1024, // 64MB
+		MemTableStopWritesThreshold: 4,
+	}
+	pebbleInstance, err := kv.NewPebbleAdapter(pebbleDir, opts)
+	if err != nil {
+		return err
+	}
+	blockInstance = pebbleInstance
+	return nil
 }
 
 func FromContext(ctx context.Context) Store {

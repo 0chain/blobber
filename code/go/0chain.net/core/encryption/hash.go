@@ -3,6 +3,8 @@ package encryption
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"hash"
+	"sync"
 
 	"github.com/minio/sha256-simd"
 	"golang.org/x/crypto/sha3"
@@ -11,6 +13,12 @@ import (
 const HASH_LENGTH = 32
 
 type HashBytes [HASH_LENGTH]byte
+
+var sha3Pool = sync.Pool{
+	New: func() interface{} {
+		return sha3.New256()
+	},
+}
 
 /*Hash - hash the given data and return the hash as hex string */
 func Hash(data interface{}) string {
@@ -30,9 +38,12 @@ func RawHash(data interface{}) []byte {
 	default:
 		panic("unknown type")
 	}
-	hash := sha3.New256()
+	hash := sha3Pool.Get().(hash.Hash)
 	hash.Write(databuf)
-	return hash.Sum(nil)
+	res := hash.Sum(nil)
+	hash.Reset()
+	sha3Pool.Put(hash)
+	return res
 }
 
 func ShaHash(data interface{}) []byte {

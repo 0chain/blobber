@@ -2,17 +2,19 @@ package reference
 
 import (
 	"context"
-	"errors"
+	"database/sql"
 	"fmt"
 	"math"
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync/atomic"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -39,7 +41,7 @@ func init() {
 		field := refType.Field(i)
 		dirListTag := field.Tag.Get(DIR_LIST_TAG)
 
-		if dirListTag != "" {
+		if dirListTag != "" && dirListTag != "is_empty" {
 			dirListFields = append(dirListFields, dirListTag)
 		}
 	}
@@ -70,7 +72,7 @@ type Ref struct {
 	ActualFileHashSignature string `gorm:"column:actual_file_hash_signature;size:64" filelist:"actual_file_hash_signature"  json:"actual_file_hash_signature,omitempty"`
 	ActualFileHash          string `gorm:"column:actual_file_hash;size:64;not null" filelist:"actual_file_hash"`
 	MimeType                string `gorm:"column:mimetype;size:255;not null" filelist:"mimetype"`
-	AllocationRoot          string `gorm:"column:allocation_root;size:64;not null"`
+	AllocationRoot          string `gorm:"column:allocation_root;size:64;not null" filelist:"allocation_root" dirlist:"allocation_root"`
 	ThumbnailSize           int64  `gorm:"column:thumbnail_size;not null;default:0" filelist:"thumbnail_size"`
 	ThumbnailHash           string `gorm:"column:thumbnail_hash;size:64;not null" filelist:"thumbnail_hash"`
 	PrevThumbnailHash       string `gorm:"column:prev_thumbnail_hash" filelist:"prev_thumbnail_hash"`
@@ -89,6 +91,7 @@ type Ref struct {
 	NumUpdates        int64          `gorm:"column:num_of_updates" json:"num_of_updates"`
 	NumBlockDownloads int64          `gorm:"column:num_of_block_downloads" json:"num_of_block_downloads"`
 	FilestoreVersion  int            `gorm:"column:filestore_version" json:"-"`
+	IsEmpty           bool           `gorm:"-" dirlist:"is_empty"`
 	HashToBeComputed  bool           `gorm:"-"`
 	prevID            int64          `gorm:"-"`
 }
@@ -152,6 +155,19 @@ type PaginatedRef struct { //Gorm smart select fields.
 	ChunkSize int64 `gorm:"column:chunk_size" json:"chunk_size"`
 }
 
+type RefMeta struct {
+	LookupHash              string `json:"lookup_hash"`
+	Path                    string `json:"path"`
+	ActualFileSize          int64  `json:"actual_file_size"`
+	ActualFileHashSignature string `json:"actual_file_hash_signature"`
+	ActualFileHash          string `json:"actual_file_hash"`
+	ValidationRoot          string `json:"validation_root"`
+	ValidationRootSignature string `json:"validation_root_signature"`
+	FixedMerkleRoot         string `json:"fixed_merkle_root"`
+	Size                    int64  `json:"size"`
+	FileMetaHash            string `json:"file_meta_hash"`
+}
+
 // GetReferenceLookup hash(allocationID + ":" + path)
 func GetReferenceLookup(allocationID, path string) string {
 	return encryption.Hash(allocationID + ":" + path)
@@ -165,42 +181,114 @@ func NewFileRef() *Ref {
 	return &Ref{Type: FILE, IsPrecommit: true}
 }
 
-// Mkdir create dirs if they don't exits. do nothing if dir exists. last dir will be return without child
-func Mkdir(ctx context.Context, allocationID, destpath string) (*Ref, error) {
-	var dirRef *Ref
+// Mkdir create dirs if they don't exits. do nothing if dir exists. last dir will be returned without child
+func Mkdir(ctx context.Context, allocationID, destpath, allocationRoot string, ts common.Timestamp, numFiles *atomic.Int32, collector QueryCollector) (*Ref, error) {
+	var err error
 	db := datastore.GetStore().GetTransaction(ctx)
-	// cleaning path to avoid edge case issues: append '/' prefix if not added and removing suffix '/' if added
-	destpath = strings.TrimSuffix(filepath.Clean("/"+destpath), "/")
-	dirs := strings.Split(destpath, "/")
-
-	for i := range dirs {
-		currentPath := filepath.Join("/", filepath.Join(dirs[:i+1]...))
-		ref, err := GetReference(ctx, allocationID, currentPath)
-		if err == nil {
-			dirRef = ref
-			continue
-		}
-
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			// unexpected sql error
+	if destpath != "/" {
+		destpath = strings.TrimSuffix(filepath.Clean("/"+destpath), "/")
+	}
+	destLookupHash := GetReferenceLookup(allocationID, destpath)
+	var destRef *Ref
+	cachedRef := collector.GetFromCache(destLookupHash)
+	if cachedRef != nil {
+		destRef = cachedRef
+	} else {
+		destRef, err = GetReferenceByLookupHashWithNewTransaction(destLookupHash)
+		if err != nil && err != gorm.ErrRecordNotFound {
 			return nil, err
 		}
+		if destRef != nil {
+			destRef.LookupHash = destLookupHash
+			defer collector.AddToCache(destRef)
+		}
+	}
+	if destRef != nil {
+		if destRef.Type != DIRECTORY {
+			return nil, common.NewError("invalid_dir_tree", "parent path is not a directory")
+		}
+		return destRef, nil
+	}
+	fields, err := common.GetAllParentPaths(destpath)
+	if err != nil {
+		logging.Logger.Error("mkdir: failed to get all parent paths", zap.Error(err), zap.String("destpath", destpath))
+		return nil, err
+	}
+	parentLookupHashes := make([]string, 0, len(fields))
+	for i := 0; i < len(fields); i++ {
+		parentLookupHashes = append(parentLookupHashes, GetReferenceLookup(allocationID, fields[i]))
+	}
+	var parentRefs []*Ref
+	collector.LockTransaction()
+	defer collector.UnlockTransaction()
+	cachedRef = collector.GetFromCache(destLookupHash)
+	if cachedRef != nil {
+		if cachedRef.Type != DIRECTORY {
+			return nil, common.NewError("invalid_dir_tree", "parent path is not a directory")
+		}
+		return cachedRef, nil
+	} else {
+		logging.Logger.Info("noEntryFound: ", zap.String("destLookupHash", destLookupHash), zap.String("destpath", destpath))
+	}
 
-		// dir doesn't exists , create it
+	tx := db.Model(&Ref{}).Select("id", "path", "type")
+	for i := 0; i < len(fields); i++ {
+		tx = tx.Or(Ref{LookupHash: parentLookupHashes[i]})
+	}
+	err = tx.Order("path").Find(&parentRefs).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, err
+	}
+	var (
+		parentID   int64
+		parentPath = "/"
+	)
+	if len(parentRefs) > 0 {
+		parentID = parentRefs[len(parentRefs)-1].ID
+		parentPath = parentRefs[len(parentRefs)-1].Path
+		for i := 0; i < len(parentRefs); i++ {
+			if parentRefs[i].Type != DIRECTORY {
+				return nil, common.NewError("invalid_dir_tree", "parent path is not a directory")
+			}
+			if parentRefs[i].ID == 0 {
+				return nil, common.NewError("invalid_dir_tree", "parent path not found")
+			}
+		}
+	}
+	if destpath != "/" {
+		fields = append(fields, destpath)
+		parentLookupHashes = append(parentLookupHashes, destLookupHash)
+	}
+
+	for i := len(parentRefs); i < len(fields); i++ {
+		logging.Logger.Info("mkdir: creating directory", zap.String("path", fields[i]), zap.Int("parentID", int(parentID)))
 		newRef := NewDirectoryRef()
 		newRef.AllocationID = allocationID
-		newRef.Path = currentPath
-		newRef.ParentPath = filepath.Join("/", filepath.Join(dirs[:i]...))
-		newRef.Name = dirs[i]
-		newRef.Type = DIRECTORY
+		newRef.Path = fields[i]
+		if newRef.Path != "/" {
+			newRef.ParentPath = parentPath
+		}
+		newRef.Name = filepath.Base(fields[i])
 		newRef.PathLevel = i + 1
-		newRef.LookupHash = GetReferenceLookup(allocationID, newRef.Path)
+		newRef.LookupHash = parentLookupHashes[i]
+		newRef.CreatedAt = ts
+		newRef.UpdatedAt = ts
+		newRef.AllocationRoot = allocationRoot
+		newRef.FileMetaHash = encryption.Hash(newRef.GetFileMetaHashDataV2())
 		err = db.Create(newRef).Error
 		if err != nil {
 			return nil, err
 		}
+		numFiles.Add(1)
+		collector.AddToCache(newRef)
+		parentID = newRef.ID
+		parentPath = newRef.Path
+	}
 
-		dirRef = newRef
+	dirRef := &Ref{
+		AllocationID: allocationID,
+		ID:           parentID,
+		Path:         parentPath,
 	}
 
 	return dirRef, nil
@@ -413,6 +501,14 @@ func (r *Ref) GetFileMetaHashData() string {
 		r.ActualFileSize, r.ActualFileHash)
 }
 
+func (r *Ref) GetFileMetaHashDataV2() string {
+	return fmt.Sprintf(
+		"%s:%s:%d:%d:%s",
+		r.AllocationID,
+		r.Path, r.Size,
+		r.ActualFileSize, r.ActualFileHash)
+}
+
 func (fr *Ref) GetFileHashData() string {
 	return fmt.Sprintf(
 		"%s:%s:%s:%s:%d:%s:%s:%d:%s:%d:%s",
@@ -428,6 +524,10 @@ func (fr *Ref) GetFileHashData() string {
 		fr.ChunkSize,
 		fr.FileID,
 	)
+}
+
+func (fr *Ref) GetFileHashDataV2() string {
+	return fmt.Sprintf("%s:%s:%s:%d:%s:%d:%s", node.Self.ID, fr.AllocationID, fr.Path, fr.Size, fr.FixedMerkleRoot, fr.ActualFileSize, fr.ActualFileHash)
 }
 
 func (r *Ref) GetHashData() string {
@@ -674,4 +774,49 @@ func GetListingFieldsMap(refEntity interface{}, tagName string) map[string]inter
 func UpdateCustomMeta(ctx context.Context, ref *Ref, customMeta string) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 	return db.Exec("UPDATE reference_objects SET custom_meta = ? WHERE id = ?", customMeta, ref.ID).Error
+}
+
+func IsDirectoryEmpty(ctx context.Context, allocationID, path string) (bool, error) {
+	db := datastore.GetStore().GetTransaction(ctx)
+	var ref Ref
+	err := db.Model(&Ref{}).Select("id").Where("allocation_id=? AND parent_path = ?", allocationID, path).Take(&ref).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return true, nil
+		}
+		return false, err
+	}
+	if ref.ID > 0 {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func GetReferenceByLookupHashWithNewTransaction(lookupHash string) (*Ref, error) {
+	ref := &Ref{}
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		txn := datastore.GetStore().GetTransaction(ctx)
+		return txn.Model(&Ref{}).Select("id", "type").Where("lookup_hash = ?", lookupHash).Take(ref).Error
+	}, &sql.TxOptions{
+		ReadOnly: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return ref, nil
+}
+
+func GetFullReferenceByLookupHashWithNewTransaction(lookupHash string) (*Ref, error) {
+	ref := &Ref{}
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		txn := datastore.GetStore().GetTransaction(ctx)
+		return txn.Model(&Ref{}).Where("lookup_hash = ?", lookupHash).Take(ref).Error
+	}, &sql.TxOptions{
+		ReadOnly: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return ref, nil
 }
