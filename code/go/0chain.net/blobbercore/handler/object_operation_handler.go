@@ -1166,7 +1166,7 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 	elapsedSaveAllocation := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
 		elapsedGetConnObj - elapsedVerifyWM - elapsedWritePreRedeem - elapsedMoveToFilestore - elapsedApplyChanges - elapsedTrieCommit
 
-	err = batcher.Commit(false)
+	err = batcher.Commit(true)
 	if err != nil {
 		return nil, common.NewError("trie_commit_error", "Error committing the trie")
 	}
