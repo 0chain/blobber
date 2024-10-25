@@ -56,10 +56,14 @@ func BlobberHealthCheck() (string, error) {
 }
 
 func ValidatorHealthCheck() (string, error) {
+	logging.Logger.Info("Validator health check")
 	_, _, _, txn, err := coreTxn.SmartContractTxn(transaction.STORAGE_CONTRACT_ADDRESS, coreTxn.SmartContractTxnData{
 		Name:      transaction.VALIDATOR_HEALTH_CHECK,
 		InputArgs: common.Now(),
 	}, true)
+
+	logging.Logger.Info("Validator health check txn", zap.Any("txn", txn))
+	logging.Logger.Info("Validator health check error  ", zap.Any("err", err))
 
 	if err != nil || txn == nil {
 		logging.Logger.Error("Failed to health check validator on the blockchain",

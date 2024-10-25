@@ -151,6 +151,7 @@ var ErrValidatorNotFound = errors.New("validator is not found")
 
 // SendHealthCheck send heartbeat to blockchain
 func SendHealthCheck(provider common.ProviderType) (string, error) {
+	logging.Logger.Info("Sending health check", zap.String("provider", string(provider)), zap.Any("time", common.Now()))
 
 	var hash string
 	var err error
@@ -160,6 +161,7 @@ func SendHealthCheck(provider common.ProviderType) (string, error) {
 		hash, err = BlobberHealthCheck()
 	case common.ProviderTypeValidator:
 		hash, err = ValidatorHealthCheck()
+		logging.Logger.Info("Sending health check", zap.String("hash", hash))
 	default:
 		return "", errors.New("unknown provider type")
 	}
