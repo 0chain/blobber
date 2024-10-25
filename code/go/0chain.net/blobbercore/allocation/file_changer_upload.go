@@ -34,6 +34,10 @@ type UploadFileChanger struct {
 func (nf *UploadFileChanger) applyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
 	allocationRoot string, ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error) {
 
+	if !nf.IsFinal {
+		return rootRef, nil
+	}
+
 	totalRefs, err := reference.CountRefs(ctx, nf.AllocationID)
 	if err != nil {
 		return nil, err
@@ -148,6 +152,10 @@ func (nf *UploadFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, 
 	if nf.AllocationID == "" {
 		return 0, common.NewError("invalid_allocation_id", "Allocation ID is empty")
 	}
+	if !nf.IsFinal {
+		return 0, nil
+	}
+
 	//find if ref exists
 	var refResult struct {
 		ID int64
