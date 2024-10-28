@@ -246,6 +246,7 @@ func updateAllocationInDB(ctx context.Context, a *Allocation, sa *transaction.St
 	a.Tx = sa.Tx
 	a.OwnerID = sa.OwnerID
 	a.OwnerPublicKey = sa.OwnerPublicKey
+	a.OwnerSigningPublicKey = sa.OwnerSigningPublicKey
 
 	// // update fields
 	a.Expiration = sa.Expiration
@@ -263,6 +264,7 @@ func updateAllocationInDB(ctx context.Context, a *Allocation, sa *transaction.St
 	updateMap["finalized"] = a.Finalized
 	updateMap["file_options"] = a.FileOptions
 	updateMap["blobber_size"] = a.BlobberSize
+	updateMap["owner_signing_public_key"] = a.OwnerSigningPublicKey
 
 	updateOption := func(alloc *Allocation) {
 		alloc.Tx = a.Tx
@@ -273,6 +275,7 @@ func updateAllocationInDB(ctx context.Context, a *Allocation, sa *transaction.St
 		alloc.Finalized = a.Finalized
 		alloc.FileOptions = a.FileOptions
 		alloc.BlobberSize = a.BlobberSize
+		alloc.OwnerSigningPublicKey = a.OwnerSigningPublicKey
 	}
 
 	// update terms
