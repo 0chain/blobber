@@ -28,6 +28,7 @@ const (
 
 	DIR_LIST_TAG  = "dirlist"
 	FILE_LIST_TAG = "filelist"
+	SignatureV2   = 1
 )
 
 var (
@@ -91,6 +92,7 @@ type Ref struct {
 	NumUpdates        int64          `gorm:"column:num_of_updates" json:"num_of_updates"`
 	NumBlockDownloads int64          `gorm:"column:num_of_block_downloads" json:"num_of_block_downloads"`
 	FilestoreVersion  int            `gorm:"column:filestore_version" json:"-"`
+	SignatureVersion  int            `gorm:"column:signature_version" json:"signature_version" filelist:"signature_version"`
 	IsEmpty           bool           `gorm:"-" dirlist:"is_empty"`
 	HashToBeComputed  bool           `gorm:"-"`
 	prevID            int64          `gorm:"-"`
@@ -148,6 +150,7 @@ type PaginatedRef struct { //Gorm smart select fields.
 	EncryptedKey            string `gorm:"column:encrypted_key" json:"encrypted_key,omitempty"`
 	EncryptedKeyPoint       string `gorm:"column:encrypted_key_point" json:"encrypted_key_point,omitempty"`
 	FileMetaHash            string `gorm:"column:file_meta_hash;size:64;not null" dirlist:"file_meta_hash" filelist:"file_meta_hash"`
+	SignatureVersion        int    `gorm:"column:signature_version" json:"signature_version,omitempty" filelist:"signature_version"`
 
 	CreatedAt common.Timestamp `gorm:"column:created_at" json:"created_at,omitempty"`
 	UpdatedAt common.Timestamp `gorm:"column:updated_at" json:"updated_at,omitempty"`
@@ -166,6 +169,7 @@ type RefMeta struct {
 	FixedMerkleRoot         string `json:"fixed_merkle_root"`
 	Size                    int64  `json:"size"`
 	FileMetaHash            string `json:"file_meta_hash"`
+	SignatureVersion        int    `json:"signature_version"`
 }
 
 // GetReferenceLookup hash(allocationID + ":" + path)

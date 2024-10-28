@@ -5,12 +5,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
-	coreTxn "github.com/0chain/gosdk/core/transaction"
 	"math/rand"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
+	coreTxn "github.com/0chain/gosdk/core/transaction"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -366,6 +367,7 @@ func (cr *ChallengeEntity) getPostDataV2(ctx context.Context, allocationObj *all
 			FixedMerkleRoot:         ref.FixedMerkleRoot,
 			Size:                    ref.Size,
 			FileMetaHash:            ref.FileMetaHash,
+			SignatureVersion:        ref.SignatureVersion,
 		}
 		postData["meta"] = metaRef
 	}
