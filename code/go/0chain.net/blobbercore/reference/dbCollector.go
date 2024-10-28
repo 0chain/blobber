@@ -85,7 +85,7 @@ func (dc *dbCollector) Finalize(ctx context.Context, allocationID, allocationRoo
 		err := db.Create(&(dc.createdRefs)).Error
 		if err != nil {
 			for ind, ref := range dc.createdRefs {
-				logging.Logger.Error("create_ref_error", zap.String("lookup_hash", ref.LookupHash), zap.String("path", ref.Path), zap.Int("index", ind), zap.String("allocation_root", allocationRoot))
+				logging.Logger.Error("create_ref_error", zap.String("lookup_hash", ref.LookupHash), zap.String("path", ref.Path), zap.Int("index", ind), zap.String("allocation_root", allocationRoot), zap.Any("ref", ref))
 			}
 			return err
 		}
