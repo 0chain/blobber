@@ -52,8 +52,6 @@ func SyncAllocation(allocationId string) (*Allocation, error) {
 	alloc.Finalized = sa.Finalized
 	alloc.TimeUnit = sa.TimeUnit
 	alloc.FileOptions = sa.FileOptions
-	alloc.StorageVersion = uint8(sa.StorageVersion)
-	alloc.OwnerSigningPublicKey = sa.OwnerSigningPublicKey
 
 	// related terms
 	terms := make([]*Terms, 0, len(sa.BlobberDetails))

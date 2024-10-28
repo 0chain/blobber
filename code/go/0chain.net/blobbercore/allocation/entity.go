@@ -62,9 +62,8 @@ type Allocation struct {
 	TimeUnit         time.Duration    `gorm:"column:time_unit;not null;default:172800000000000"`
 	StartTime        common.Timestamp `gorm:"column:start_time;not null"`
 	// Ending and cleaning
-	CleanedUp             bool   `gorm:"column:cleaned_up;not null;default:false"`
-	Finalized             bool   `gorm:"column:finalized;not null;default:false"`
-	OwnerSigningPublicKey string `gorm:"column:owner_signing_public_key;size:512;not null" json:"owner_signing_public_key"`
+	CleanedUp bool `gorm:"column:cleaned_up;not null;default:false"`
+	Finalized bool `gorm:"column:finalized;not null;default:false"`
 
 	// FileOptions to define file restrictions on an allocation for third-parties
 	// default 00000000 for all crud operations suggesting only owner has the below listed abilities.
