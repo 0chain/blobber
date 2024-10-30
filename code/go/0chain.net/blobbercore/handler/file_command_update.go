@@ -150,7 +150,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, allocationObj 
 		if fileOutputData.ContentSize != cmd.fileChanger.Size {
 			return result, common.NewError("upload_error", fmt.Sprintf("File size mismatch. Expected: %d, Actual: %d", cmd.fileChanger.Size, fileOutputData.ContentSize))
 		}
-		hash := cmd.fileChanger.ActualHash + cmd.fileChanger.ValidationRoot
+		hash := cmd.fileChanger.ActualFileHashSignature + cmd.fileChanger.ValidationRoot
 		if allocationObj.IsStorageV2() {
 			hashData := fmt.Sprintf("%s:%s:%s:%s", cmd.fileChanger.ActualHash, cmd.fileChanger.ValidationRoot, cmd.fileChanger.FixedMerkleRoot, node.Self.ID)
 			hash = encryption.Hash(hashData)

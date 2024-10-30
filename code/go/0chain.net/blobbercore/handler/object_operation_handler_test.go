@@ -121,7 +121,7 @@ func TestDownloadFile(t *testing.T) {
 		if p.useAuthTicket {
 			authTicket := &marker.AuthTicket{
 				AllocationID: p.inData.allocationID,
-				ClientID:     client.ClientID(),
+				ClientID:     client.Wallet().ClientID,
 				Expiration:   int64(time.Duration(now) + 10000*time.Second),
 				OwnerID:      mockOwner.ClientID,
 				Timestamp:    int64(common.Now()),
@@ -141,8 +141,8 @@ func TestDownloadFile(t *testing.T) {
 		}
 	}
 
-	makeMockMakeSCRestAPICall := func(t *testing.T, p parameters) func(scAddress string, relativePath string, params map[string]string) ([]byte, error) {
-		return func(scAddress string, relativePath string, params map[string]string) ([]byte, error) {
+	makeMockMakeSCRestAPICall := func(t *testing.T, p parameters) func(scAddress string, relativePath string, params map[string]string, options ...string) ([]byte, error) {
+		return func(scAddress string, relativePath string, params map[string]string, options ...string) ([]byte, error) {
 			require.New(t)
 			require.EqualValues(t, scAddress, transaction.STORAGE_CONTRACT_ADDRESS)
 			switch relativePath {
@@ -292,7 +292,7 @@ func TestDownloadFile(t *testing.T) {
 
 	setupCtx := func(p parameters) context.Context {
 		ctx := context.TODO()
-		ctx = context.WithValue(ctx, constants.ContextKeyClient, client.ClientID())
+		ctx = context.WithValue(ctx, constants.ContextKeyClient, client.Wallet().ClientID)
 		ctx = context.WithValue(ctx, constants.ContextKeyAllocation, p.inData.allocationTx)
 		ctx = context.WithValue(ctx, constants.ContextKeyClientKey, client.PublicKey())
 

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	coreTxn "github.com/0chain/gosdk/core/transaction"
 	"math/rand"
 	"strings"
@@ -489,4 +490,52 @@ func (cr *ChallengeEntity) getPostData(ctx context.Context, allocationObj *alloc
 		return nil, err
 	}
 	return postData, nil
+}
+
+func (cr *ChallengeEntity) VerifyChallengeTransaction(ctx context.Context, txn *coreTxn.Transaction) error {
+	if len(cr.LastCommitTxnIDs) > 0 {
+		for _, lastTxn := range cr.LastCommitTxnIDs {
+			logging.Logger.Info("[challenge]commit: Verifying the transaction : " + lastTxn)
+			t, err := coreTxn.VerifyTransaction(lastTxn)
+			if err == nil && t.Status != coreTxn.TxnSuccess {
+				cr.SaveChallengeResult(ctx, t, false)
+				return nil
+			}
+			logging.Logger.Error("[challenge]trans: Error verifying the txn from BC."+lastTxn, zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
+		}
+	}
+
+	logging.Logger.Info("Verifying challenge response to blockchain.", zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ChallengeID))
+	var (
+		t   *coreTxn.Transaction
+		err error
+	)
+	for i := 0; i < 3; i++ {
+		t, err = coreTxn.VerifyTransaction(txn.Hash)
+		if err == nil {
+			break
+		}
+		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
+	}
+
+	if t == nil || err != nil || t.Status != coreTxn.TxnSuccess {
+		logging.Logger.Error("Error verifying the challenge response transaction",
+			zap.String("err:", err.Error()),
+			zap.String("txn", txn.Hash),
+			zap.String("challenge_id", cr.ChallengeID))
+
+		if t != nil {
+			cr.CommitTxnID = t.Hash
+			cr.LastCommitTxnIDs = append(cr.LastCommitTxnIDs, t.Hash)
+		}
+
+		if IsEntityNotFoundError(err) {
+			err = ErrEntityNotFound
+		}
+		_ = cr.Save(ctx)
+		return err
+	}
+	logging.Logger.Info("Success response from BC for challenge response transaction", zap.String("txn", txn.TransactionOutput), zap.String("challenge_id", cr.ChallengeID))
+	cr.SaveChallengeResult(ctx, t, true)
+	return nil
 }
