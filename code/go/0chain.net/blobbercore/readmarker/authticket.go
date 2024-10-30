@@ -67,7 +67,7 @@ func (authToken *AuthTicket) Verify(allocationObj *allocation.Allocation, client
 	if authToken.OwnerID != allocationObj.OwnerID {
 		return common.NewError("invalid_parameters", "Invalid auth ticket. Owner ID mismatch")
 	}
-	if authToken.Timestamp > (common.Now() + 2) {
+	if authToken.Timestamp > (common.Now() + 120) {
 		return common.NewError("invalid_parameters", "Invalid auth ticket. Timestamp in future")
 	}
 
