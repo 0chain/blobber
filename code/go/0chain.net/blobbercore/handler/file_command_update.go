@@ -155,15 +155,7 @@ func (cmd *UpdateFileCommand) ProcessContent(ctx context.Context, allocationObj 
 			hashData := fmt.Sprintf("%s:%s:%s:%s", cmd.fileChanger.ActualHash, cmd.fileChanger.ValidationRoot, cmd.fileChanger.FixedMerkleRoot, node.Self.ID)
 			hash = encryption.Hash(hashData)
 		}
-		var (
-			err    error
-			verify bool
-		)
-		if cmd.fileChanger.SignatureVersion == reference.SignatureV2 {
-			verify, err = encryption.VerifyEd25519(allocationObj.OwnerSigningPublicKey, cmd.fileChanger.ValidationRootSignature, hash)
-		} else {
-			verify, err = encryption.Verify(allocationObj.OwnerPublicKey, cmd.fileChanger.ValidationRootSignature, hash)
-		}
+		verify, err := encryption.Verify(allocationObj.OwnerPublicKey, cmd.fileChanger.ValidationRootSignature, hash)
 		if err != nil || !verify {
 			logging.Logger.Error("UpdateFileCommand.VerifySignature", zap.Error(err))
 			return result, common.NewError("update_error", "Failed to verify validation root signature. ")

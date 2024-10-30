@@ -106,7 +106,6 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, rootRef *reference
 	fileRef.ChunkSize = nf.ChunkSize
 	fileRef.IsPrecommit = true
 	fileRef.FilestoreVersion = filestore.VERSION
-	fileRef.SignatureVersion = nf.SignatureVersion
 
 	return rootRef, nil
 }
@@ -174,7 +173,6 @@ func (nf *UpdateFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, 
 		PathLevel:               len(strings.Split(strings.TrimRight(nf.Path, "/"), "/")),
 		NumBlocks:               int64(math.Ceil(float64(nf.Size*1.0) / float64(nf.ChunkSize))),
 		NumUpdates:              refResult.NumUpdates + 1,
-		SignatureVersion:        nf.SignatureVersion,
 	}
 	nf.storageVersion = 1
 	newFile.FileMetaHash = encryption.Hash(newFile.GetFileMetaHashDataV2())
