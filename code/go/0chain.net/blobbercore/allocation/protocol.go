@@ -141,7 +141,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 		return a, nil
 	}
 
-	logging.Logger.Info("Saving the allocation to DB")
+	logging.Logger.Info("Saving the allocation to DB", zap.String("allocation_id", a.ID))
 
 	if !isExist {
 		err = Repo.Save(ctx, a)
