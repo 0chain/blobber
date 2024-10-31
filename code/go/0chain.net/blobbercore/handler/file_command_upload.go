@@ -177,7 +177,7 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, allocationObj 
 			verify, err = encryption.Verify(allocationObj.OwnerPublicKey, cmd.fileChanger.ValidationRootSignature, hash)
 		}
 		if err != nil || !verify {
-			logging.Logger.Error("UploadFileCommand.VerifySignature", zap.Error(err))
+			logging.Logger.Error("UploadFileCommand.VerifySignature", zap.Error(err), zap.Int("SignatureVersion", cmd.fileChanger.SignatureVersion), zap.String("Hash", hash), zap.String("ValidationRootSignature", cmd.fileChanger.ValidationRootSignature), zap.String("OwnerSigningPublicKey", allocationObj.OwnerSigningPublicKey), zap.String("OwnerPublicKey", allocationObj.OwnerPublicKey))
 			return result, common.NewError("upload_error", fmt.Sprintf("%s %d", "Failed to verify validation root signature ", cmd.fileChanger.SignatureVersion))
 		}
 	}
