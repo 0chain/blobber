@@ -178,7 +178,7 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, allocationObj 
 		}
 		if err != nil || !verify {
 			logging.Logger.Error("UploadFileCommand.VerifySignature", zap.Error(err))
-			return result, common.NewError("upload_error", "Failed to verify validation root signature. ")
+			return result, common.NewError("upload_error", fmt.Sprintf("%s %d", "Failed to verify validation root signature ", cmd.fileChanger.SignatureVersion))
 		}
 	}
 
