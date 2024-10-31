@@ -221,6 +221,8 @@ func RegisterValidator() {
 		}
 
 		Logger.Info("Transaction for adding validator accepted and verified", zap.String("txn_hash", hash), zap.Any("txn_output", out))
+
+		go handler.StartHealthCheck(common.GetRootContext(), common.ProviderTypeValidator)
 		break
 	}
 }
