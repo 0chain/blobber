@@ -1832,7 +1832,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		err           error
 	)
 
-	allocationObj, err = fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
+	allocationObj, err = fsh.verifyAllocation(ctx, allocationId, allocationTx, true)
 	if err != nil {
 		Logger.Error("Error in verifying allocation", zap.Error(err))
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())

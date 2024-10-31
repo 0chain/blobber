@@ -113,7 +113,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 	a.StartTime = sa.StartTime
 	a.StorageVersion = uint8(sa.StorageVersion)
 	a.OwnerSigningPublicKey = sa.OwnerSigningPublicKey
-	logging.Logger.Info("OwnerSigningPublicKey", zap.String("OwnerSigningPublicKey", a.OwnerSigningPublicKey))
+	logging.Logger.Info("OwnerSigningPublicKey", zap.String("OwnerSigningPublicKey", a.OwnerSigningPublicKey), zap.String("allocation_id", a.ID))
 
 	m := map[string]interface{}{
 		"allocation_id":  a.ID,
