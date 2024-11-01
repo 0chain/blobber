@@ -53,20 +53,21 @@ type BlobberAllocation struct {
 }
 
 type StorageAllocation struct {
-	ID             string               `json:"id"`
-	Tx             string               `json:"tx"`
-	OwnerPublicKey string               `json:"owner_public_key"`
-	OwnerID        string               `json:"owner_id"`
-	Size           int64                `json:"size"`
-	UsedSize       int64                `json:"used_size"`
-	Expiration     common.Timestamp     `json:"expiration_date"`
-	BlobberDetails []*BlobberAllocation `json:"blobber_details"`
-	Finalized      bool                 `json:"finalized"`
-	TimeUnit       time.Duration        `json:"time_unit"`
-	WritePool      uint64               `json:"write_pool"`
-	FileOptions    uint16               `json:"file_options"`
-	StartTime      common.Timestamp     `json:"start_time"`
-	StorageVersion int                  `json:"storage_version"`
+	ID                    string               `json:"id"`
+	Tx                    string               `json:"tx"`
+	OwnerPublicKey        string               `json:"owner_public_key"`
+	OwnerID               string               `json:"owner_id"`
+	Size                  int64                `json:"size"`
+	UsedSize              int64                `json:"used_size"`
+	Expiration            common.Timestamp     `json:"expiration_date"`
+	BlobberDetails        []*BlobberAllocation `json:"blobber_details"`
+	Finalized             bool                 `json:"finalized"`
+	TimeUnit              time.Duration        `json:"time_unit"`
+	WritePool             uint64               `json:"write_pool"`
+	FileOptions           uint16               `json:"file_options"`
+	StartTime             common.Timestamp     `json:"start_time"`
+	StorageVersion        int                  `json:"storage_version"`
+	OwnerSigningPublicKey string               `json:"owner_signing_public_key"`
 
 	DataShards   int64 `json:"data_shards"`
 	ParityShards int64 `json:"parity_shards"`

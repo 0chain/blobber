@@ -167,10 +167,18 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, allocationObj 
 			hashData := fmt.Sprintf("%s:%s:%s:%s", cmd.fileChanger.ActualHash, cmd.fileChanger.ValidationRoot, cmd.fileChanger.FixedMerkleRoot, node.Self.ID)
 			hash = encryption.Hash(hashData)
 		}
-		verify, err := encryption.Verify(allocationObj.OwnerPublicKey, cmd.fileChanger.ValidationRootSignature, hash)
+		var (
+			err    error
+			verify bool
+		)
+		if cmd.fileChanger.SignatureVersion == reference.SignatureV2 {
+			verify, err = encryption.VerifyEd25519(allocationObj.OwnerSigningPublicKey, cmd.fileChanger.ValidationRootSignature, hash)
+		} else {
+			verify, err = encryption.Verify(allocationObj.OwnerPublicKey, cmd.fileChanger.ValidationRootSignature, hash)
+		}
 		if err != nil || !verify {
-			logging.Logger.Error("UploadFileCommand.VerifySignature", zap.Error(err))
-			return result, common.NewError("upload_error", "Failed to verify validation root signature. ")
+			logging.Logger.Error("UploadFileCommand.VerifySignature", zap.Error(err), zap.Int("SignatureVersion", cmd.fileChanger.SignatureVersion), zap.String("Hash", hash), zap.String("ValidationRootSignature", cmd.fileChanger.ValidationRootSignature), zap.String("OwnerSigningPublicKey", allocationObj.OwnerSigningPublicKey), zap.String("OwnerPublicKey", allocationObj.OwnerPublicKey))
+			return result, common.NewError("upload_error", fmt.Sprintf("%s %d", "Failed to verify validation root signature ", cmd.fileChanger.SignatureVersion))
 		}
 	}
 

@@ -53,7 +53,7 @@ func SetupDefaultConfig() {
 
 	viper.SetDefault("max_dirs_files", 50000)
 	viper.SetDefault("max_objects_dir", 1000)
-	viper.SetDefault("max_objects_per_gb", 100000)
+	viper.SetDefault("max_objects_per_gb", 1000)
 	viper.SetDefault("kv.pebble_dir", "/pebble/data")
 	viper.SetDefault("kv.pebble_wal_dir", "/pebble/wal")
 	viper.SetDefault("kv.pebble_cache", 4*1024*1024*1024)

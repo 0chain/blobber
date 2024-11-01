@@ -121,6 +121,9 @@ func redeemWriteMarker(md *markerData) error {
 	shouldRollback := false
 	start := time.Now()
 	logging.Logger.Info("redeeming_write_marker", zap.String("allocationID", allocationID))
+	allocMu := lock.GetMutex(allocation.Allocation{}.TableName(), allocationID)
+	allocMu.RLock()
+	defer allocMu.RUnlock()
 	defer func() {
 		if shouldRollback {
 			if rollbackErr := db.Rollback().Error; rollbackErr != nil {
@@ -130,13 +133,9 @@ func redeemWriteMarker(md *markerData) error {
 			}
 
 		} else {
-			go deleteMarkerData(allocationID)
+			deleteMarkerData(allocationID)
 		}
 	}()
-
-	allocMu := lock.GetMutex(allocation.Allocation{}.TableName(), allocationID)
-	allocMu.RLock()
-	defer allocMu.RUnlock()
 
 	alloc, err := allocation.Repo.GetAllocationFromDB(ctx, allocationID)
 	if err != nil {
@@ -150,7 +149,7 @@ func redeemWriteMarker(md *markerData) error {
 
 	if alloc.Finalized {
 		logging.Logger.Info("Allocation is finalized. Skipping redeeming the write marker.", zap.Any("allocation", allocationID))
-		go deleteMarkerData(allocationID)
+		deleteMarkerData(allocationID)
 		shouldRollback = true
 		return nil
 	}
@@ -174,7 +173,7 @@ func redeemWriteMarker(md *markerData) error {
 		if retryRedeem(err.Error()) {
 			go tryAgain(md)
 		} else {
-			go deleteMarkerData(allocationID)
+			deleteMarkerData(allocationID)
 		}
 		shouldRollback = true
 		return err

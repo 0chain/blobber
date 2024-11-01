@@ -1832,7 +1832,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		err           error
 	)
 
-	allocationObj, err = fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
+	allocationObj, err = fsh.verifyAllocation(ctx, allocationId, allocationTx, true)
 	if err != nil {
 		Logger.Error("Error in verifying allocation", zap.Error(err))
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
@@ -1972,38 +1972,33 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 	writemarkerEntity.ClientPublicKey = clientKey
 	Logger.Info("rollback_writemarker", zap.Any("writemarker", writemarkerEntity.WM))
 
-	alloc, err := allocation.Repo.GetByIdAndLock(c, allocationID)
-	Logger.Info("[rollback]Lock Allocation", zap.Bool("is_redeem_required", alloc.IsRedeemRequired), zap.String("allocation_root", alloc.AllocationRoot), zap.String("latest_wm_redeemed", alloc.LatestRedeemedWM))
-	if err != nil {
-		txn.Rollback()
-		return &result, common.NewError("allocation_read_error", "Error reading the allocation object")
-	}
+	Logger.Info("[rollback]Lock Allocation", zap.Bool("is_redeem_required", allocationObj.IsRedeemRequired), zap.String("allocation_root", allocationObj.AllocationRoot), zap.String("latest_wm_redeemed", allocationObj.LatestRedeemedWM))
 
-	alloc.BlobberSizeUsed -= latestWriteMarkerEntity.WM.Size
-	alloc.UsedSize -= latestWriteMarkerEntity.WM.Size
-	alloc.AllocationRoot = allocationRoot
-	alloc.FileMetaRoot = fileMetaRoot
-	alloc.IsRedeemRequired = false
-	alloc.NumObjects = alloc.PrevNumObjects
-	alloc.NumBlocks = alloc.PrevNumBlocks
+	allocationObj.BlobberSizeUsed -= latestWriteMarkerEntity.WM.Size
+	allocationObj.UsedSize -= latestWriteMarkerEntity.WM.Size
+	allocationObj.AllocationRoot = allocationRoot
+	allocationObj.FileMetaRoot = fileMetaRoot
+	allocationObj.IsRedeemRequired = false
+	allocationObj.NumObjects = allocationObj.PrevNumObjects
+	allocationObj.NumBlocks = allocationObj.PrevNumBlocks
 	updateMap := map[string]interface{}{
-		"blobber_size_used":  alloc.BlobberSizeUsed,
-		"used_size":          alloc.UsedSize,
-		"allocation_root":    alloc.AllocationRoot,
-		"file_meta_root":     alloc.FileMetaRoot,
+		"blobber_size_used":  allocationObj.BlobberSizeUsed,
+		"used_size":          allocationObj.UsedSize,
+		"allocation_root":    allocationObj.AllocationRoot,
+		"file_meta_root":     allocationObj.FileMetaRoot,
 		"is_redeem_required": false,
-		"num_objects":        alloc.NumObjects,
-		"num_blocks":         alloc.NumBlocks,
+		"num_objects":        allocationObj.NumObjects,
+		"num_blocks":         allocationObj.NumBlocks,
 	}
 
 	updateOption := func(a *allocation.Allocation) {
-		a.BlobberSizeUsed = alloc.BlobberSizeUsed
-		a.UsedSize = alloc.UsedSize
-		a.AllocationRoot = alloc.AllocationRoot
-		a.FileMetaRoot = alloc.FileMetaRoot
-		a.IsRedeemRequired = alloc.IsRedeemRequired
-		a.NumObjects = alloc.NumObjects
-		a.NumBlocks = alloc.NumBlocks
+		a.BlobberSizeUsed = allocationObj.BlobberSizeUsed
+		a.UsedSize = allocationObj.UsedSize
+		a.AllocationRoot = allocationObj.AllocationRoot
+		a.FileMetaRoot = allocationObj.FileMetaRoot
+		a.IsRedeemRequired = allocationObj.IsRedeemRequired
+		a.NumObjects = allocationObj.NumObjects
+		a.NumBlocks = allocationObj.NumBlocks
 	}
 	writemarkerEntity.Latest = true
 	err = txn.Create(writemarkerEntity).Error
@@ -2011,7 +2006,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		txn.Rollback()
 		return &result, common.NewError("write_marker_error", "Error persisting the write marker "+err.Error())
 	}
-	if err = allocation.Repo.UpdateAllocation(c, alloc, updateMap, updateOption); err != nil {
+	if err = allocation.Repo.UpdateAllocation(c, allocationObj, updateMap, updateOption); err != nil {
 		txn.Rollback()
 		return &result, common.NewError("allocation_write_error", "Error persisting the allocation object "+err.Error())
 	}
@@ -2024,7 +2019,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		var node wmpt.Node
 		if len(fileMetaRoot) > 0 {
 			decodedRoot, _ := hex.DecodeString(fileMetaRoot)
-			node = wmpt.NewHashNode(decodedRoot, alloc.NumBlocks)
+			node = wmpt.NewHashNode(decodedRoot, allocationObj.NumBlocks)
 		}
 		trie.RollbackTrie(node)
 	}
