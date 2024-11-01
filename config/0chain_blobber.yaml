@@ -29,6 +29,8 @@ max_dirs_files: 50000
 
 # maximum limit on the number of objects in a directory
 max_objects_dir: 1000
+# limit of objects per gb(storage v2)
+max_objects_per_gb: 1000
 
 # delegate wallet (must be set)
 delegate_wallet: '9c693cb14f29917968d6e8c909ebbea3425b4c1bc64b6732cadc2a1869f49be9'
