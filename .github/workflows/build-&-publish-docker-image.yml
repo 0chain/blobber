@@ -75,7 +75,10 @@ jobs:
 
       - name: Build Base image
         # if: contains(steps.changed-files.outputs.modified_files, 'docker.local/base.Dockerfile')
+        env:
+          DOCKER_CONFIG: /tmp/docker-config-${{ github.run_id }}
         run: |
+          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
 
           ./docker.local/bin/build.base.sh &&
@@ -159,7 +162,10 @@ jobs:
 
       - name: Build Base image
         # if: contains(steps.changed-files.outputs.modified_files, 'docker.local/base.Dockerfile')
+        env:
+          DOCKER_CONFIG: /tmp/docker-config-${{ github.run_id }}
         run: |
+          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
 
           ./docker.local/bin/build.base.sh
