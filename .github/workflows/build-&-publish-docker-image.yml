@@ -61,17 +61,15 @@ jobs:
       #     username: ${{ secrets.DOCKERHUB_USERNAME }}
       #     password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      - name: Docker Login
-        env:
-          DOCKER_CONFIG: /tmp/docker-config-${{ github.run_id }}
-        run: docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
-
       # - name: Get changed files using defaults
       #   id: changed-files
       #   uses: tj-actions/changed-files@v18.4
 
       - name: Pull Build Base
+        env:
+          DOCKER_CONFIG: /tmp/docker-config-${{ github.run_id }}
         run: |
+          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
           docker pull $BLOBBER_BUILD_BASE_REGISTRY:staging
           docker tag $BLOBBER_BUILD_BASE_REGISTRY:staging $BLOBBER_BUILDBASE
 
@@ -87,7 +85,10 @@ jobs:
           docker push $BLOBBER_BUILD_BASE_REGISTRY:$TAG-$SHORT_SHA
 
       - name: Build blobber
+        env:
+          DOCKER_CONFIG: /tmp/docker-config-${{ github.run_id }}
         run: |
+          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
           export DOCKER_IMAGE_BASE="$BLOBBER_BUILD_BASE_REGISTRY:$TAG"
           export DOCKER_IMAGE_SWAGGER="${BLOBBER_REGISTRY}:swagger_test"
@@ -134,11 +135,6 @@ jobs:
       #     username: ${{ secrets.DOCKERHUB_USERNAME }}
       #     password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      - name: Docker Login
-        env:
-          DOCKER_CONFIG: /tmp/docker-config-${{ github.run_id }}
-        run: docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
-
       - name: Clone blobber
         uses: actions/checkout@v3
         with:
@@ -154,7 +150,10 @@ jobs:
       #     fetch-depth: 0
 
       - name: Pull Build Base
+        env:
+          DOCKER_CONFIG: /tmp/docker-config-${{ github.run_id }}
         run: |
+          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
           docker pull $BLOBBER_BUILD_BASE_REGISTRY:staging
           docker tag $BLOBBER_BUILD_BASE_REGISTRY:staging $BLOBBER_BUILDBASE
 
@@ -170,7 +169,10 @@ jobs:
           docker push $BLOBBER_BUILD_BASE_REGISTRY:$TAG-$SHORT_SHA
 
       - name: Build validator
+        env:
+          DOCKER_CONFIG: /tmp/docker-config-${{ github.run_id }}
         run: |
+          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
           SHORT_SHA=$(echo ${{ env.SHA }} | head -c 8)
           export DOCKER_IMAGE_BASE="$BLOBBER_BUILD_BASE_REGISTRY:$TAG"
           # export DOCKER_BUILD="buildx build --platform linux/amd64,linux/arm64 --push"
