@@ -490,7 +490,7 @@ func (cr *ChallengeRequest) verifyObjectProof(latestWM *writemarker.WriteMarker,
 		verify, err = encryption.Verify(ownerPublicKey, cr.Meta.ValidationRootSignature, validationRootHash)
 	}
 	if err != nil {
-		logging.Logger.Error("Failed to verify the validation root signature", zap.Error(err), zap.String("validation_root", cr.Meta.ValidationRoot), zap.String("validation_root_signature", cr.Meta.ValidationRootSignature), zap.String("owner_public_key", ownerPublicKey))
+		logging.Logger.Error("Failed to verify the validation root signature", zap.Error(err), zap.String("validation_root", cr.Meta.ValidationRoot), zap.String("validation_root_signature", cr.Meta.ValidationRootSignature), zap.String("owner_public_key", ownerPublicKey), zap.String("allocation_id", latestWM.AllocationID))
 		return common.NewError("invalid_object_proof", "Failed to verify the validation root signature. "+err.Error())
 	}
 	if !verify {
