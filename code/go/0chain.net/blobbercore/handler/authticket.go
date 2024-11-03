@@ -31,7 +31,10 @@ func verifyAuthTicket(ctx context.Context, authTokenString string, allocationObj
 		if err != nil {
 			return nil, err
 		}
-		prefixPath := authTokenRef.Path + "/"
+		prefixPath := authTokenRef.Path
+		if prefixPath != "/" {
+			prefixPath += "/"
+		}
 		if !strings.HasPrefix(refRequested.Path, prefixPath) {
 			return nil, common.NewError("invalid_parameters", "Auth ticket is not valid for the resource being requested")
 		}
