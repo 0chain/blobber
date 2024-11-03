@@ -135,6 +135,8 @@ func (r *Repository) GetByTx(ctx context.Context, allocationID, txHash string) (
 			Allocation: a,
 		}
 		return a, nil
+	} else if a != nil {
+		logging.Logger.Debug("allocation_cache_miss", zap.String("allocation_id", allocationID), zap.String("tx_hash", txHash), zap.String("cached_tx_hash", a.Tx))
 	}
 
 	alloc := &Allocation{}
@@ -260,7 +262,6 @@ func (r *Repository) Commit(tx *datastore.EnhancedDB) {
 		return
 	}
 	for _, txnCache := range cache {
-		alloc := r.getAllocFromGlobalCache(txnCache.Allocation.ID)
 		mapLock.Lock()
 		mut, ok := r.allocLock[txnCache.Allocation.ID]
 		if !ok {
@@ -269,11 +270,13 @@ func (r *Repository) Commit(tx *datastore.EnhancedDB) {
 		}
 		mapLock.Unlock()
 		mut.Lock()
+		alloc := r.getAllocFromGlobalCache(txnCache.Allocation.ID)
 		if alloc != nil {
 			for _, update := range txnCache.AllocationUpdates {
 				update(alloc)
 			}
 			if len(txnCache.AllocationUpdates) > 0 {
+				logging.Logger.Debug("committing_allocation", zap.String("allocation_id", alloc.ID), zap.String("tx", alloc.Tx))
 				r.setAllocToGlobalCache(alloc)
 			}
 		}
