@@ -3,8 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"regexp"
+	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
@@ -28,14 +27,18 @@ func verifyAuthTicket(ctx context.Context, authTokenString string, allocationObj
 	}
 
 	if refRequested.LookupHash != authToken.FilePathHash {
-		authTokenRef, err := reference.GetLimitedRefFieldsByLookupHashWith(ctx, authToken.AllocationID, authToken.FilePathHash, []string{"id", "path"})
+		authTokenRef, err := reference.GetLimitedRefFieldsByLookupHashWith(ctx, authToken.AllocationID, authToken.FilePathHash, []string{"id", "path", "type"})
 		if err != nil {
 			return nil, err
 		}
-
-		if matched, _ := regexp.MatchString(fmt.Sprintf("^%v", authTokenRef.Path), refRequested.Path); !matched {
+		if authTokenRef.Type == reference.FILE {
 			return nil, common.NewError("invalid_parameters", "Auth ticket is not valid for the resource being requested")
 		}
+		prefixPath := authTokenRef.Path + "/"
+		if !strings.HasPrefix(refRequested.Path, prefixPath) {
+			return nil, common.NewError("invalid_parameters", "Auth ticket is not valid for the resource being requested")
+		}
+
 	}
 	if verifyShare {
 		shareInfo, err := reference.GetShareInfo(ctx, authToken.ClientID, authToken.FilePathHash)
