@@ -484,7 +484,7 @@ func (cr *ChallengeRequest) verifyObjectProof(latestWM *writemarker.WriteMarker,
 	hashData := fmt.Sprintf("%s:%s:%s:%s", cr.Meta.ActualFileHash, cr.Meta.ValidationRoot, cr.Meta.FixedMerkleRoot, blobberID)
 	validationRootHash := encryption.Hash(hashData)
 	var verify bool
-	if cr.Meta.SignatureVersion == 1 {
+	if len(cr.Meta.ValidationRootSignature) == 128 {
 		verify, err = encryption.VerifyEd25519(ownerSigningPublicKey, cr.Meta.ValidationRootSignature, validationRootHash)
 	} else {
 		verify, err = encryption.Verify(ownerPublicKey, cr.Meta.ValidationRootSignature, validationRootHash)
