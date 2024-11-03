@@ -27,12 +27,9 @@ func verifyAuthTicket(ctx context.Context, authTokenString string, allocationObj
 	}
 
 	if refRequested.LookupHash != authToken.FilePathHash {
-		authTokenRef, err := reference.GetLimitedRefFieldsByLookupHashWith(ctx, authToken.AllocationID, authToken.FilePathHash, []string{"id", "path", "type"})
+		authTokenRef, err := reference.GetLimitedRefFieldsByLookupHashWith(ctx, authToken.AllocationID, authToken.FilePathHash, []string{"id", "path"})
 		if err != nil {
 			return nil, err
-		}
-		if authTokenRef.Type == reference.FILE {
-			return nil, common.NewError("invalid_parameters", "Auth ticket is not valid for the resource being requested")
 		}
 		prefixPath := authTokenRef.Path + "/"
 		if !strings.HasPrefix(refRequested.Path, prefixPath) {
