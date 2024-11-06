@@ -589,6 +589,7 @@ func (fsh *StorageHandler) GetReferencePathV2(ctx context.Context, r *http.Reque
 	case result := <-resCh:
 		return result, nil
 	case err := <-errCh:
+		logging.Logger.Error("GetReferencePathV2", zap.Error(err))
 		return nil, err
 	}
 
@@ -708,10 +709,11 @@ func (fsh *StorageHandler) getReferencePathV2(ctx context.Context, r *http.Reque
 		return
 	}
 	allocMu := lock.GetMutex(allocation.Allocation{}.TableName(), allocationId)
+	logging.Logger.Debug("getReferencePathV2Lock", zap.String("allocation_id", allocationId))
 	allocMu.RLock()
 	defer allocMu.RUnlock()
 	now := time.Now()
-
+	logging.Logger.Debug("getTrie", zap.String("allocation_id", allocationId))
 	trie := allocationObj.GetTrie()
 	if trie == nil {
 		errCh <- common.NewError("invalid_parameters", "Trie not found for allocation.")

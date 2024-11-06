@@ -113,7 +113,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 	a.StartTime = sa.StartTime
 	a.StorageVersion = uint8(sa.StorageVersion)
 	a.OwnerSigningPublicKey = sa.OwnerSigningPublicKey
-	logging.Logger.Info("OwnerSigningPublicKey", zap.String("OwnerSigningPublicKey", a.OwnerSigningPublicKey), zap.String("allocation_id", a.ID))
+	logging.Logger.Info("OwnerSigningPublicKey", zap.String("OwnerSigningPublicKey", a.OwnerSigningPublicKey), zap.String("allocation_id", a.ID), zap.String("allocation_tx", a.Tx))
 
 	m := map[string]interface{}{
 		"allocation_id":  a.ID,
@@ -141,7 +141,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 		return a, nil
 	}
 
-	logging.Logger.Info("Saving the allocation to DB", zap.String("allocation_id", a.ID))
+	logging.Logger.Info("Saving the allocation to DB", zap.String("allocation_id", a.ID), zap.String("allocation_tx", a.Tx))
 
 	if !isExist {
 		err = Repo.Save(ctx, a)
@@ -174,6 +174,7 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 			alloc.StartTime = a.StartTime
 			alloc.BlobberSize = a.BlobberSize
 			alloc.OwnerSigningPublicKey = a.OwnerSigningPublicKey
+			logging.Logger.Info("updatingAllocation", zap.String("allocation_id", a.ID), zap.String("allocation_tx", a.Tx))
 		}
 		err = Repo.UpdateAllocation(ctx, a, updateMap, updateOption)
 	}
