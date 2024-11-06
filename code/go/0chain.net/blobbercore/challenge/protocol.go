@@ -106,7 +106,6 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	var (
 		postData map[string]any
 	)
-	logging.Logger.Debug("[challenge]getPost", zap.String("allocation_id", cr.AllocationID))
 	if allocationObj.IsStorageV2() {
 		postData, err = cr.getPostDataV2(ctx, allocationObj)
 	} else {
@@ -331,7 +330,6 @@ func (cr *ChallengeEntity) getPostDataV2(ctx context.Context, allocationObj *all
 			return nil, common.NewError("root_mismatch", "File meta root mismatch")
 		}
 	}
-	logging.Logger.Debug("[challenge]getPostDataV2Block: ", zap.Any("blockNum", blockNum), zap.String("allocation_id", cr.AllocationID))
 	cr.RespondedAllocationRoot = allocationObj.AllocationRoot
 	if blockNum > 0 {
 		r := rand.New(rand.NewSource(cr.RandomNumber))
@@ -355,6 +353,8 @@ func (cr *ChallengeEntity) getPostDataV2(ctx context.Context, allocationObj *all
 			zap.Int64("file size", ref.Size),
 			zap.String("file path", ref.Path),
 			zap.Int64("proof gen time", proofGenTime),
+			zap.String("allocation_id", cr.AllocationID),
+			zap.String("challenge_id", cr.ChallengeID),
 		)
 		postData["challenge_proof"] = challengeResponse
 		objectSize = ref.Size
