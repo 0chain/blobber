@@ -3,8 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"regexp"
+	"strings"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
@@ -32,10 +31,14 @@ func verifyAuthTicket(ctx context.Context, authTokenString string, allocationObj
 		if err != nil {
 			return nil, err
 		}
-
-		if matched, _ := regexp.MatchString(fmt.Sprintf("^%v", authTokenRef.Path), refRequested.Path); !matched {
+		prefixPath := authTokenRef.Path
+		if prefixPath != "/" {
+			prefixPath += "/"
+		}
+		if !strings.HasPrefix(refRequested.Path, prefixPath) {
 			return nil, common.NewError("invalid_parameters", "Auth ticket is not valid for the resource being requested")
 		}
+
 	}
 	if verifyShare {
 		shareInfo, err := reference.GetShareInfo(ctx, authToken.ClientID, authToken.FilePathHash)
