@@ -1280,7 +1280,7 @@ func (fsh *StorageHandler) RenameObject(ctx context.Context, r *http.Request) (i
 		return nil, common.NewError("invalid_operation", "cannot rename root path")
 	}
 
-	if objectRef.Type != reference.FILE {
+	if allocationObj.IsStorageV2() && objectRef.Type == reference.DIRECTORY {
 		isEmpty, err := reference.IsDirectoryEmpty(ctx, allocationID, objectRef.Path)
 		if err != nil {
 			return nil, common.NewError("invalid_operation", "Error checking if directory is empty "+err.Error())
