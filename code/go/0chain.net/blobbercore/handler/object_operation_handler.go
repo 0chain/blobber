@@ -622,7 +622,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		return nil, common.NewError("blacklisted_client", "Client is blacklisted: "+clientID)
 	}
 
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, true)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -912,7 +912,7 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 		return nil, common.NewError("blacklisted_client", "Client is blacklisted: "+clientID)
 	}
 
-	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, true)
+	allocationObj, err := fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
 	}
@@ -1832,7 +1832,7 @@ func (fsh *StorageHandler) Rollback(ctx context.Context, r *http.Request) (*blob
 		err           error
 	)
 
-	allocationObj, err = fsh.verifyAllocation(ctx, allocationId, allocationTx, true)
+	allocationObj, err = fsh.verifyAllocation(ctx, allocationId, allocationTx, false)
 	if err != nil {
 		Logger.Error("Error in verifying allocation", zap.Error(err))
 		return nil, common.NewError("invalid_parameters", "Invalid allocation id passed."+err.Error())
