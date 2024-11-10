@@ -52,8 +52,9 @@ type BaseFileChanger struct {
 	EncryptedKeyPoint string `json:"encrypted_key_point,omitempty"`
 	CustomMeta        string `json:"custom_meta,omitempty"`
 
-	ChunkSize int64 `json:"chunk_size,omitempty"` // the size of achunk. 64*1024 is default
-	IsFinal   bool  `json:"is_final,omitempty"`   // current chunk is last or not
+	ChunkSize        int64 `json:"chunk_size,omitempty"` // the size of achunk. 64*1024 is default
+	IsFinal          bool  `json:"is_final,omitempty"`   // current chunk is last or not
+	SignatureVersion int   `json:"signature_version,omitempty"`
 
 	ChunkStartIndex int    `json:"chunk_start_index,omitempty"` // start index of chunks.
 	ChunkEndIndex   int    `json:"chunk_end_index,omitempty"`   // end index of chunks. all chunks MUST be uploaded one by one because of CompactMerkleTree

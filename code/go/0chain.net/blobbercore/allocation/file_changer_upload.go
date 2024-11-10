@@ -130,6 +130,7 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context, rootRef *reference
 		HashToBeComputed:        true,
 		IsPrecommit:             true,
 		FilestoreVersion:        filestore.VERSION,
+		SignatureVersion:        nf.SignatureVersion,
 	}
 
 	fileID, ok := fileIDMeta[newFile.Path]
@@ -197,6 +198,7 @@ func (nf *UploadFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, 
 		PathLevel:               len(strings.Split(strings.TrimRight(nf.Path, "/"), "/")),
 		NumBlocks:               int64(math.Ceil(float64(nf.Size*1.0) / float64(nf.ChunkSize))),
 		NumUpdates:              1,
+		SignatureVersion:        nf.SignatureVersion,
 	}
 	nf.storageVersion = 1
 	newFile.FileMetaHash = encryption.Hash(newFile.GetFileMetaHashDataV2())

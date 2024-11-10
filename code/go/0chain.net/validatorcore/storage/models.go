@@ -59,6 +59,7 @@ type RefMeta struct {
 	FixedMerkleRoot         string `json:"fixed_merkle_root"`
 	Size                    int64  `json:"size"`
 	FileMetaHash            string `json:"file_meta_hash"`
+	SignatureVersion        int    `json:"signature_version"`
 }
 
 func (rm *RefMeta) GetFileMetaHashData(allocationID string) string {
@@ -285,14 +286,15 @@ func (op *ObjectPath) Verify(allocationID string, challengeRand int64) error {
 }
 
 type Allocation struct {
-	ID             string           `json:"id"`
-	DataShards     int              `json:"data_shards"`
-	ParityShards   int              `json:"parity_shards"`
-	Size           int64            `json:"size"`
-	UsedSize       int64            `json:"used_size"`
-	Expiration     common.Timestamp `json:"expiration_date"`
-	Owner          string           `json:"owner_id"`
-	OwnerPublicKey string           `json:"owner_public_key"`
+	ID                    string           `json:"id"`
+	DataShards            int64            `json:"data_shards"`
+	ParityShards          int64            `json:"parity_shards"`
+	Size                  int64            `json:"size"`
+	UsedSize              int64            `json:"used_size"`
+	Expiration            common.Timestamp `json:"expiration_date"`
+	Owner                 string           `json:"owner_id"`
+	OwnerPublicKey        string           `json:"owner_public_key"`
+	OwnerSigningPublicKey string           `json:"owner_signing_public_key"`
 }
 
 type ChallengeProof struct {
@@ -322,7 +324,7 @@ func (cr *ChallengeRequest) verifyBlockNum(challengeObj *Challenge) error {
 }
 
 func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationObj *Allocation) error {
-	logging.Logger.Info("Verifying object path", zap.String("challenge_id", challengeObj.ID), zap.Int64("seed", challengeObj.RandomNumber), zap.Int("storage_version", cr.StorageVersion))
+	logging.Logger.Info("Verifying object path", zap.String("challenge_id", challengeObj.ID), zap.Int64("seed", challengeObj.RandomNumber), zap.Int("storage_version", cr.StorageVersion), zap.String("owner_public_key", allocationObj.OwnerPublicKey))
 	if cr.ObjPath != nil && cr.StorageVersion == 0 {
 		err := cr.ObjPath.Verify(challengeObj.AllocationID, challengeObj.RandomNumber)
 		if err != nil {
@@ -343,7 +345,7 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 		return common.NewError("write_marker_validation_failed", "Write marker timestamp does not match with challenge timestamp")
 	}
 	for i := 1; i < len(cr.WriteMarkers); i++ {
-		err = cr.WriteMarkers[i].WM.Verify(allocationObj.ID, cr.WriteMarkers[i].WM.AllocationRoot, cr.WriteMarkers[i].ClientPublicKey)
+		err = cr.WriteMarkers[i].WM.Verify(allocationObj.ID, cr.WriteMarkers[i].WM.AllocationRoot, allocationObj.OwnerPublicKey)
 		if err != nil {
 			return err
 		}
@@ -359,7 +361,7 @@ func (cr *ChallengeRequest) VerifyChallenge(challengeObj *Challenge, allocationO
 		if len(cr.ObjectProof) == 0 && latestWM.ChainSize == 0 {
 			return nil
 		}
-		err = cr.verifyObjectProof(latestWM, challengeObj.BlobberID, cr.WriteMarkers[len(cr.WriteMarkers)-1].ClientPublicKey, challengeObj.RandomNumber)
+		err = cr.verifyObjectProof(latestWM, challengeObj.BlobberID, allocationObj.OwnerPublicKey, allocationObj.OwnerSigningPublicKey, challengeObj.RandomNumber)
 		if err != nil {
 			logging.Logger.Error("Failed to verify object proof", zap.String("challenge_id", challengeObj.ID), zap.Error(err))
 			return err
@@ -445,7 +447,7 @@ func (vt *ValidationTicket) Sign() error {
 	return err
 }
 
-func (cr *ChallengeRequest) verifyObjectProof(latestWM *writemarker.WriteMarker, blobberID, ownerPublicKey string, challengeRand int64) error {
+func (cr *ChallengeRequest) verifyObjectProof(latestWM *writemarker.WriteMarker, blobberID, ownerPublicKey, ownerSigningPublicKey string, challengeRand int64) error {
 	if len(cr.ObjectProof) == 0 {
 		return common.NewError("invalid_object_proof", "Object proof is missing")
 	}
@@ -481,9 +483,14 @@ func (cr *ChallengeRequest) verifyObjectProof(latestWM *writemarker.WriteMarker,
 	// verify fixed merkle root
 	hashData := fmt.Sprintf("%s:%s:%s:%s", cr.Meta.ActualFileHash, cr.Meta.ValidationRoot, cr.Meta.FixedMerkleRoot, blobberID)
 	validationRootHash := encryption.Hash(hashData)
-	verify, err := encryption.Verify(ownerPublicKey, cr.Meta.ValidationRootSignature, validationRootHash)
+	var verify bool
+	if len(cr.Meta.ValidationRootSignature) == 128 {
+		verify, err = encryption.VerifyEd25519(ownerSigningPublicKey, cr.Meta.ValidationRootSignature, validationRootHash)
+	} else {
+		verify, err = encryption.Verify(ownerPublicKey, cr.Meta.ValidationRootSignature, validationRootHash)
+	}
 	if err != nil {
-		logging.Logger.Error("Failed to verify the validation root signature", zap.Error(err), zap.String("validation_root", cr.Meta.ValidationRoot), zap.String("validation_root_signature", cr.Meta.ValidationRootSignature), zap.String("owner_public_key", ownerPublicKey))
+		logging.Logger.Error("Failed to verify the validation root signature", zap.Error(err), zap.String("validation_root", cr.Meta.ValidationRoot), zap.String("validation_root_signature", cr.Meta.ValidationRootSignature), zap.String("owner_public_key", ownerPublicKey), zap.String("allocation_id", latestWM.AllocationID))
 		return common.NewError("invalid_object_proof", "Failed to verify the validation root signature. "+err.Error())
 	}
 	if !verify {

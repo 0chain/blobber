@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/0chain/gosdk/core/client"
 	"net/http"
 	"time"
+
+	"github.com/0chain/gosdk/core/client"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
@@ -142,12 +143,12 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 
 		mutex := lock.GetMutex(allocation.Allocation{}.TableName(), allocationID)
 		Logger.Info("Locking allocation", zap.String("allocation_id", allocationID))
+		mutex.Lock()
+		defer mutex.Unlock()
 		wmSet := writemarker.SetCommittingMarker(allocationID, true)
 		if !wmSet {
 			return nil, http.StatusBadRequest, common.NewError("pending_markers", "Committing marker set failed")
 		}
-		mutex.Lock()
-		defer mutex.Unlock()
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
 		tx := GetMetaDataStore().GetTransaction(ctx)
 		resp, statusCode, err = handler(ctx, r)
@@ -161,6 +162,7 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 				}
 				writemarker.SetCommittingMarker(allocationID, false)
 			}
+			Logger.Debug("Unlocking allocation", zap.String("allocation_id", allocationID))
 		}()
 
 		if err != nil {

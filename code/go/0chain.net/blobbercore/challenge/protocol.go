@@ -5,12 +5,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
-	coreTxn "github.com/0chain/gosdk/core/transaction"
 	"math/rand"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
+	coreTxn "github.com/0chain/gosdk/core/transaction"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -82,6 +83,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	// unlocking it as it will be locked for longer time and handler.CommitWrite
 	// will fail.
 	allocMu := lock.GetMutex(allocation.Allocation{}.TableName(), cr.AllocationID)
+	logging.Logger.Debug("[challenge]load: ", zap.String("challenge_id", cr.ChallengeID), zap.String("allocation_id", cr.AllocationID))
 	allocMu.RLock()
 
 	allocationObj, err := allocation.Repo.GetAllocationFromDB(ctx, cr.AllocationID)
@@ -104,7 +106,6 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	var (
 		postData map[string]any
 	)
-
 	if allocationObj.IsStorageV2() {
 		postData, err = cr.getPostDataV2(ctx, allocationObj)
 	} else {
@@ -112,7 +113,7 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	}
 	allocMu.RUnlock()
 	if err != nil {
-		logging.Logger.Error("[challenge]load: ", zap.String("challenge_id", cr.ChallengeID), zap.Error(err))
+		logging.Logger.Error("[challenge]load: ", zap.String("challenge_id", cr.ChallengeID), zap.String("allocation_id", cr.AllocationID), zap.Error(err))
 		cr.CancelChallenge(ctx, err)
 		return err
 	}
@@ -293,7 +294,7 @@ func (cr *ChallengeEntity) SaveChallengeResult(ctx context.Context, t *coreTxn.T
 func (cr *ChallengeEntity) getPostDataV2(ctx context.Context, allocationObj *allocation.Allocation) (map[string]any, error) {
 	trie := allocationObj.GetTrie()
 	copyTrie := wmpt.New(trie.CopyRoot(filestore.COLLAPSE_DEPTH), datastore.GetBlockStore())
-
+	logging.Logger.Info("[challenge]getPostDataV2: ", zap.String("allocation_id", cr.AllocationID))
 	var (
 		blockNum     = int64(0)
 		postData     = make(map[string]interface{})
@@ -306,7 +307,7 @@ func (cr *ChallengeEntity) getPostDataV2(ctx context.Context, allocationObj *all
 		blockNum = r.Int63n(int64(copyTrie.Weight()))
 		blockNum++
 		cr.BlockNum = blockNum
-		logging.Logger.Info("[challenge]rand: ", zap.Uint64("trie.NumBlocks", trie.Weight()), zap.Any("blockNum", blockNum), zap.Any("challenge_id", cr.ChallengeID), zap.Any("random_seed", cr.RandomNumber))
+		logging.Logger.Info("[challenge]rand: ", zap.Uint64("trie.NumBlocks", trie.Weight()), zap.Any("blockNum", blockNum), zap.Any("challenge_id", cr.ChallengeID), zap.Any("random_seed", cr.RandomNumber), zap.String("allocation_id", cr.AllocationID))
 		key, objectProof, err := copyTrie.GetBlockProof(uint64(blockNum))
 		if err != nil {
 			return nil, err
@@ -352,6 +353,8 @@ func (cr *ChallengeEntity) getPostDataV2(ctx context.Context, allocationObj *all
 			zap.Int64("file size", ref.Size),
 			zap.String("file path", ref.Path),
 			zap.Int64("proof gen time", proofGenTime),
+			zap.String("allocation_id", cr.AllocationID),
+			zap.String("challenge_id", cr.ChallengeID),
 		)
 		postData["challenge_proof"] = challengeResponse
 		objectSize = ref.Size
@@ -366,6 +369,7 @@ func (cr *ChallengeEntity) getPostDataV2(ctx context.Context, allocationObj *all
 			FixedMerkleRoot:         ref.FixedMerkleRoot,
 			Size:                    ref.Size,
 			FileMetaHash:            ref.FileMetaHash,
+			SignatureVersion:        ref.SignatureVersion,
 		}
 		postData["meta"] = metaRef
 	}
@@ -383,6 +387,7 @@ func (cr *ChallengeEntity) getPostDataV2(ctx context.Context, allocationObj *all
 
 		return nil, err
 	}
+	logging.Logger.Debug("[challenge]getPostDataV2Return ", zap.Any("blockNum", blockNum), zap.String("allocation_id", cr.AllocationID))
 	return postData, nil
 }
 

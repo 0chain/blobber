@@ -207,7 +207,7 @@ func setupHandlers(s *mux.Router) {
 		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ReferencePathV2Handler))))
 
 	s.HandleFunc("/v1/file/latestwritemarker/{allocation}",
-		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(WriteMarkerHandler))))
+		RateLimitByObjectRL(common.ToJSONResponse(WithConnection(WriteMarkerHandler))))
 
 	s.HandleFunc("/v1/file/objecttree/{allocation}",
 		RateLimitByObjectRL(common.ToStatusCode(WithStatusReadOnlyConnection(ObjectTreeHandler)))).

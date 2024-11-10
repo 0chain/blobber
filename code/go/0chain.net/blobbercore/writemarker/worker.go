@@ -115,12 +115,16 @@ func SetupWorkers(ctx context.Context) {
 }
 
 func redeemWriteMarker(md *markerData) error {
-	ctx := datastore.GetStore().CreateTransaction(context.TODO())
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
+	defer cancel()
+	ctx := datastore.GetStore().CreateTransaction(timeoutCtx)
 	db := datastore.GetStore().GetTransaction(ctx)
 	allocationID := md.allocationID
 	shouldRollback := false
 	start := time.Now()
 	logging.Logger.Info("redeeming_write_marker", zap.String("allocationID", allocationID))
+	allocMu := lock.GetMutex(allocation.Allocation{}.TableName(), allocationID)
+	allocMu.RLock()
 	defer func() {
 		if shouldRollback {
 			if rollbackErr := db.Rollback().Error; rollbackErr != nil {
@@ -130,14 +134,10 @@ func redeemWriteMarker(md *markerData) error {
 			}
 
 		} else {
-			go deleteMarkerData(allocationID)
+			deleteMarkerData(allocationID)
 		}
+		allocMu.RUnlock()
 	}()
-
-	allocMu := lock.GetMutex(allocation.Allocation{}.TableName(), allocationID)
-	allocMu.RLock()
-	defer allocMu.RUnlock()
-
 	alloc, err := allocation.Repo.GetAllocationFromDB(ctx, allocationID)
 	if err != nil {
 		logging.Logger.Error("Error redeeming the write marker.", zap.Any("allocation", allocationID), zap.Any("wm", allocationID), zap.Any("error", err))
@@ -150,11 +150,10 @@ func redeemWriteMarker(md *markerData) error {
 
 	if alloc.Finalized {
 		logging.Logger.Info("Allocation is finalized. Skipping redeeming the write marker.", zap.Any("allocation", allocationID))
-		go deleteMarkerData(allocationID)
+		deleteMarkerData(allocationID)
 		shouldRollback = true
 		return nil
 	}
-
 	wm, err := GetWriteMarkerEntity(ctx, alloc.ID, alloc.AllocationRoot)
 	if err != nil {
 		logging.Logger.Error("Error redeeming the write marker.", zap.Any("allocation", allocationID), zap.Any("wm", alloc.AllocationRoot), zap.Any("error", err))
@@ -164,7 +163,6 @@ func redeemWriteMarker(md *markerData) error {
 		shouldRollback = true
 		return err
 	}
-
 	err = wm.RedeemMarker(ctx, alloc.LastRedeemedSeq+1)
 	if err != nil {
 		elapsedTime := time.Since(start)
@@ -174,12 +172,11 @@ func redeemWriteMarker(md *markerData) error {
 		if retryRedeem(err.Error()) {
 			go tryAgain(md)
 		} else {
-			go deleteMarkerData(allocationID)
+			deleteMarkerData(allocationID)
 		}
 		shouldRollback = true
 		return err
 	}
-
 	err = allocation.Repo.UpdateAllocationRedeem(ctx, allocationID, wm.WM.AllocationRoot, alloc, wm.Sequence)
 	if err != nil {
 		logging.Logger.Error("Error redeeming the write marker. Allocation latest wm redeemed update failed",
@@ -189,7 +186,6 @@ func redeemWriteMarker(md *markerData) error {
 		go tryAgain(md)
 		return err
 	}
-
 	err = db.Commit().Error
 	if err != nil {
 		logging.Logger.Error("Error committing the writemarker redeem",

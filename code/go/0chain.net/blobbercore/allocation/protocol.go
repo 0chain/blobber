@@ -13,6 +13,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -110,8 +111,9 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 	a.TimeUnit = sa.TimeUnit
 	a.FileOptions = sa.FileOptions
 	a.StartTime = sa.StartTime
-	// Only for testing purpose
 	a.StorageVersion = uint8(sa.StorageVersion)
+	a.OwnerSigningPublicKey = sa.OwnerSigningPublicKey
+	logging.Logger.Info("OwnerSigningPublicKey", zap.String("OwnerSigningPublicKey", a.OwnerSigningPublicKey), zap.String("allocation_id", a.ID), zap.String("allocation_tx", a.Tx))
 
 	m := map[string]interface{}{
 		"allocation_id":  a.ID,
@@ -139,23 +141,24 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 		return a, nil
 	}
 
-	logging.Logger.Info("Saving the allocation to DB")
+	logging.Logger.Info("Saving the allocation to DB", zap.String("allocation_id", a.ID), zap.String("allocation_tx", a.Tx))
 
 	if !isExist {
 		err = Repo.Save(ctx, a)
 	} else {
 		updateMap := map[string]interface{}{
-			"tx":               a.Tx,
-			"expiration_date":  a.Expiration,
-			"owner_id":         a.OwnerID,
-			"owner_public_key": a.OwnerPublicKey,
-			"repairer_id":      a.RepairerID,
-			"size":             a.TotalSize,
-			"finalized":        a.Finalized,
-			"time_unit":        a.TimeUnit,
-			"file_options":     a.FileOptions,
-			"start_time":       a.StartTime,
-			"blobber_size":     a.BlobberSize,
+			"tx":                       a.Tx,
+			"expiration_date":          a.Expiration,
+			"owner_id":                 a.OwnerID,
+			"owner_public_key":         a.OwnerPublicKey,
+			"repairer_id":              a.RepairerID,
+			"size":                     a.TotalSize,
+			"finalized":                a.Finalized,
+			"time_unit":                a.TimeUnit,
+			"file_options":             a.FileOptions,
+			"start_time":               a.StartTime,
+			"blobber_size":             a.BlobberSize,
+			"owner_signing_public_key": a.OwnerSigningPublicKey,
 		}
 
 		updateOption := func(alloc *Allocation) {
@@ -170,6 +173,8 @@ func FetchAllocationFromEventsDB(ctx context.Context, allocationID string, alloc
 			alloc.FileOptions = a.FileOptions
 			alloc.StartTime = a.StartTime
 			alloc.BlobberSize = a.BlobberSize
+			alloc.OwnerSigningPublicKey = a.OwnerSigningPublicKey
+			logging.Logger.Info("updatingAllocation", zap.String("allocation_id", a.ID), zap.String("allocation_tx", a.Tx))
 		}
 		err = Repo.UpdateAllocation(ctx, a, updateMap, updateOption)
 	}
