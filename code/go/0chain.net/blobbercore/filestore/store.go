@@ -7,7 +7,7 @@ import (
 const (
 	CHUNK_SIZE     = 64 * 1024
 	VERSION        = 1
-	COLLAPSE_DEPTH = 3
+	COLLAPSE_DEPTH = 1
 )
 
 type FileInputData struct {
