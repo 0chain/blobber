@@ -70,6 +70,9 @@ func (pq *SeqPriorityQueue) Push(v UploadData) {
 }
 
 func (pq *SeqPriorityQueue) Done(v UploadData, dataSize int64) {
+	if pq.done {
+		return
+	}
 	pq.lock.Lock()
 	pq.done = true
 	pq.dataSize = dataSize

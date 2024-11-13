@@ -86,6 +86,7 @@ func uploadChanges(allocationID, validationRoot string, fileIDMeta map[string]st
 				ValidationRoot: validationRoot,
 				Size:           2310,
 				ChunkSize:      65536,
+				IsFinal:        true,
 			},
 		}
 		fileIDMeta[filepath.Join("/", change.Filename)] = randName()
@@ -111,6 +112,7 @@ func getUpdateChange(uploadChanger *UploadFileChanger) *UpdateFileChanger {
 			ValidationRoot: "updated_validation_root",
 			Size:           uploadChanger.Size,
 			ChunkSize:      uploadChanger.ChunkSize,
+			IsFinal:        true,
 		},
 	}
 }
