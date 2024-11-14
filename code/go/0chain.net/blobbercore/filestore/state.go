@@ -72,7 +72,7 @@ func (fs *FileStore) initMap() error {
 				}
 
 				allocsMap[dbAlloc.ID] = &a
-				if dbAlloc.StorageVersion != 0 {
+				if dbAlloc.StorageVersion == 0 {
 					err := getStorageDetails(ctx, &a, dbAlloc.ID)
 					if err != nil {
 						return err
