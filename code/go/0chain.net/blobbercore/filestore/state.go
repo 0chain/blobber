@@ -72,12 +72,15 @@ func (fs *FileStore) initMap() error {
 				}
 
 				allocsMap[dbAlloc.ID] = &a
-
-				err := getStorageDetails(ctx, &a, dbAlloc.ID)
-
-				if err != nil {
-					return err
+				if dbAlloc.StorageVersion == 0 {
+					err := getStorageDetails(ctx, &a, dbAlloc.ID)
+					if err != nil {
+						return err
+					}
+				} else {
+					a.filesNumber = uint64(dbAlloc.NumObjects)
 				}
+				a.filesSize = uint64(dbAlloc.BlobberSizeUsed)
 
 				limitCh <- struct{}{}
 				wg.Add(1)
@@ -133,8 +136,10 @@ type dbAllocation struct {
 	TimeUnit        time.Duration    `gorm:"column:time_unit"`
 
 	// Ending and cleaning
-	CleanedUp bool `gorm:"column:cleaned_up"`
-	Finalized bool `gorm:"column:finalized"`
+	CleanedUp      bool  `gorm:"column:cleaned_up"`
+	Finalized      bool  `gorm:"column:finalized"`
+	StorageVersion uint8 `gorm:"column:storage_version"`
+	NumObjects     int32 `gorm:"column:num_objects"`
 }
 
 func (dbAllocation) TableName() string {
@@ -161,18 +166,9 @@ func getStorageDetails(ctx context.Context, a *allocation, ID string) error {
 	if err := db.Model(&ref{}).Where(r).Count(&totalFiles).Error; err != nil {
 		return err
 	}
-
-	var totalFileSize *int64
-	if err := db.Model(&ref{}).Select("sum(size) as file_size").Where(r).Scan(&totalFileSize).Error; err != nil {
-		return err
-	}
-
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.filesNumber = uint64(totalFiles)
-	if totalFileSize != nil {
-		a.filesSize = uint64(*totalFileSize)
-	}
 	return nil
 }
 

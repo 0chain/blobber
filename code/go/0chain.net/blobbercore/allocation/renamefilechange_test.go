@@ -105,10 +105,6 @@ func setupMockForFileManagerInit(mock sqlmock.Sqlmock) {
 			sqlmock.NewRows([]string{"count"}).AddRow(1000),
 		)
 
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT sum(size) as file_size FROM "reference_objects" WHERE`)).
-		WillReturnRows(
-			sqlmock.NewRows([]string{"file_size"}).AddRow(6553600),
-		)
 	mock.ExpectCommit()
 }
 
