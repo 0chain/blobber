@@ -107,6 +107,7 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, rootRef *reference
 	fileRef.IsPrecommit = true
 	fileRef.FilestoreVersion = filestore.VERSION
 	fileRef.SignatureVersion = nf.SignatureVersion
+	fileRef.EncryptionVersion = nf.EncryptionVersion
 
 	return rootRef, nil
 }
@@ -175,6 +176,7 @@ func (nf *UpdateFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, 
 		NumBlocks:               int64(math.Ceil(float64(nf.Size*1.0) / float64(nf.ChunkSize))),
 		NumUpdates:              refResult.NumUpdates + 1,
 		SignatureVersion:        nf.SignatureVersion,
+		EncryptionVersion:       nf.EncryptionVersion,
 	}
 	nf.storageVersion = 1
 	newFile.FileMetaHash = encryption.Hash(newFile.GetFileMetaHashDataV2())
