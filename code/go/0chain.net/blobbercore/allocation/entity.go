@@ -9,6 +9,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/common/core/encryption"
 	"github.com/0chain/common/core/util/wmpt"
 	"gorm.io/gorm/clause"
 
@@ -93,7 +94,7 @@ func (Allocation) TableName() string {
 func (a *Allocation) GetTrie() *wmpt.WeightedMerkleTrie {
 	trie := Repo.getTrie(a.ID)
 	if trie == nil {
-		if a.FileMetaRoot == "" {
+		if a.FileMetaRoot == "" || a.FileMetaRoot == encryption.EmptyHash {
 			trie = wmpt.New(nil, datastore.GetBlockStore())
 		} else {
 			decodedRoot, _ := hex.DecodeString(a.FileMetaRoot)
