@@ -93,6 +93,7 @@ type Ref struct {
 	NumBlockDownloads int64          `gorm:"column:num_of_block_downloads" json:"num_of_block_downloads"`
 	FilestoreVersion  int            `gorm:"column:filestore_version" json:"-"`
 	SignatureVersion  int            `gorm:"column:signature_version" json:"signature_version" filelist:"signature_version"`
+	EncryptionVersion int            `gorm:"column:encryption_version" json:"encryption_version" filelist:"encryption_version"`
 	IsEmpty           bool           `gorm:"-" dirlist:"is_empty"`
 	HashToBeComputed  bool           `gorm:"-"`
 	prevID            int64          `gorm:"-"`
@@ -151,6 +152,7 @@ type PaginatedRef struct { //Gorm smart select fields.
 	EncryptedKeyPoint       string `gorm:"column:encrypted_key_point" json:"encrypted_key_point,omitempty"`
 	FileMetaHash            string `gorm:"column:file_meta_hash;size:64;not null" dirlist:"file_meta_hash" filelist:"file_meta_hash"`
 	SignatureVersion        int    `gorm:"column:signature_version" json:"signature_version,omitempty" filelist:"signature_version"`
+	EncryptionVersion       int    `gorm:"column:encryption_version" json:"encryption_version" filelist:"encryption_version"`
 
 	CreatedAt common.Timestamp `gorm:"column:created_at" json:"created_at,omitempty"`
 	UpdatedAt common.Timestamp `gorm:"column:updated_at" json:"updated_at,omitempty"`

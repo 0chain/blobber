@@ -15,18 +15,19 @@ const (
 
 // swagger:model AuthTicket
 type AuthTicket struct {
-	ClientID        string           `json:"client_id"`
-	OwnerID         string           `json:"owner_id"`
-	AllocationID    string           `json:"allocation_id"`
-	FilePathHash    string           `json:"file_path_hash"`
-	ActualFileHash  string           `json:"actual_file_hash"`
-	FileName        string           `json:"file_name"`
-	RefType         string           `json:"reference_type"`
-	Expiration      common.Timestamp `json:"expiration"`
-	Timestamp       common.Timestamp `json:"timestamp"`
-	ReEncryptionKey string           `json:"re_encryption_key"`
-	Signature       string           `json:"signature"`
-	Encrypted       bool             `json:"encrypted"`
+	ClientID            string           `json:"client_id"`
+	OwnerID             string           `json:"owner_id"`
+	AllocationID        string           `json:"allocation_id"`
+	FilePathHash        string           `json:"file_path_hash"`
+	ActualFileHash      string           `json:"actual_file_hash"`
+	FileName            string           `json:"file_name"`
+	RefType             string           `json:"reference_type"`
+	Expiration          common.Timestamp `json:"expiration"`
+	Timestamp           common.Timestamp `json:"timestamp"`
+	ReEncryptionKey     string           `json:"re_encryption_key"`
+	Signature           string           `json:"signature"`
+	Encrypted           bool             `json:"encrypted"`
+	EncryptionPublicKey string           `json:"encryption_public_key"`
 }
 
 func (rm *AuthTicket) GetHashData() string {
