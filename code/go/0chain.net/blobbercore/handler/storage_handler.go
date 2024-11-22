@@ -157,7 +157,9 @@ func (fsh *StorageHandler) GetFileMeta(ctx context.Context, r *http.Request) (in
 	}
 
 	result := fileref.GetListingData(ctx)
-
+	if fileref.Type == reference.FILE {
+		logging.Logger.Info("get_file_meta", zap.Int("encryption_version", fileref.EncryptionVersion), zap.Any("result_version", result["encryption_version"]), zap.String("allocation_id", allocationID), zap.String("path", fileref.Path))
+	}
 	if !isOwner && !isRepairer {
 		var authTokenString = r.FormValue("auth_token")
 

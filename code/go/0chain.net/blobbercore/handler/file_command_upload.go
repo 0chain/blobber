@@ -119,6 +119,7 @@ func (cmd *UploadFileCommand) IsValidated(ctx context.Context, req *http.Request
 	}
 	cmd.contentFile = origfile
 	cmd.fileChanger = fileChanger
+	logging.Logger.Info("UploadFileCommand.IsValidated", zap.Int("encryption_version", fileChanger.EncryptionVersion), zap.String("allocationID", fileChanger.AllocationID), zap.String("path", fileChanger.Path))
 	return nil
 }
 

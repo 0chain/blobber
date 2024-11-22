@@ -15,6 +15,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/common/core/util/wmpt"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
 // swagger:model UploadFileChanger
@@ -209,6 +211,7 @@ func (nf *UploadFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, 
 	if err != nil {
 		return 0, err
 	}
+	logging.Logger.Info("newFile", zap.Int("encVersion", nf.EncryptionVersion), zap.String("allocationID", nf.AllocationID), zap.String("path", nf.Path))
 	collector.CreateRefRecord(newFile)
 	numFiles.Add(1)
 	decodedKey, _ := hex.DecodeString(newFile.LookupHash)
