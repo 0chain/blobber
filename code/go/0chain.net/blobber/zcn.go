@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/handler"
@@ -11,8 +13,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/gosdk/core/client"
+	"github.com/0chain/gosdk/zcncore"
 	"go.uber.org/zap"
-	"time"
 )
 
 func registerOnChain() error {
@@ -81,9 +83,18 @@ func setupServerChain() error {
 	serverChain := chain.NewChainFromConfig()
 	chain.SetServerChain(serverChain)
 
-	if err := client.InitSDK(node.Self.GetWalletString(), serverChain.BlockWorker, config.Configuration.ChainID, config.Configuration.SignatureScheme,
-		0, false, true); err != nil {
+	err := client.InitSDK("{}", serverChain.BlockWorker, config.Configuration.ChainID, config.Configuration.SignatureScheme, 0, false)
+	if err != nil {
 		return err
+	}
+
+	err = zcncore.SetGeneralWalletInfo(node.Self.GetWalletString(), config.Configuration.SignatureScheme)
+	if err != nil {
+		return err
+	}
+
+	if client.GetClient().IsSplit {
+		zcncore.RegisterZauthServer(serverChain.ZauthServer)
 	}
 
 	fmt.Print("	[OK]\n")

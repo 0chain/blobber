@@ -82,10 +82,6 @@ func setup(t *testing.T) {
 			},
 		),
 	)
-
-	//if err := client.InitSDK(server.URL, "ed25519"); err != nil {
-	//	t.Fatal(err)
-	//}
 }
 func setupMockForFileManagerInit(mock sqlmock.Sqlmock) {
 	mock.ExpectBegin()

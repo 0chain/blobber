@@ -4,8 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/0chain/gosdk/core/client"
-	coreTxn "github.com/0chain/gosdk/core/transaction"
 	"log"
 	"net/http"
 	"os"
@@ -13,6 +11,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/0chain/gosdk/core/client"
+	coreTxn "github.com/0chain/gosdk/core/transaction"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/build"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
@@ -231,11 +232,23 @@ func SetupValidatorOnBC(logDir string) error {
 	var logName = logDir + "/validator.log"
 	zcncore.SetLogFile(logName, false)
 	zcncore.SetLogLevel(3)
-	if err := client.InitSDK(node.Self.GetWalletString(), serverChain.BlockWorker,
-		config.Configuration.ChainID, config.Configuration.SignatureScheme, int64(0), false, true); err != nil {
+
+	err := client.InitSDK("{}", serverChain.BlockWorker, config.Configuration.ChainID, config.Configuration.SignatureScheme, int64(0), false)
+	if err != nil {
 		return err
 	}
+
+	err = zcncore.SetGeneralWalletInfo(node.Self.GetWalletString(), config.Configuration.SignatureScheme)
+	if err != nil {
+		return err
+	}
+
+	if client.GetClient().IsSplit {
+		zcncore.RegisterZauthServer(serverChain.ZauthServer)
+	}
+
 	go RegisterValidator()
+
 	return nil
 }
 
