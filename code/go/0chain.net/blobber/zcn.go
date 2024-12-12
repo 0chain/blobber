@@ -103,10 +103,6 @@ func setupServerChain() error {
 		return err
 	}
 
-	if client.GetClient().IsSplit {
-		zcncore.RegisterZauthServer(serverChain.ZauthServer)
-	}
-
 	fmt.Print("	[OK]\n")
 	return nil
 }
