@@ -89,7 +89,7 @@ func setupServerChain() error {
 		3,                                    // ConfirmationChainLength
 		2,                                    // SharderConsensous
 		1,                                    // QuerySleepTime
-		1,                                    // VerifyOptimistic
+		0,                                    // VerifyOptimistic
 	}
 
 	err := client.InitSDK("{}", serverChain.BlockWorker, config.Configuration.ChainID, config.Configuration.SignatureScheme, 0, false, options...)
