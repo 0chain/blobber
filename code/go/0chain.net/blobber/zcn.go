@@ -83,17 +83,17 @@ func setupServerChain() error {
 	serverChain := chain.NewChainFromConfig()
 	chain.SetServerChain(serverChain)
 
-	options := []int{
-		0,
-		config.Configuration.MinConfirmation, // MinConfirmation
-		config.Configuration.MinSubmit,       // MinSubmit
-		3,                                    // ConfirmationChainLength
-		2,                                    // SharderConsensous
-		1,                                    // QuerySleepTime
-		0,                                    // VerifyOptimistic
-	}
+	//options := []int{
+	//	0,
+	//	10, // MinConfirmation
+	//	20, // MinSubmit
+	//	3,  // ConfirmationChainLength
+	//	3,  // SharderConsensous
+	//	1,  // QuerySleepTime
+	//	0,  // VerifyOptimistic
+	//}
 
-	err := client.InitSDK("{}", serverChain.BlockWorker, config.Configuration.ChainID, config.Configuration.SignatureScheme, 0, false, options...)
+	err := client.InitSDK("{}", serverChain.BlockWorker, config.Configuration.ChainID, config.Configuration.SignatureScheme, 0, false)
 	if err != nil {
 		return err
 	}
