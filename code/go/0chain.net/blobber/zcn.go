@@ -84,6 +84,7 @@ func setupServerChain() error {
 	chain.SetServerChain(serverChain)
 
 	options := []int{
+		0,
 		config.Configuration.MinConfirmation, // MinConfirmation
 		config.Configuration.MinSubmit,       // MinSubmit
 		3,                                    // ConfirmationChainLength
