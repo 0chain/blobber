@@ -29,6 +29,7 @@ type Chain struct {
 	OwnerID       string
 	ParentChainID string
 	BlockWorker   string
+	ZauthServer   string
 
 	GenesisBlockHash string
 }
@@ -44,12 +45,13 @@ func (c *Chain) Validate(ctx context.Context) error {
 	return nil
 }
 
-//NewChainFromConfig - create a new chain from config
+// NewChainFromConfig - create a new chain from config
 func NewChainFromConfig() *Chain {
 	chain := Provider()
 	chain.ID = common.ToKey(config.Configuration.ChainID)
 	chain.OwnerID = viper.GetString("server_chain.owner")
 	chain.BlockWorker = viper.GetString("block_worker")
+	chain.ZauthServer = viper.GetString("zauth_server")
 	return chain
 }
 
