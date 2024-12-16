@@ -94,17 +94,19 @@ func HomepageHandler(w http.ResponseWriter, r *http.Request) {
 		node.Self.ID, node.Self.PublicKey, build.BuildTag,
 	)
 
-	fmt.Fprintf(w, "<div>Miners ...\n")
-	network, _ := client.GetNetwork(context.Background())
-	for _, miner := range network.Miners {
-		fmt.Fprintf(w, "%v\n", miner)
+	network, err := client.GetNetwork(context.Background())
+	if err == nil {
+		fmt.Fprintf(w, "<div>Miners ...\n")
+		for _, miner := range network.Miners {
+			fmt.Fprintf(w, "%v\n", miner)
+		}
+		fmt.Fprintf(w, "</div>\n")
+		fmt.Fprintf(w, "<div>Sharders ...\n")
+		for _, sharder := range network.Sharders {
+			fmt.Fprintf(w, "%v\n", sharder)
+		}
+		fmt.Fprintf(w, "</div>\n")
 	}
-	fmt.Fprintf(w, "</div>\n")
-	fmt.Fprintf(w, "<div>Sharders ...\n")
-	for _, sharder := range network.Sharders {
-		fmt.Fprintf(w, "%v\n", sharder)
-	}
-	fmt.Fprintf(w, "</div>\n")
 	fmt.Fprintf(w, "</br>")
 	fmt.Fprintf(w, "<div>Running since %v (Total elapsed time: %v)</div>\n", StartTime.Format(common.DateTimeFormat), time.Since(StartTime))
 	fmt.Fprintf(w, "</br>")
