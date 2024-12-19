@@ -243,10 +243,6 @@ func SetupValidatorOnBC(logDir string) error {
 		return err
 	}
 
-	if client.GetClient().IsSplit {
-		zcncore.RegisterZauthServer(serverChain.ZauthServer)
-	}
-
 	go RegisterValidator()
 
 	return nil

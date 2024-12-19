@@ -83,6 +83,16 @@ func setupServerChain() error {
 	serverChain := chain.NewChainFromConfig()
 	chain.SetServerChain(serverChain)
 
+	//options := []int{
+	//	0,
+	//	10, // MinConfirmation
+	//	20, // MinSubmit
+	//	3,  // ConfirmationChainLength
+	//	3,  // SharderConsensous
+	//	1,  // QuerySleepTime
+	//	0,  // VerifyOptimistic
+	//}
+
 	err := client.InitSDK("{}", serverChain.BlockWorker, config.Configuration.ChainID, config.Configuration.SignatureScheme, 0, false)
 	if err != nil {
 		return err
@@ -91,10 +101,6 @@ func setupServerChain() error {
 	err = zcncore.SetGeneralWalletInfo(node.Self.GetWalletString(), config.Configuration.SignatureScheme)
 	if err != nil {
 		return err
-	}
-
-	if client.GetClient().IsSplit {
-		zcncore.RegisterZauthServer(serverChain.ZauthServer)
 	}
 
 	fmt.Print("	[OK]\n")
