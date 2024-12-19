@@ -3,10 +3,11 @@ package challenge
 import (
 	"context"
 	"encoding/json"
-	"github.com/0chain/gosdk/core/client"
-	coreTxn "github.com/0chain/gosdk/core/transaction"
 	"sync"
 	"time"
+
+	"github.com/0chain/gosdk/core/screstapi"
+	coreTxn "github.com/0chain/gosdk/core/transaction"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -95,7 +96,7 @@ func getRoundWorker(ctx context.Context) {
 }
 
 func setRound() {
-	res, err := client.MakeSCRestAPICall("", "/v1/current-round", nil, "")
+	res, err := screstapi.MakeSCRestAPICall("", "/v1/current-round", nil, "")
 	if err != nil {
 		logging.Logger.Error("getRoundWorker", zap.Error(err))
 	}

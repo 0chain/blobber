@@ -2,7 +2,7 @@ package transaction
 
 import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/gosdk/core/client"
+	"github.com/0chain/gosdk/core/screstapi"
 )
 
 const TXN_SUBMIT_URL = "v1/transaction/put"
@@ -18,5 +18,5 @@ var ErrNoTxnDetail = common.NewError("missing_transaction_detail", "No transacti
 var MakeSCRestAPICall func(scAddress string, relativePath string, params map[string]string, options ...string) ([]byte, error) = MakeSCRestAPICallNoHandler
 
 func MakeSCRestAPICallNoHandler(address string, path string, params map[string]string, options ...string) ([]byte, error) {
-	return client.MakeSCRestAPICall(address, path, params, options...)
+	return screstapi.MakeSCRestAPICall(address, path, params, options...)
 }
