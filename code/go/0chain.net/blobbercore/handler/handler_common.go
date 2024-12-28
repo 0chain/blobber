@@ -189,11 +189,13 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 
 		if blobberRes, ok := resp.(*blobberhttp.CommitResult); ok {
 			// Save the write marker data
-			writemarker.SaveMarkerData(allocationID, blobberRes.WriteMarker.WM.Timestamp, blobberRes.WriteMarker.WM.ChainLength)
-			trie := blobberRes.Trie
-			if trie != nil {
-				_ = trie.DeleteNodes()
-				blobberRes.Trie = nil
+			if blobberRes.WriteMarker != nil {
+				writemarker.SaveMarkerData(allocationID, blobberRes.WriteMarker.WM.Timestamp, blobberRes.WriteMarker.WM.ChainLength)
+				trie := blobberRes.Trie
+				if trie != nil {
+					_ = trie.DeleteNodes()
+					blobberRes.Trie = nil
+				}
 			}
 		} else {
 			Logger.Error("Invalid response type for commit handler")
