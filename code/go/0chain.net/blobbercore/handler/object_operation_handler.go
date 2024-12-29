@@ -646,12 +646,16 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 		Logger.Error("Error checking pending markers", zap.Error(err))
 		return nil, common.NewError("pending_markers", "previous marker is still pending to be redeemed")
 	}
-
+	var result blobberhttp.CommitResult
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
 		// might be good to check if blobber already has stored writemarker
 		return nil, common.NewErrorf("invalid_parameters",
 			"Invalid connection id. Connection id was not found: %v", err)
+	}
+	if connectionObj.Status == allocation.CommittedConnection {
+		result.Success = true
+		return &result, nil
 	}
 	if len(connectionObj.Changes) == 0 {
 		if connectionObj.Status == allocation.NewConnection {
@@ -680,7 +684,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			err)
 	}
 
-	var result blobberhttp.CommitResult
 	var latestWriteMarkerEntity *writemarker.WriteMarkerEntity
 	if allocationObj.AllocationRoot == "" {
 		latestWriteMarkerEntity = nil
@@ -867,7 +870,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	//Delete connection object and its changes
 
-	db.Delete(connectionObj)
 	go allocation.DeleteConnectionObjEntry(connectionID)
 	go AddWriteMarkerCount(clientID, connectionObj.Size <= 0)
 
@@ -936,12 +938,16 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 		Logger.Error("Error checking pending markers", zap.Error(err))
 		return nil, common.NewError("pending_markers", "previous marker is still pending to be redeemed")
 	}
-
+	var result blobberhttp.CommitResult
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
 		// might be good to check if blobber already has stored writemarker
 		return nil, common.NewErrorf("invalid_parameters",
 			"Invalid connection id. Connection id was not found: %v", err)
+	}
+	if connectionObj.Status == allocation.CommittedConnection {
+		result.Success = true
+		return &result, nil
 	}
 	if len(connectionObj.Changes) == 0 {
 		if connectionObj.Status == allocation.NewConnection {
@@ -970,7 +976,6 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 			err)
 	}
 
-	var result blobberhttp.CommitResult
 	var latestWriteMarkerEntity *writemarker.WriteMarkerEntity
 	if allocationObj.AllocationRoot == "" {
 		latestWriteMarkerEntity = nil
@@ -1193,8 +1198,6 @@ func (fsh *StorageHandler) CommitWriteV2(ctx context.Context, r *http.Request) (
 	commitSuccess = true
 
 	//Delete connection object and its changes
-
-	db.Delete(connectionObj)
 	go allocation.DeleteConnectionObjEntry(connectionID)
 	go AddWriteMarkerCount(clientID, connectionObj.Size <= 0)
 
