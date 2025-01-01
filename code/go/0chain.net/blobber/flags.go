@@ -8,6 +8,7 @@ import (
 var (
 	deploymentMode int
 	keysFile       string
+	keysFileRaw    string
 	mountPoint     string
 	metadataDB     string
 	logDir         string
@@ -24,6 +25,7 @@ var (
 func init() {
 	flag.IntVar(&deploymentMode, "deployment_mode", 2, "deployment mode: 0=dev,1=test, 2=mainnet")
 	flag.StringVar(&keysFile, "keys_file", "", "keys_file")
+	flag.StringVar(&keysFileRaw, "keys_file_raw", "", "keys_file_raw")
 	flag.StringVar(&mountPoint, "files_dir", "", "Mounted partition where all files will be stored")
 	flag.StringVar(&metadataDB, "db_dir", "", "db_dir")
 	flag.StringVar(&logDir, "log_dir", "", "log_dir")
