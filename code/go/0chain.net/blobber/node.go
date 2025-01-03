@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -18,15 +19,23 @@ var publicKey, privateKey string
 func setupNode() error {
 	fmt.Println("> setup blobber")
 
-	err := readKeysFromAws()
-	if err != nil {
-		err = readKeysFromFile(&keysFile)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Println("using blobber keys from local")
+	var err error
+
+	if keysFileRaw != "" {
+		err = readKeysFromString(&keysFileRaw)
+
+		fmt.Println("using blobber keys from local string")
 	} else {
-		fmt.Println("using blobber keys from aws")
+		err = readKeysFromAws()
+		if err != nil {
+			err = readKeysFromFile(&keysFile)
+			if err != nil {
+				panic(err)
+			}
+			fmt.Println("using blobber keys from local")
+		} else {
+			fmt.Println("using blobber keys from aws")
+		}
 	}
 
 	node.Self.SetKeys(publicKey, privateKey)
@@ -69,6 +78,12 @@ func readKeysFromAws() error {
 	}
 	publicKey = secretsFromAws[0]
 	privateKey = secretsFromAws[1]
+	return nil
+}
+
+func readKeysFromString(keyFileRaw *string) error {
+	publicKey, privateKey, _, _ = encryption.ReadKeys(
+		bytes.NewBufferString(*keyFileRaw))
 	return nil
 }
 
