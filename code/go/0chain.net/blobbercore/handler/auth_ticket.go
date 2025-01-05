@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"fmt"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/common/core/common"
 	"net/http"
@@ -40,7 +41,7 @@ func GenerateAuthTicket(ctx context.Context, r *http.Request) (interface{}, erro
 
 	round := r.URL.Query().Get("round")
 
-	signature, err := node.Self.Sign(fmt.Sprintf("%s_%s", clientID, round))
+	signature, err := node.Self.Sign(encryption.Hash(fmt.Sprintf("%s_%s", clientID, round)))
 	if err != nil {
 		return nil, common.NewError("signature_failed", "signature failed")
 	}
