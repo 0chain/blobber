@@ -6,7 +6,7 @@ toolchain go1.22.5
 
 require (
 	github.com/0chain/errors v1.0.3
-	github.com/0chain/gosdk v1.18.18-0.20250106200434-c7f8c80baf0e
+	github.com/0chain/gosdk v1.18.18-0.20250106203813-9d68c980753b
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/didip/tollbooth/v6 v6.1.2
 	github.com/go-openapi/runtime v0.26.0
