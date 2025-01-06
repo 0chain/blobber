@@ -3,9 +3,11 @@ package handler
 import (
 	"context"
 	"fmt"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/common/core/common"
 	"github.com/0chain/gosdk/core/encryption"
+	"go.uber.org/zap"
 	"net/http"
 )
 
@@ -41,8 +43,13 @@ func GenerateAuthTicket(ctx context.Context, r *http.Request) (interface{}, erro
 	}
 
 	round := r.URL.Query().Get("round")
+	if round == "" {
+		return nil, common.NewError("missing_round", "round is required")
+	}
 
 	payload := encryption.Hash(fmt.Sprintf("%s_%s", clientID, round))
+
+	logging.Logger.Info("GenerateAuthTicket", zap.String("payload", payload), zap.String("client_id", clientID), zap.String("round", round))
 
 	signature, err := node.Self.Sign(payload)
 	if err != nil {
