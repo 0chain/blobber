@@ -6,6 +6,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/common/core/common"
+	"github.com/0chain/gosdk/zcncore"
 	"net/http"
 )
 
@@ -34,6 +35,7 @@ type AuthTicketResponse struct {
 //
 //	200: AuthTicketResponse
 func GenerateAuthTicket(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	clientID := r.URL.Query().Get("client_id")
 	if clientID == "" {
 		return nil, common.NewError("missing_client_id", "client_id is required")
@@ -41,7 +43,13 @@ func GenerateAuthTicket(ctx context.Context, r *http.Request) (interface{}, erro
 
 	round := r.URL.Query().Get("round")
 
-	signature, err := node.Self.Sign(encryption.Hash(fmt.Sprintf("%s_%s", clientID, round)))
+	payload := encryption.Hash(fmt.Sprintf("%s_%s", clientID, round))
+
+	if isActivated, err := zcncore.IsHardforkActivated("hermes"); err != nil || !isActivated {
+		payload = clientID
+	}
+
+	signature, err := node.Self.Sign(payload)
 	if err != nil {
 		return nil, common.NewError("signature_failed", "signature failed")
 	}
