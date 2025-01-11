@@ -485,6 +485,7 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 		dirref = r
 		if path == "/" {
 			dirref.Size = allocationObj.BlobberSizeUsed
+			dirref.NumFiles = int64(allocationObj.NumObjects)
 		}
 	}
 
