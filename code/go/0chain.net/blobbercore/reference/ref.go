@@ -42,7 +42,7 @@ func init() {
 		field := refType.Field(i)
 		dirListTag := field.Tag.Get(DIR_LIST_TAG)
 
-		if dirListTag != "" && dirListTag != "is_empty" {
+		if dirListTag != "" && dirListTag != "is_empty" && dirListTag != "num_files" {
 			dirListFields = append(dirListFields, dirListTag)
 		}
 	}
