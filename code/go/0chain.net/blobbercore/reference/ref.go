@@ -42,7 +42,7 @@ func init() {
 		field := refType.Field(i)
 		dirListTag := field.Tag.Get(DIR_LIST_TAG)
 
-		if dirListTag != "" && dirListTag != "is_empty" {
+		if dirListTag != "" && dirListTag != "is_empty" && dirListTag != "num_files" {
 			dirListFields = append(dirListFields, dirListTag)
 		}
 	}
@@ -95,6 +95,7 @@ type Ref struct {
 	SignatureVersion  int            `gorm:"column:signature_version" json:"signature_version" filelist:"signature_version"`
 	EncryptionVersion int            `gorm:"column:encryption_version" json:"encryption_version" filelist:"encryption_version"`
 	IsEmpty           bool           `gorm:"-" dirlist:"is_empty"`
+	NumFiles          int64          `gorm:"-" dirlist:"num_files"`
 	HashToBeComputed  bool           `gorm:"-"`
 	prevID            int64          `gorm:"-"`
 }
