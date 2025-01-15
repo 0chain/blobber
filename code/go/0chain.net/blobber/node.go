@@ -38,7 +38,7 @@ func setupNode() error {
 		}
 	}
 
-	node.Self.SetKeys(publicKey, privateKey)
+	node.Self.SetKeys(publicKey, privateKey, keysFileIsSplit)
 	if node.Self.ID == "" {
 		return errors.New("node definition for self node doesn't exist")
 	} else {

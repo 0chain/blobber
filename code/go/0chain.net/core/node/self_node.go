@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/config"
 	"github.com/0chain/gosdk/core/zcncrypto"
@@ -19,7 +20,7 @@ type SelfNode struct {
 }
 
 /*SetKeys - setter */
-func (sn *SelfNode) SetKeys(publicKey, privateKey string) {
+func (sn *SelfNode) SetKeys(publicKey, privateKey string, isSplit bool) {
 	publicKeyBytes, err := hex.DecodeString(publicKey)
 	if err != nil {
 		panic(err)
@@ -31,6 +32,7 @@ func (sn *SelfNode) SetKeys(publicKey, privateKey string) {
 	sn.wallet.Keys[0].PublicKey = publicKey
 	sn.wallet.Keys[0].PrivateKey = privateKey
 	sn.wallet.Version = zcncrypto.CryptoVersion
+	sn.wallet.IsSplit = isSplit
 
 	sn.PublicKey = publicKey
 	sn.ID = sn.wallet.ClientID
