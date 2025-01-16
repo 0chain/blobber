@@ -3,9 +3,10 @@ package handler
 import (
 	"context"
 	"errors"
+	"sync"
+
 	"github.com/0chain/gosdk/core/client"
 	coreTxn "github.com/0chain/gosdk/core/transaction"
-	"sync"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"

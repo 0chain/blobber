@@ -659,6 +659,6 @@ func setupModelsTest(t *testing.T) error {
 		return err
 	}
 
-	node.Self.SetKeys(wallet.Keys[0].PublicKey, wallet.Keys[0].PrivateKey)
+	node.Self.SetKeys("", wallet.Keys[0].PublicKey, wallet.Keys[0].PrivateKey, false)
 	return nil
 }
