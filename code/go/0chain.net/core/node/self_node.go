@@ -38,14 +38,25 @@ func (sn *SelfNode) SetKeys(clientKey, publicKey, privateKey string, isSplit boo
 
 	sn.wallet = &zcncrypto.Wallet{}
 	sn.wallet.ClientID = Hash(publicKeyBytes)
-	sn.wallet.ClientKey = publicKey
+
+	if isSplit {
+		sn.wallet.ClientKey = clientKey
+	} else {
+		sn.wallet.ClientKey = publicKey
+	}
+
 	sn.wallet.Keys = make([]zcncrypto.KeyPair, 1)
 	sn.wallet.Keys[0].PublicKey = publicKey
 	sn.wallet.Keys[0].PrivateKey = privateKey
 	sn.wallet.Version = zcncrypto.CryptoVersion
 	sn.wallet.IsSplit = isSplit
 
-	sn.PublicKey = publicKey
+	if isSplit {
+		sn.PublicKey = clientKey
+	} else {
+		sn.PublicKey = publicKey
+	}
+
 	sn.ID = sn.wallet.ClientID
 }
 
