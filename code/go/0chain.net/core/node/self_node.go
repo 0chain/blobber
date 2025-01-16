@@ -20,11 +20,22 @@ type SelfNode struct {
 }
 
 /*SetKeys - setter */
-func (sn *SelfNode) SetKeys(publicKey, privateKey string, isSplit bool) {
-	publicKeyBytes, err := hex.DecodeString(publicKey)
+func (sn *SelfNode) SetKeys(clientKey, publicKey, privateKey string, isSplit bool) {
+	var (
+		publicKeyBytes []byte
+		err            error
+	)
+
+	if isSplit {
+		publicKeyBytes, err = hex.DecodeString(clientKey)
+	} else {
+		publicKeyBytes, err = hex.DecodeString(publicKey)
+	}
+
 	if err != nil {
 		panic(err)
 	}
+
 	sn.wallet = &zcncrypto.Wallet{}
 	sn.wallet.ClientID = Hash(publicKeyBytes)
 	sn.wallet.ClientKey = publicKey

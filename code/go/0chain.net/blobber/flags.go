@@ -10,6 +10,7 @@ var (
 	keysFile           string
 	keysFilePublicKey  string
 	keysFilePrivateKey string
+	keysFileClientKey  string
 	keysFileIsSplit    bool
 	mountPoint         string
 	metadataDB         string
@@ -29,6 +30,7 @@ func init() {
 	flag.StringVar(&keysFile, "keys_file", "", "keys_file")
 	flag.StringVar(&keysFilePublicKey, "keys_file_public_key", "", "keys_file_public_key")
 	flag.StringVar(&keysFilePrivateKey, "keys_file_private_key", "", "keys_file_private_key")
+	flag.StringVar(&keysFileClientKey, "keys_file_client_key", "", "keys_file_client_key")
 	flag.BoolVar(&keysFileIsSplit, "keys_file_is_split", false, "keys_file_is_split")
 	flag.StringVar(&mountPoint, "files_dir", "", "Mounted partition where all files will be stored")
 	flag.StringVar(&metadataDB, "db_dir", "", "db_dir")

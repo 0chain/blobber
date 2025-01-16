@@ -107,7 +107,7 @@ func main() {
 		fmt.Println("using validator keys from aws")
 	}
 
-	node.Self.SetKeys(publicKey, privateKey, false)
+	node.Self.SetKeys("", publicKey, privateKey, false)
 
 	if len(*hostUrl) > 0 {
 		node.Self.URL = *hostUrl

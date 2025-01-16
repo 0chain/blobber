@@ -14,7 +14,7 @@ import (
 	"go.uber.org/zap"
 )
 
-var publicKey, privateKey string
+var clientKey, publicKey, privateKey string
 
 func setupNode() error {
 	fmt.Println("> setup blobber")
@@ -24,6 +24,10 @@ func setupNode() error {
 	if keysFilePrivateKey != "" || keysFilePublicKey != "" {
 		privateKey = keysFilePrivateKey
 		publicKey = keysFilePublicKey
+
+		if keysFileIsSplit {
+			clientKey = keysFileClientKey
+		}
 
 		fmt.Println("using blobber keys from local string")
 	} else {
@@ -39,7 +43,7 @@ func setupNode() error {
 		}
 	}
 
-	node.Self.SetKeys(publicKey, privateKey, keysFileIsSplit)
+	node.Self.SetKeys(clientKey, publicKey, privateKey, keysFileIsSplit)
 
 	if node.Self.ID == "" {
 		return errors.New("node definition for self node doesn't exist")
