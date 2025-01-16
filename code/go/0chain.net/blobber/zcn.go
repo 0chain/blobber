@@ -103,6 +103,10 @@ func setupServerChain() error {
 		return err
 	}
 
+	if node.Self.GetWallet().IsSplit {
+		zcncore.RegisterZauthServer(serverChain.ZauthServer)
+	}
+
 	fmt.Print("	[OK]\n")
 	return nil
 }
