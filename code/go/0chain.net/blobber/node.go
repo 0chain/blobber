@@ -21,8 +21,9 @@ func setupNode() error {
 
 	var err error
 
-	if keysFileRaw != "" {
-		err = readKeysFromString(&keysFileRaw)
+	if keysFilePrivateKey != "" || keysFilePublicKey != "" {
+		privateKey = keysFilePrivateKey
+		publicKey = keysFilePublicKey
 
 		fmt.Println("using blobber keys from local string")
 	} else {
@@ -39,6 +40,7 @@ func setupNode() error {
 	}
 
 	node.Self.SetKeys(publicKey, privateKey, keysFileIsSplit)
+
 	if node.Self.ID == "" {
 		return errors.New("node definition for self node doesn't exist")
 	} else {

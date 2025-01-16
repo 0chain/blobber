@@ -6,27 +6,29 @@ import (
 )
 
 var (
-	deploymentMode  int
-	keysFile        string
-	keysFileRaw     string
-	keysFileIsSplit bool
-	mountPoint      string
-	metadataDB      string
-	logDir          string
-	httpPort        int
-	hostname        string
-	configDir       string
-	grpcPort        int
-	httpsPort       int
-	httpsKeyFile    string
-	httpsCertFile   string
-	hostUrl         string
+	deploymentMode     int
+	keysFile           string
+	keysFilePublicKey  string
+	keysFilePrivateKey string
+	keysFileIsSplit    bool
+	mountPoint         string
+	metadataDB         string
+	logDir             string
+	httpPort           int
+	hostname           string
+	configDir          string
+	grpcPort           int
+	httpsPort          int
+	httpsKeyFile       string
+	httpsCertFile      string
+	hostUrl            string
 )
 
 func init() {
 	flag.IntVar(&deploymentMode, "deployment_mode", 2, "deployment mode: 0=dev,1=test, 2=mainnet")
 	flag.StringVar(&keysFile, "keys_file", "", "keys_file")
-	flag.StringVar(&keysFileRaw, "keys_file_raw", "", "keys_file_raw")
+	flag.StringVar(&keysFilePublicKey, "keys_file_public_key", "", "keys_file_public_key")
+	flag.StringVar(&keysFilePrivateKey, "keys_file_private_key", "", "keys_file_private_key")
 	flag.BoolVar(&keysFileIsSplit, "keys_file_is_split", false, "keys_file_is_split")
 	flag.StringVar(&mountPoint, "files_dir", "", "Mounted partition where all files will be stored")
 	flag.StringVar(&metadataDB, "db_dir", "", "db_dir")
