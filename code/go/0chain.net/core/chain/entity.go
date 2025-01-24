@@ -51,6 +51,7 @@ func NewChainFromConfig() *Chain {
 	chain.ID = common.ToKey(config.Configuration.ChainID)
 	chain.OwnerID = viper.GetString("server_chain.owner")
 	chain.BlockWorker = viper.GetString("block_worker")
+	chain.ZauthServer = viper.GetString("zauth_server")
 	return chain
 }
 

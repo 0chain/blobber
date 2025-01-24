@@ -45,6 +45,8 @@ min_confirmation: 10
 
 block_worker: https://dev.0chain.net/dns
 
+zauth_server: https://zauth.dev.0chain.net/
+
 rate_limiters:
   # Rate limiters will use this duration to clean unused token buckets.
   # If it is 0 then token will expire in 10 years.

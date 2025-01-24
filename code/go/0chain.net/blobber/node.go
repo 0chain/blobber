@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -13,23 +14,37 @@ import (
 	"go.uber.org/zap"
 )
 
-var publicKey, privateKey string
+var clientKey, publicKey, privateKey string
 
 func setupNode() error {
 	fmt.Println("> setup blobber")
 
-	err := readKeysFromAws()
-	if err != nil {
-		err = readKeysFromFile(&keysFile)
-		if err != nil {
-			panic(err)
+	var err error
+
+	if keysFilePrivateKey != "" || keysFilePublicKey != "" {
+		privateKey = keysFilePrivateKey
+		publicKey = keysFilePublicKey
+
+		if keysFileIsSplit {
+			clientKey = keysFileClientKey
 		}
-		fmt.Println("using blobber keys from local")
+
+		fmt.Println("using blobber keys from local string")
 	} else {
-		fmt.Println("using blobber keys from aws")
+		err = readKeysFromAws()
+		if err != nil {
+			err = readKeysFromFile(&keysFile)
+			if err != nil {
+				panic(err)
+			}
+			fmt.Println("using blobber keys from local")
+		} else {
+			fmt.Println("using blobber keys from aws")
+		}
 	}
 
-	node.Self.SetKeys(publicKey, privateKey)
+	node.Self.SetKeys(clientKey, publicKey, privateKey, keysFileIsSplit)
+
 	if node.Self.ID == "" {
 		return errors.New("node definition for self node doesn't exist")
 	} else {
@@ -69,6 +84,12 @@ func readKeysFromAws() error {
 	}
 	publicKey = secretsFromAws[0]
 	privateKey = secretsFromAws[1]
+	return nil
+}
+
+func readKeysFromString(keyFileRaw *string) error {
+	publicKey, privateKey, _, _ = encryption.ReadKeys(
+		bytes.NewBufferString(*keyFileRaw))
 	return nil
 }
 

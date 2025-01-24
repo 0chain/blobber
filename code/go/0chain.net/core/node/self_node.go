@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/config"
 	"github.com/0chain/gosdk/core/zcncrypto"
@@ -19,20 +20,43 @@ type SelfNode struct {
 }
 
 /*SetKeys - setter */
-func (sn *SelfNode) SetKeys(publicKey, privateKey string) {
-	publicKeyBytes, err := hex.DecodeString(publicKey)
+func (sn *SelfNode) SetKeys(clientKey, publicKey, privateKey string, isSplit bool) {
+	var (
+		publicKeyBytes []byte
+		err            error
+	)
+
+	if isSplit {
+		publicKeyBytes, err = hex.DecodeString(clientKey)
+	} else {
+		publicKeyBytes, err = hex.DecodeString(publicKey)
+	}
+
 	if err != nil {
 		panic(err)
 	}
+
 	sn.wallet = &zcncrypto.Wallet{}
 	sn.wallet.ClientID = Hash(publicKeyBytes)
-	sn.wallet.ClientKey = publicKey
+
+	if isSplit {
+		sn.wallet.ClientKey = clientKey
+	} else {
+		sn.wallet.ClientKey = publicKey
+	}
+
 	sn.wallet.Keys = make([]zcncrypto.KeyPair, 1)
 	sn.wallet.Keys[0].PublicKey = publicKey
 	sn.wallet.Keys[0].PrivateKey = privateKey
 	sn.wallet.Version = zcncrypto.CryptoVersion
+	sn.wallet.IsSplit = isSplit
 
-	sn.PublicKey = publicKey
+	if isSplit {
+		sn.PublicKey = clientKey
+	} else {
+		sn.PublicKey = publicKey
+	}
+
 	sn.ID = sn.wallet.ClientID
 }
 
