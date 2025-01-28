@@ -23,6 +23,7 @@ var (
 	httpsKeyFile       string
 	httpsCertFile      string
 	hostUrl            string
+	recoverTrie        bool
 )
 
 func init() {
@@ -45,6 +46,7 @@ func init() {
 	flag.StringVar(&hostUrl, "hosturl", "", "register url on blockchain instead of [schema://hostname+port] if it has value")
 
 	flag.IntVar(&grpcPort, "grpc_port", 0, "grpc_port")
+	flag.BoolVar(&recoverTrie, "recover_trie", false, "recover_trie")
 }
 
 func parseFlags() {
