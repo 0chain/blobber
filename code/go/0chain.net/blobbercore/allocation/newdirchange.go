@@ -128,7 +128,7 @@ func (nf *NewDir) ApplyChangeV2(ctx context.Context, allocationRoot, clientPubKe
 			collector.LockTransaction()
 			defer collector.UnlockTransaction()
 			txn := datastore.GetStore().GetTransaction(ctx)
-			err = txn.Exec("UPDATE refs SET custom_meta=? WHERE lookup_hash=?", nf.CustomMeta, newRef.LookupHash).Error
+			err = txn.Exec("UPDATE reference_objects SET custom_meta=? WHERE lookup_hash=?", nf.CustomMeta, newRef.LookupHash).Error
 			return 0, err
 		}
 		newRef.AllocationID = nf.AllocationID
