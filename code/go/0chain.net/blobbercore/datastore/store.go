@@ -106,10 +106,6 @@ func OpenBlockStore() error {
 	return nil
 }
 
-func RecoverTrie() {
-
-}
-
 func FromContext(ctx context.Context) Store {
 	store := ctx.Value(ContextKeyStore)
 	if store != nil {

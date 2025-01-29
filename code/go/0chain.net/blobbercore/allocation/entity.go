@@ -8,9 +8,13 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/common/core/encryption"
 	"github.com/0chain/common/core/util/wmpt"
+	"go.uber.org/zap"
 	"gorm.io/gorm/clause"
 
 	"gorm.io/gorm"
@@ -356,4 +360,53 @@ func SetWritePool(ctx context.Context, allocationID string, wp *WritePool) (err 
 type ReadPoolRedeem struct {
 	PoolID  string `json:"pool_id"` // read pool ID
 	Balance int64  `json:"balance"` // balance reduction
+}
+
+func (a *Allocation) recoverTrie() error {
+
+	trie := wmpt.New(nil, datastore.GetBlockStore())
+	//fetch all the files of the allocation to rebuild the trie
+	var offsetPath string
+	for {
+		var (
+			pRefs *[]reference.PaginatedRef
+			err   error
+		)
+		err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+			pRefs, _, offsetPath, err = reference.GetRefs(ctx, a.ID, "/", offsetPath, reference.FILE, 0, 100)
+			return err
+		})
+		if err != nil {
+			logging.Logger.Error("recover_trie_fetch_refs", zap.Error(err))
+			return err
+		}
+		if len(*pRefs) == 0 {
+			break
+		}
+		trie.SaveRoot()
+		for _, ref := range *pRefs {
+			decodedKey, _ := hex.DecodeString(ref.LookupHash)
+			decodedValue, _ := hex.DecodeString(ref.FileMetaHash)
+			err = trie.Update(decodedKey, decodedValue, uint64(ref.NumBlocks))
+			if err != nil {
+				logging.Logger.Error("recover_trie_update", zap.Error(err))
+				return err
+			}
+		}
+		batcher, err := trie.Commit(filestore.COLLAPSE_DEPTH)
+		if err != nil {
+			logging.Logger.Error("recover_trie_commit", zap.Error(err))
+			return err
+		}
+		err = batcher.Commit(true)
+		if err != nil {
+			logging.Logger.Error("recover_trie_batcher_commit", zap.Error(err))
+			return err
+		}
+		_ = trie.DeleteNodes()
+		if len(*pRefs) < 100 {
+			break
+		}
+	}
+	return nil
 }
