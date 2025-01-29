@@ -66,7 +66,7 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	sn.StakePoolSettings.NumDelegates = config.Configuration.NumDelegates
 	sn.StakePoolSettings.ServiceCharge = config.Configuration.ServiceCharge
 
-	sn.IsEnterprise = config.Configuration.IsEnterprise
+	sn.IsEnterprise = true
 
 	return sn, nil
 }
