@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
@@ -56,6 +57,11 @@ func main() {
 	if err := setStorageScConfigFromChain(); err != nil {
 		logging.Logger.Error("Error setStorageScConfigFromChain" + err.Error())
 		panic(err)
+	}
+
+	if recoverTrie {
+		logging.Logger.Info("Recovering trie")
+		allocation.RecoverTrie()
 	}
 
 	// todo: activate this when gRPC functionalities are implemented
