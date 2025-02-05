@@ -70,6 +70,8 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	sn.IsEnterprise = config.Configuration.IsEnterprise
 	sn.StorageVersion = allocation.StorageV2
 
+	sn.ManagingWallet = common.ClientId0box
+
 	return sn, nil
 }
 
