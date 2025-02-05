@@ -3,10 +3,11 @@ package handler
 import (
 	"context"
 	"fmt"
+	"net/http"
+
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/common/core/common"
 	"github.com/0chain/gosdk/core/encryption"
-	"net/http"
 )
 
 // swagger:model AuthTicketResponse
@@ -41,6 +42,8 @@ func GenerateAuthTicket(ctx context.Context, r *http.Request) (interface{}, erro
 	}
 
 	round := r.URL.Query().Get("round")
+
+	payload := encryption.Hash(fmt.Sprintf("%s_%s", clientID, round))
 
 	signature, err := node.Self.Sign(payload)
 	if err != nil {
