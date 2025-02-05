@@ -73,6 +73,7 @@ type StorageNode struct {
 	PublicKey         string            `json:"-"`
 	StakePoolSettings StakePoolSettings `json:"stake_pool_settings"`
 	IsEnterprise      bool              `json:"is_enterprise"`
+	StorageVersion    int               `json:"storage_version"`
 }
 
 type BlobberAllocation struct {
