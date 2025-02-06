@@ -285,7 +285,6 @@ func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF
 		defer func() {
 			tx.Rollback()
 		}()
-
 		res, err := handler(ctx, r)
 		return res, err
 	}
