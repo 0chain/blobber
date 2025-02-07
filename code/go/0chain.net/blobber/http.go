@@ -115,7 +115,6 @@ func initHandlers(r *mux.Router, devMode bool) {
 	handler.SetupHandlers(r)
 	handler.SetupSwagger()
 	common.SetAdminCredentials(devMode)
-	common.Set0boxDetails()
 }
 
 func initProfHandlers(mux *http.ServeMux) {
