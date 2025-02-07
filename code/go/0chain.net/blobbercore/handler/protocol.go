@@ -10,7 +10,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -77,21 +76,18 @@ func getStorageNode() (*transaction.StorageNode, error) {
 
 // RegisterBlobber register blobber if it is not registered yet
 func RegisterBlobber(ctx context.Context) error {
-	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-		_, e := config.ReloadFromChain(ctx, datastore.GetStore().GetDB())
-		return e
-	})
+	//err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+	//	_, e := config.ReloadFromChain(ctx, datastore.GetStore().GetDB())
+	//	return e
+	//})
 
-	if err != nil { // blobber is not registered yet
-		txn, err := sendSmartContractBlobberAdd()
-		if err != nil {
-			logging.Logger.Error("Error in add blobber", zap.Any("err", err))
-			return err
-		}
-
-		logging.Logger.Info("Verified blobber register transaction", zap.String("txn_hash", txn.Hash), zap.Any("txn_output", txn.TransactionOutput))
-		return nil
+	txn, err := sendSmartContractBlobberAdd()
+	if err != nil {
+		logging.Logger.Error("Error in add blobber", zap.Any("err", err))
+		return err
 	}
+
+	logging.Logger.Info("Verified blobber register transaction", zap.String("txn_hash", txn.Hash), zap.Any("txn_output", txn.TransactionOutput))
 
 	txnHash, err := SendHealthCheck(common.ProviderTypeBlobber)
 	if err != nil {
