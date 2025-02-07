@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"sync"
 
 	"github.com/0chain/gosdk/core/client"
@@ -76,10 +77,10 @@ func getStorageNode() (*transaction.StorageNode, error) {
 
 // RegisterBlobber register blobber if it is not registered yet
 func RegisterBlobber(ctx context.Context) error {
-	//err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-	//	_, e := config.ReloadFromChain(ctx, datastore.GetStore().GetDB())
-	//	return e
-	//})
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		_, e := config.ReloadFromChain(ctx, datastore.GetStore().GetDB())
+		return e
+	})
 
 	txn, err := sendSmartContractBlobberAdd()
 	if err != nil {
@@ -116,10 +117,6 @@ func sendSmartContractBlobberAdd() (*coreTxn.Transaction, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	logging.Logger.Info("Jayash Storage Node", zap.Any("sn", sn))
-
-	panic("implement me")
 
 	_, _, _, txn, err := coreTxn.SmartContractTxn(transaction.STORAGE_CONTRACT_ADDRESS, coreTxn.SmartContractTxnData{
 		Name:      transaction.ADD_BLOBBER_SC_NAME,
