@@ -121,6 +121,10 @@ func sendSmartContractBlobberAdd() (*coreTxn.Transaction, error) {
 		return nil, err
 	}
 
+	logging.Logger.Info("Jayash Storage Node", zap.Any("sn", sn))
+
+	panic("implement me")
+
 	_, _, _, txn, err := coreTxn.SmartContractTxn(transaction.STORAGE_CONTRACT_ADDRESS, coreTxn.SmartContractTxnData{
 		Name:      transaction.ADD_BLOBBER_SC_NAME,
 		InputArgs: sn,
