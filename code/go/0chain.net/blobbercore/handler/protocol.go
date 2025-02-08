@@ -83,13 +83,11 @@ func RegisterBlobber(ctx context.Context) error {
 		return e
 	})
 
-	txn, err := sendSmartContractBlobberAdd()
+	_, err = sendSmartContractBlobberAdd()
 	if err != nil && !strings.Contains(err.Error(), "blobber already exists") {
 		logging.Logger.Error("Error in add blobber", zap.Any("err", err))
 		return err
 	}
-
-	logging.Logger.Info("Verified blobber register transaction", zap.String("txn_hash", txn.Hash), zap.Any("txn_output", txn.TransactionOutput))
 
 	txnHash, err := SendHealthCheck(common.ProviderTypeBlobber)
 	if err != nil {
