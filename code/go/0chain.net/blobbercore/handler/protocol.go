@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"strings"
 	"sync"
 
 	"github.com/0chain/gosdk/core/client"
@@ -83,7 +84,7 @@ func RegisterBlobber(ctx context.Context) error {
 	})
 
 	txn, err := sendSmartContractBlobberAdd()
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), "blobber already exists") {
 		logging.Logger.Error("Error in add blobber", zap.Any("err", err))
 		return err
 	}
