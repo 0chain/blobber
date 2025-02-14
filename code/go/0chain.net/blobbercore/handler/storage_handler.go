@@ -520,7 +520,7 @@ func (fsh *StorageHandler) GetLatestWriteMarker(ctx context.Context, r *http.Req
 	clientSignV2 := ctx.Value(constants.ContextKeyClientSignatureHeaderV2Key).(string)
 	valid, err := verifySignatureFromRequest(allocationTx, clientSign, clientSignV2, publicKey)
 	if !valid || err != nil {
-		return nil, common.NewError("invalid_signature", "could not verify the allocation owner")
+		return nil, common.NewError("invalid_signature", "could not verify the allocation owner"+err.Error())
 	}
 
 	var vm *writemarker.VersionMarker
