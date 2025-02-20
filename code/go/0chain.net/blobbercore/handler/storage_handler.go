@@ -989,7 +989,7 @@ func verifySignatureFromRequest(alloc, signV1, signV2, pbK string) (bool, error)
 		hash = encryption.Hash(hashData)
 	}
 	if len(sign) < 64 {
-		return false, nil
+		return false, common.NewError("500", "len shorter than 64")
 	}
 	return encryption.Verify(pbK, sign, hash)
 }
