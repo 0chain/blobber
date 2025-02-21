@@ -3,10 +3,11 @@ package handler
 import (
 	"context"
 	"fmt"
+	"net/http"
+
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/common/core/common"
 	"github.com/0chain/gosdk/core/encryption"
-	"net/http"
 )
 
 // swagger:model AuthTicketResponse

@@ -138,7 +138,6 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, allocationObj 
 	result.Filename = cmd.fileChanger.Filename
 	result.Size = fileOutputData.Size
 
-	allocationSize := allocation.GetConnectionObjSize(connectionID) + cmd.fileChanger.Size
 	cmd.fileChanger.AllocationID = allocationObj.ID
 
 	cmd.allocationChange = &allocation.AllocationChange{}
@@ -176,6 +175,7 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, allocationObj 
 			return result, err
 		}
 	}
+	allocationSize := allocation.GetConnectionObjSize(connectionID)
 
 	if allocationObj.BlobberSizeUsed+allocationSize > allocationObj.BlobberSize {
 		return result, common.NewError("max_allocation_size", "Max size reached for the allocation with this blobber")
@@ -186,7 +186,7 @@ func (cmd *UploadFileCommand) ProcessContent(ctx context.Context, allocationObj 
 
 // ProcessThumbnail flush thumbnail file to FileStorage if it has.
 func (cmd *UploadFileCommand) ProcessThumbnail(allocationObj *allocation.Allocation) error {
-	logging.Logger.Info("ProcessThumbnail: ", zap.String("allocationID: ", cmd.fileChanger.AllocationID))
+
 	connectionID := cmd.fileChanger.ConnectionID
 	if cmd.thumbHeader != nil {
 		defer cmd.thumbFile.Close()

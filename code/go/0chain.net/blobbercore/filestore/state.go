@@ -57,8 +57,6 @@ func (fs *FileStore) initMap() error {
 			return errors.New("could not get db client")
 		}
 
-		limitCh := make(chan struct{}, 50)
-		wg := &sync.WaitGroup{}
 		var dbAllocations []*dbAllocation
 
 		err := db.Model(&dbAllocation{}).FindInBatches(&dbAllocations, 1000, func(tx *gorm.DB, batch int) error {
@@ -78,18 +76,12 @@ func (fs *FileStore) initMap() error {
 				if err != nil {
 					return err
 				}
-
-				limitCh <- struct{}{}
-				wg.Add(1)
-				go fs.getTemporaryStorageDetails(ctx, &a, dbAlloc.ID, limitCh, wg)
-
 			}
 
 			fs.setAllocations(allocsMap)
 			return nil
 		}).Error
 
-		wg.Wait()
 		return err
 	})
 	return err

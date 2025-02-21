@@ -67,6 +67,7 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	sn.StakePoolSettings.ServiceCharge = config.Configuration.ServiceCharge
 
 	sn.IsEnterprise = config.Configuration.IsEnterprise
+	sn.StorageVersion = 1
 
 	return sn, nil
 }

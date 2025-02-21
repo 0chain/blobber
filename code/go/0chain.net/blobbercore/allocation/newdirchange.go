@@ -32,6 +32,7 @@ func (nf *NewDir) ApplyChange(ctx context.Context,
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return err
 	}
+
 	if parentRef == nil || parentRef.ID == 0 {
 		_, err = reference.Mkdir(ctx, nf.AllocationID, nf.Path, allocationVersion, ts, collector)
 	} else {

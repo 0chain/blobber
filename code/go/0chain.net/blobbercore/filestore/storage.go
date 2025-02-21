@@ -880,7 +880,7 @@ func (fs *FileStore) getPreCommitDir(allocationID string) string {
 
 func (fs *FileStore) getTempPathForFile(allocId, fileName, pathHash, connectionID string) string {
 	fileName = sanitizeFileName(fileName)
-	return filepath.Join(fs.getAllocTempDir(allocId), fileName+"."+pathHash+"."+connectionID)
+	return filepath.Join(fs.getAllocTempDir(allocId), getPartialPath(pathHash, getDirLevelsForFiles())+"."+connectionID)
 }
 
 func (fs *FileStore) getPreCommitPathForFile(allocID, hash string, version int) string {
