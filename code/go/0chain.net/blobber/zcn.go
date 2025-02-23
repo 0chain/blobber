@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/handler"
@@ -10,10 +12,9 @@ import (
 	handleCommon "github.com/0chain/blobber/code/go/0chain.net/core/common/handler"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/0chain/gosdk/zboxcore/sdk"
-	"github.com/0chain/gosdk/zcncore"
+	"github.com/0chain/gosdk_common/core/client"
+	"github.com/0chain/gosdk_common/zcncore"
 	"go.uber.org/zap"
-	"time"
 )
 
 func registerOnChain() error {
@@ -82,16 +83,28 @@ func setupServerChain() error {
 	serverChain := chain.NewChainFromConfig()
 	chain.SetServerChain(serverChain)
 
-	if err := zcncore.InitZCNSDK(serverChain.BlockWorker, config.Configuration.SignatureScheme); err != nil {
-		return err
-	}
-	if err := zcncore.SetWalletInfo(node.Self.GetWalletString(), false); err != nil {
+	//options := []int{
+	//	0,
+	//	10, // MinConfirmation
+	//	20, // MinSubmit
+	//	3,  // ConfirmationChainLength
+	//	3,  // SharderConsensous
+	//	1,  // QuerySleepTime
+	//	0,  // VerifyOptimistic
+	//}
+
+	err := client.InitSDK("{}", serverChain.BlockWorker, config.Configuration.ChainID, config.Configuration.SignatureScheme, 0, false)
+	if err != nil {
 		return err
 	}
 
-	if err := sdk.InitStorageSDK(node.Self.GetWalletString(), serverChain.BlockWorker, config.Configuration.ChainID, config.Configuration.SignatureScheme,
-		nil, 0); err != nil {
+	err = zcncore.SetGeneralWalletInfo(node.Self.GetWalletString(), config.Configuration.SignatureScheme)
+	if err != nil {
 		return err
+	}
+
+	if node.Self.GetWallet().IsSplit {
+		zcncore.RegisterZauthServer(serverChain.ZauthServer)
 	}
 
 	fmt.Print("	[OK]\n")

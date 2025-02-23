@@ -14,14 +14,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/0chain/gosdk/core/zcncrypto"
+	"github.com/0chain/gosdk_common/core/zcncrypto"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 
 	"github.com/go-openapi/runtime/middleware"
 
-	"github.com/0chain/gosdk/constants"
-	"github.com/0chain/gosdk/zboxcore/fileref"
+	"github.com/0chain/gosdk_common/constants"
+	"github.com/0chain/gosdk_common/zboxcore/fileref"
 	"github.com/didip/tollbooth/v6/limiter"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"

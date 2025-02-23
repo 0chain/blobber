@@ -12,6 +12,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	coreTxn "github.com/0chain/gosdk_common/core/transaction"
+
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 
@@ -306,20 +308,15 @@ type finalizeRequest struct {
 }
 
 func sendFinalizeAllocation(allocationID string) {
-	var tx, err = transaction.NewTransactionEntity()
-	if err != nil {
-		logging.Logger.Error("creating new transaction entity", zap.Error(err))
-		return
-	}
-
 	var request finalizeRequest
 	request.AllocationID = allocationID
 
-	err = tx.ExecuteSmartContract(
+	_, _, _, _, err := coreTxn.SmartContractTxn(
 		transaction.STORAGE_CONTRACT_ADDRESS,
-		transaction.FINALIZE_ALLOCATION,
-		request,
-		0)
+		coreTxn.SmartContractTxnData{
+			Name:      transaction.FINALIZE_ALLOCATION,
+			InputArgs: request,
+		}, true)
 	if err != nil {
 		logging.Logger.Error("sending finalize allocation", zap.Error(err))
 		return

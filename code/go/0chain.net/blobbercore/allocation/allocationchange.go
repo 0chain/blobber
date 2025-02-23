@@ -13,7 +13,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/gosdk/constants"
+	"github.com/0chain/gosdk_common/constants"
 	"golang.org/x/sync/errgroup"
 
 	"go.uber.org/zap"

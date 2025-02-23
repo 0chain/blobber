@@ -5,7 +5,8 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/gosdk/zcncore"
+	"github.com/0chain/gosdk_common/core/client"
+	"github.com/0chain/gosdk_common/zcncore"
 	"go.uber.org/zap"
 )
 
@@ -88,23 +89,7 @@ func (m *nonceMonitor) refreshFromBalance() {
 	// sync lock not necessary, this is expected to be called within a synchronized function.
 	m.shouldRefreshFromBalance = false
 
-	cb := &getNonceCallBack{waitCh: make(chan struct{})}
-	if err := zcncore.GetNonce(cb); err != nil {
-		return
-	}
-
-	<-cb.waitCh
-
-	newNonce := int64(0)
-	if cb.hasError {
-		logging.Logger.Info("Couldn't get nonce from remote, use 0")
-		newNonce = int64(0)
-	} else {
-		logging.Logger.Info("Got nonce from balance.", zap.Any("nonce", cb.nonce), zap.Any("highestSuccess", m.highestSuccess))
-		newNonce = cb.nonce
-	}
-
-	m.highestSuccess = newNonce
+	m.highestSuccess = client.Nonce()
 
 	m.failed = make(map[int64]int64)
 	m.used = make(map[int64]time.Time)

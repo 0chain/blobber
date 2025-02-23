@@ -17,7 +17,7 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/seqpriorityqueue"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/gosdk/core/util"
+	"github.com/0chain/gosdk_common/core/util"
 	"github.com/minio/sha256-simd"
 	"go.uber.org/zap"
 )

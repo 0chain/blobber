@@ -14,13 +14,13 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
-	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/blobber/code/go/0chain.net/core/util"
-	sdkUtil "github.com/0chain/gosdk/core/util"
+	coretxn "github.com/0chain/gosdk_common/core/transaction"
+	sdkUtil "github.com/0chain/gosdk_common/core/util"
 	"github.com/remeh/sizedwaitgroup"
 	"gorm.io/gorm"
 
@@ -347,11 +347,11 @@ func (cr *ChallengeEntity) LoadValidationTickets(ctx context.Context) error {
 	return nil
 }
 
-func (cr *ChallengeEntity) VerifyChallengeTransaction(ctx context.Context, txn *transaction.Transaction) error {
+func (cr *ChallengeEntity) VerifyChallengeTransaction(ctx context.Context, txn *coretxn.Transaction) error {
 	if len(cr.LastCommitTxnIDs) > 0 {
 		for _, lastTxn := range cr.LastCommitTxnIDs {
 			logging.Logger.Info("[challenge]commit: Verifying the transaction : " + lastTxn)
-			t, err := transaction.VerifyTransaction(lastTxn, chain.GetServerChain())
+			t, err := coretxn.VerifyTransaction(lastTxn)
 			if err == nil {
 				cr.SaveChallengeResult(ctx, t, false)
 				return nil
@@ -362,11 +362,11 @@ func (cr *ChallengeEntity) VerifyChallengeTransaction(ctx context.Context, txn *
 
 	logging.Logger.Info("Verifying challenge response to blockchain.", zap.String("txn", txn.Hash), zap.String("challenge_id", cr.ChallengeID))
 	var (
-		t   *transaction.Transaction
+		t   *coretxn.Transaction
 		err error
 	)
 	for i := 0; i < 3; i++ {
-		t, err = transaction.VerifyTransactionWithNonce(txn.Hash, txn.GetTransaction().GetTransactionNonce())
+		t, err = coretxn.VerifyTransaction(txn.Hash)
 		if err == nil {
 			break
 		}
@@ -403,7 +403,7 @@ func IsEntityNotFoundError(err error) bool {
 	return strings.Contains(err.Error(), EntityNotFound)
 }
 
-func (cr *ChallengeEntity) SaveChallengeResult(ctx context.Context, t *transaction.Transaction, toAdd bool) {
+func (cr *ChallengeEntity) SaveChallengeResult(ctx context.Context, t *coretxn.Transaction, toAdd bool) {
 	cr.statusMutex.Lock()
 	cr.Status = Committed
 	cr.statusMutex.Unlock()

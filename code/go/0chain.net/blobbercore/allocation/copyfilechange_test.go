@@ -15,9 +15,9 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/gosdk/constants"
-	"github.com/0chain/gosdk/core/zcncrypto"
-	"github.com/0chain/gosdk/zboxcore/client"
+	"github.com/0chain/gosdk_common/constants"
+	"github.com/0chain/gosdk_common/core/client"
+	"github.com/0chain/gosdk_common/core/zcncrypto"
 	mocket "github.com/selvatico/go-mocket"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/metadata"
@@ -38,7 +38,7 @@ func TestBlobberCore_CopyFile(t *testing.T) {
 	ts := time.Now().Add(time.Hour)
 	alloc := makeTestAllocation(common.Timestamp(ts.Unix()))
 	alloc.OwnerPublicKey = sch.GetPublicKey()
-	alloc.OwnerID = client.GetClientID()
+	alloc.OwnerID = client.Id()
 
 	testCases := []struct {
 		name                string

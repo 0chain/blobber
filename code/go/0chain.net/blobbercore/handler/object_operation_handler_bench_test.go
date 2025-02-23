@@ -11,7 +11,7 @@ package handler
 // 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 // 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 // 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/mock"
-// 	"github.com/0chain/gosdk/zboxcore/sdk"
+// 	"github.com/0chain/gosdk_common/zboxcore/sdk"
 // )
 
 // func BenchmarkUploadFileWithDisk(b *testing.B) {

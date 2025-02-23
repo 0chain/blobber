@@ -18,8 +18,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/gosdk/constants"
-	"github.com/0chain/gosdk/zboxcore/fileref"
+	"github.com/0chain/gosdk_common/constants"
+	"github.com/0chain/gosdk_common/zboxcore/fileref"
 )
 
 const (

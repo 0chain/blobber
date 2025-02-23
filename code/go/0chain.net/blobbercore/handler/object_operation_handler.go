@@ -16,7 +16,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 
-	"github.com/0chain/gosdk/constants"
+	"github.com/0chain/gosdk_common/constants"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"

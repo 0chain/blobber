@@ -12,7 +12,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	zLogger "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/0chain/gosdk/constants"
+	"github.com/0chain/gosdk_common/constants"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )

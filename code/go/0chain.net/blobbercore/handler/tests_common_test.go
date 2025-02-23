@@ -15,9 +15,11 @@ import (
 	"strings"
 	"testing"
 
+	coreNetwork "github.com/0chain/gosdk_common/core/conf"
+
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
-	"github.com/0chain/gosdk/core/zcncrypto"
-	"github.com/0chain/gosdk/zcncore"
+	"github.com/0chain/gosdk_common/core/zcncrypto"
+	"github.com/0chain/gosdk_common/zcncore"
 )
 
 func setup(t *testing.T) {
@@ -30,7 +32,7 @@ func setup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := zcncore.SetWalletInfo(string(wBlob), true); err != nil {
+	if err := zcncore.SetWalletInfo(string(wBlob), "bls0chain", true); err != nil {
 		t.Fatal(err)
 	}
 
@@ -41,10 +43,10 @@ func setup(t *testing.T) {
 			},
 		),
 	)
-	server := httptest.NewServer(
+	_ = httptest.NewServer(
 		http.HandlerFunc(
 			func(w http.ResponseWriter, r *http.Request) {
-				n := zcncore.Network{Miners: []string{"miner 1"}, Sharders: []string{sharderServ.URL}}
+				n := coreNetwork.Network{Miners: []string{"miner 1"}, Sharders: []string{sharderServ.URL}}
 				blob, err := json.Marshal(n)
 				if err != nil {
 					t.Fatal(err)
@@ -57,9 +59,9 @@ func setup(t *testing.T) {
 		),
 	)
 
-	if err := zcncore.InitZCNSDK(server.URL, "ed25519"); err != nil {
-		t.Fatal(err)
-	}
+	// if err := zcncore.InitZCNSDK(server.URL, "ed25519"); err != nil {
+	// 	t.Fatal(err)
+	// }
 }
 
 type MockFileStore struct {

@@ -45,7 +45,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
-	"github.com/0chain/gosdk/core/util"
+	"github.com/0chain/gosdk_common/core/util"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/sha3"
 	"golang.org/x/sys/unix"

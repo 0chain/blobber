@@ -13,7 +13,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/0chain/gosdk/zcncore"
+	"github.com/0chain/gosdk/core/client"
 	"go.uber.org/zap"
 
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -77,16 +77,19 @@ func HomepageHandler(w http.ResponseWriter, r *http.Request) {
 	)
 
 	fmt.Fprintf(w, "<div>Miners ...\n")
-	network := zcncore.GetNetwork()
-	for _, miner := range network.Miners {
-		fmt.Fprintf(w, "%v\n", miner)
+	network, err := client.GetNetwork(context.Background())
+	if err == nil {
+		fmt.Fprintf(w, "<div>Miners ...\n")
+		for _, miner := range network.Miners {
+			fmt.Fprintf(w, "%v\n", miner)
+		}
+		fmt.Fprintf(w, "</div>\n")
+		fmt.Fprintf(w, "<div>Sharders ...\n")
+		for _, sharder := range network.Sharders {
+			fmt.Fprintf(w, "%v\n", sharder)
+		}
+		fmt.Fprintf(w, "</div>\n")
 	}
-	fmt.Fprintf(w, "</div>\n")
-	fmt.Fprintf(w, "<div>Sharders ...\n")
-	for _, sharder := range network.Sharders {
-		fmt.Fprintf(w, "%v\n", sharder)
-	}
-	fmt.Fprintf(w, "</div>\n")
 	fmt.Fprintf(w, "</br>")
 	fmt.Fprintf(w, "<div>Running since %v (Total elapsed time: %v)</div>\n", StartTime.Format(common.DateTimeFormat), time.Since(StartTime))
 	fmt.Fprintf(w, "</br>")

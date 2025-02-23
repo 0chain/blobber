@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"github.com/0chain/gosdk/constants"
+	"github.com/0chain/gosdk_common/constants"
 	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
