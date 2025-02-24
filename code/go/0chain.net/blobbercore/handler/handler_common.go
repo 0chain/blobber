@@ -13,7 +13,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/0chain/gosdk/core/client"
+	"github.com/0chain/gosdk_common/core/client"
 	"go.uber.org/zap"
 
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
