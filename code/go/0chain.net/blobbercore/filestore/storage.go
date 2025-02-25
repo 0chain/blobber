@@ -162,7 +162,7 @@ func (fs *FileStore) MoveToFilestore(allocID, hash string, version int) error {
 	}
 
 	_ = os.Rename(preCommitPath, fPath)
-
+	logging.Logger.Info("move_to_filestore: ", zap.String("path", fPath), zap.String("hash", hash))
 	// Check if thumbnail exists
 	thumbPath := fs.getPreCommitPathForFile(allocID, hash+ThumbnailSuffix, version)
 	if _, err := os.Stat(thumbPath); err == nil {

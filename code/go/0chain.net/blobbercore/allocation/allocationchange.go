@@ -406,7 +406,7 @@ func deleteFromFileStore(allocationID string, deletedRefs []*reference.Ref, useR
 					filestore.VERSION)
 				if err != nil {
 					logging.Logger.Error(fmt.Sprintf("Error while deleting file: %s", err.Error()),
-						zap.String("lookup_hash", res.LookupHash))
+						zap.String("lookup_hash", resLookupHash))
 				}
 			}()
 

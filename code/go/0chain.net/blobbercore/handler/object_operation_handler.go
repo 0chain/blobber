@@ -711,7 +711,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	elapsedSaveAllocation := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
-		elapsedGetConnObj - elapsedApplyChanges
+		elapsedGetConnObj - elapsedMoveToFilestore - elapsedApplyChanges
 
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
@@ -719,7 +719,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 		}
 	}
-	elapsedCommitStore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedApplyChanges - elapsedSaveAllocation
+	elapsedCommitStore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedMoveToFilestore - elapsedApplyChanges - elapsedSaveAllocation
 	logging.Logger.Info("commit_filestore", zap.String("allocation_id", allocationId))
 	connectionObj.DeleteChanges(ctx)
 
