@@ -202,7 +202,7 @@ func (fs *FileStore) DeleteFromFilestore(allocID, hash string, version int) erro
 }
 
 func (fs *FileStore) DeletePreCommitDir(allocID string) error {
-
+	now := time.Now()
 	preCommitDir := fs.getPreCommitDir(allocID)
 	swg := sizedwaitgroup.New(5)
 	ctx, cancel := context.WithCancelCause(context.Background())
@@ -250,6 +250,7 @@ func (fs *FileStore) DeletePreCommitDir(allocID string) error {
 	if err != nil {
 		return common.NewError("pre_commit_dir_deletion_error", err.Error())
 	}
+	logging.Logger.Debug("pre_commit_dir_deleted", zap.String("allocation_id", allocID), zap.Duration("elapsed", time.Since(now)))
 	return nil
 }
 
