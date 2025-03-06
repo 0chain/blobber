@@ -83,6 +83,10 @@ func cleanupTempFiles(ctx context.Context) {
 
 	for i := 0; i < len(openConnectionsToDelete); i++ {
 		connection := &openConnectionsToDelete[i]
+		processor := allocation.GetConnectionProcessor(connection.ID)
+		if processor != nil {
+			continue
+		}
 		logging.Logger.Info("Deleting temp files for the connection", zap.Any("connection", connection.ID))
 		connection.ComputeProperties()
 

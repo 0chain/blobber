@@ -46,6 +46,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/core/util"
+	"github.com/remeh/sizedwaitgroup"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/sha3"
 	"golang.org/x/sys/unix"
@@ -203,7 +204,51 @@ func (fs *FileStore) DeleteFromFilestore(allocID, hash string, version int) erro
 func (fs *FileStore) DeletePreCommitDir(allocID string) error {
 
 	preCommitDir := fs.getPreCommitDir(allocID)
-	err := os.RemoveAll(preCommitDir)
+	swg := sizedwaitgroup.New(5)
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer cancel(nil)
+
+	// Start walking the tree
+	walkErr := filepath.WalkDir(preCommitDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		// Directories are removed in parallel
+		if d.IsDir() {
+			swg.Add()
+			go func() {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					err := os.RemoveAll(path)
+					if err != nil {
+						logging.Logger.Error("failed to remove directory", zap.String("path", path), zap.Error(err))
+						cancel(err)
+					}
+				}
+				swg.Done()
+			}()
+		} else {
+			// Files removed immediately
+			if err := os.Remove(path); err != nil {
+				return fmt.Errorf("failed to remove file %s: %w", path, err)
+			}
+		}
+		return nil
+	})
+
+	swg.Wait()
+	if walkErr != nil {
+		return common.NewError("pre_commit_dir_walk_error", walkErr.Error())
+	}
+	select {
+	case <-ctx.Done():
+		return common.NewError("pre_commit_dir_deletion_error", ctx.Err().Error())
+	default:
+	}
+
+	err := os.Remove(preCommitDir)
 	if err != nil {
 		return common.NewError("pre_commit_dir_deletion_error", err.Error())
 	}
