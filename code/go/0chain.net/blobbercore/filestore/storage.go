@@ -208,47 +208,45 @@ func (fs *FileStore) DeletePreCommitDir(allocID string) error {
 	ctx, cancel := context.WithCancelCause(context.Background())
 	defer cancel(nil)
 
-	// Start walking the tree
-	walkErr := filepath.WalkDir(preCommitDir, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return err
+	entries, err := os.ReadDir(preCommitDir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
 		}
-		// Directories are removed in parallel
-		if d.IsDir() {
+		return common.NewError("pre_commit_dir_read_error", err.Error())
+	}
+
+	for _, entry := range entries {
+		entryPath := filepath.Join(preCommitDir, entry.Name())
+		if entry.IsDir() {
 			swg.Add()
 			go func() {
 				select {
 				case <-ctx.Done():
 					return
 				default:
-					err := os.RemoveAll(path)
+					err := os.RemoveAll(entryPath)
 					if err != nil {
-						logging.Logger.Error("failed to remove directory", zap.String("path", path), zap.Error(err))
+						logging.Logger.Error("failed to remove directory", zap.String("path", entryPath), zap.Error(err))
 						cancel(err)
 					}
 				}
 				swg.Done()
 			}()
 		} else {
-			// Files removed immediately
-			if err := os.Remove(path); err != nil {
-				return fmt.Errorf("failed to remove file %s: %w", path, err)
+			if err := os.Remove(entryPath); err != nil {
+				return fmt.Errorf("failed to remove file %s: %w", entryPath, err)
 			}
 		}
-		return nil
-	})
-
-	swg.Wait()
-	if walkErr != nil {
-		return common.NewError("pre_commit_dir_walk_error", walkErr.Error())
 	}
+	swg.Wait()
 	select {
 	case <-ctx.Done():
 		return common.NewError("pre_commit_dir_deletion_error", ctx.Err().Error())
 	default:
 	}
 
-	err := os.Remove(preCommitDir)
+	err = os.Remove(preCommitDir)
 	if err != nil {
 		return common.NewError("pre_commit_dir_deletion_error", err.Error())
 	}
