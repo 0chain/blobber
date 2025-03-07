@@ -449,6 +449,11 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context, allocat
 			logging.Logger.Error("Error while moving to filestore", zap.Error(err))
 			return err
 		}
+		err = filestore.GetFileStore().DeletePreCommitDir(a.AllocationID)
+		if err != nil {
+			logging.Logger.Error("Error while deleting precommit dir", zap.Error(err))
+			return err
+		}
 
 		return tx.Exec("UPDATE reference_objects SET is_precommit=?, prev_validation_root=validation_root, prev_thumbnail_hash=thumbnail_hash WHERE allocation_id=? AND is_precommit=? AND deleted_at is NULL", false, a.AllocationID, true).Error
 	})
