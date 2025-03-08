@@ -609,6 +609,11 @@ func (a *AllocationChangeCollector) MoveToFilestoreV2(ctx context.Context, alloc
 
 	wg.Wait()
 	elapsedMove := time.Since(now) - elapsedUpdateAllocation - elapsedDeleteFromFilestore
+	err = filestore.GetFileStore().DeletePreCommitDir(a.AllocationID)
+	if err != nil {
+		logging.Logger.Error("Error while deleting precommit dir", zap.Error(err))
+		return err
+	}
 	logging.Logger.Info("moveToFilestoreV2", zap.Duration("elapsedAllocation", elapsedUpdateAllocation), zap.Duration("elapsedDelete", elapsedDeleteFromFilestore), zap.Duration("elapsedMove", elapsedMove), zap.Duration("elapsedTotal", time.Since(now)), zap.Bool("useRefCache", useRefCache), zap.Int("createRefs", len(refs)), zap.Int("deleteRefs", len(deletedRefs)))
 	return nil
 }
