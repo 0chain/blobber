@@ -121,15 +121,16 @@ func (nf *UpdateFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, 
 
 	//find if ref exists
 	var refResult struct {
-		ID         int64
-		Type       string
-		NumUpdates int64 `gorm:"column:num_of_updates" json:"num_of_updates"`
-		Size       int64 `gorm:"column:size" json:"size"`
+		ID           int64
+		Type         string
+		NumUpdates   int64  `gorm:"column:num_of_updates" json:"num_of_updates"`
+		Size         int64  `gorm:"column:size" json:"size"`
+		FileMetaHash string `gorm:"column:file_meta_hash" json:"file_meta_hash"`
 	}
 
 	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
 		tx := datastore.GetStore().GetTransaction(ctx)
-		return tx.Model(&reference.Ref{}).Select("id", "type", "num_of_updates", "size").Where("lookup_hash = ?", nf.LookupHash).Take(&refResult).Error
+		return tx.Model(&reference.Ref{}).Select("id", "type", "num_of_updates", "size", "file_meta_hash").Where("lookup_hash = ?", nf.LookupHash).Take(&refResult).Error
 	}, &sql.TxOptions{
 		ReadOnly: true,
 	})
@@ -187,9 +188,11 @@ func (nf *UpdateFileChanger) ApplyChangeV2(ctx context.Context, allocationRoot, 
 	}
 	collector.DeleteRefRecord(deleteRecord)
 	collector.CreateRefRecord(newFile)
-	decodedKey, _ := hex.DecodeString(newFile.LookupHash)
-	decodedValue, _ := hex.DecodeString(newFile.FileMetaHash)
-	err = trie.Update(decodedKey, decodedValue, uint64(newFile.NumBlocks))
+	if newFile.FileMetaHash != refResult.FileMetaHash {
+		decodedKey, _ := hex.DecodeString(newFile.LookupHash)
+		decodedValue, _ := hex.DecodeString(newFile.FileMetaHash)
+		err = trie.Update(decodedKey, decodedValue, uint64(newFile.NumBlocks))
+	}
 	return refResult.Size - newFile.Size, err
 }
 
