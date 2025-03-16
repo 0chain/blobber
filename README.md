@@ -24,7 +24,7 @@ This readme provides instructions on how to setup and register blobber to the Z�
 - [Blobber local development guidelines](dev.local/README.md)
 
 ## Züs Overview
-Züs is a leading privacy and secure AI data platform that provides users full ownership and control of their data, with powerful AI agents on Vult.network to accelerate productivity. It is also ideal for on-prem, high speed S3 storage as well as backup and disaster recovery to prevent outage, breach, and ransomware issues. 
+Züs is a leading privacy and secure AI data platform that provides users full ownership and control of their data, with powerful AI chat and agents on Vult.network to accelerate productivity. It is also ideal for on-prem, high speed S3 storage as well as backup and disaster recovery to prevent outage, breach, and ransomware issues. 
 
 It has an unparalleled data integrity layer on the blockchain and a zero knowledge network, with data and key distributed so that its almost impossible to breach. Another standout feature is that it allows users to share encrypted data easily, even on a public link.
 
