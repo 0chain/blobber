@@ -39,7 +39,7 @@ require (
 )
 
 require (
-	github.com/0chain/gosdk_common v0.0.0-20250204070817-3c82b7ad6a9f
+	github.com/0chain/gosdk_common v0.0.0-20250318142402-b7bd1ebd4f66
 	github.com/lithammer/shortuuid/v3 v3.0.7
 	golang.org/x/sync v0.7.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20230530153820-e85fd2cbaebc
