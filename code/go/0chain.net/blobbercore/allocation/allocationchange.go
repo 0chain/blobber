@@ -161,7 +161,6 @@ func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clien
 		cc.ComputeProperties()
 		// Load connection Obj size from memory
 		cc.Size = GetConnectionObjSize(connectionID)
-		cc.Status = InProgressConnection
 		return cc, nil
 	}
 
