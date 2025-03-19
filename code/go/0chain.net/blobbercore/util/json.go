@@ -5,14 +5,15 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/0chain/gosdk/zboxcore/fileref"
+	"github.com/0chain/gosdk_common/zboxcore/fileref"
 )
 
 // Validate unmarshalled data with tag-based rules
 // Example:
-// struct {
-//	Name string `json:"name" validation:"required"`
-// }
+//
+//	struct {
+//		Name string `json:"name" validation:"required"`
+//	}
 func UnmarshalValidation(v interface{}) error {
 	fields := reflect.ValueOf(v).Elem()
 

@@ -8,6 +8,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -84,6 +86,7 @@ func AddWriteMarkerCount(clientID string, zeroSizeWM bool) {
 		cs.TotalZeroWM++
 	}
 	if cs.TotalZeroWM > config.Configuration.CommitZeroLimitDaily || cs.TotalWM > config.Configuration.CommitLimitDaily {
+		logging.Logger.Info("Client blacklisted", zap.String("client_id", clientID), zap.Int64("total_write_marker", cs.TotalWM), zap.Int64("total_zero_write_marker", cs.TotalZeroWM), zap.Int64("commit_limit_daily", config.Configuration.CommitLimitDaily), zap.Int64("commit_zero_limit_daily", config.Configuration.CommitZeroLimitDaily))
 		SetBlacklist(clientID)
 	}
 }
@@ -136,6 +139,7 @@ func saveClientStats() {
 }
 
 func startBlackListWorker(ctx context.Context) {
+	logging.Logger.Info("Starting black list worker", zap.Int64("upload_limit", config.Configuration.UploadLimitMonthly), zap.Int64("download_limit", config.Configuration.BlockLimitMonthly), zap.Int64("commit_limit", config.Configuration.CommitLimitMonthly), zap.Int64("commit_zero_limit", config.Configuration.CommitZeroLimitDaily), zap.Int64("commit_limit_daily", config.Configuration.CommitLimitDaily))
 	BlackListWorkerTime := 24 * time.Hour
 	if config.Development() {
 		BlackListWorkerTime = 10 * time.Second

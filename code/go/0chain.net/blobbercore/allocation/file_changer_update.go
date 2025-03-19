@@ -74,19 +74,14 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, rootRef *reference
 	fileRef.HashToBeComputed = true
 	nf.deleteHash = make(map[string]int)
 
-	if fileRef.ValidationRoot != "" && fileRef.ValidationRoot != nf.ValidationRoot {
-		nf.deleteHash[fileRef.ValidationRoot] = fileRef.FilestoreVersion
-	}
-
 	fileRef.ActualFileHash = nf.ActualHash
 	fileRef.ActualFileHashSignature = nf.ActualFileHashSignature
 	fileRef.ActualFileSize = nf.ActualSize
 	fileRef.MimeType = nf.MimeType
-	fileRef.ValidationRootSignature = nf.ValidationRootSignature
-	fileRef.ValidationRoot = nf.ValidationRoot
 	fileRef.CustomMeta = nf.CustomMeta
-	fileRef.FixedMerkleRoot = nf.FixedMerkleRoot
-	fileRef.AllocationRoot = allocationRoot
+	fileRef.DataHash = nf.DataHash
+	fileRef.DataHashSignature = nf.DataHashSignature
+	fileRef.LookupHash = nf.LookupHash
 	fileRef.Size = nf.Size
 	fileRef.ThumbnailHash = nf.ThumbnailHash
 	fileRef.ThumbnailSize = nf.ThumbnailSize
@@ -95,7 +90,6 @@ func (nf *UpdateFileChanger) ApplyChange(ctx context.Context, rootRef *reference
 	fileRef.EncryptedKey = nf.EncryptedKey
 	fileRef.EncryptedKeyPoint = nf.EncryptedKeyPoint
 	fileRef.ChunkSize = nf.ChunkSize
-	fileRef.IsPrecommit = true
 	fileRef.FilestoreVersion = filestore.VERSION
 
 	return rootRef, nil

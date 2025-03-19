@@ -2,9 +2,14 @@ package handler
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/common/core/common"
-	"net/http"
+	"github.com/0chain/gosdk_common/core/encryption"
+	"go.uber.org/zap"
 )
 
 // swagger:model AuthTicketResponse
@@ -19,28 +24,38 @@ type AuthTicketResponse struct {
 //
 // parameters:
 //
-//   +name: Zbox-Signature
-//    in: header
-//    type: string
-//    description: Digital signature to verify that the sender is 0box service.
-//   +name: client_id
-//    type: string
-//    in: query
-//    description: Client ID is used as a payload to the token generated. The token represents a signed version of this string by the blobber's private key.
+//	+name: Zbox-Signature
+//	 in: header
+//	 type: string
+//	 description: Digital signature to verify that the sender is 0box service.
+//	+name: client_id
+//	 type: string
+//	 in: query
+//	 description: Client ID is used as a payload to the token generated. The token represents a signed version of this string by the blobber's private key.
 //
 // responses:
-//    200: AuthTicketResponse
+//
+//	200: AuthTicketResponse
 func GenerateAuthTicket(ctx context.Context, r *http.Request) (interface{}, error) {
+
 	clientID := r.URL.Query().Get("client_id")
 	if clientID == "" {
 		return nil, common.NewError("missing_client_id", "client_id is required")
 	}
 
-	signature, err := node.Self.Sign(clientID)
+	round := r.URL.Query().Get("round")
+	if round == "" {
+		return nil, common.NewError("missing_round", "round is required")
+	}
+
+	payload := encryption.Hash(fmt.Sprintf("%s_%s", clientID, round))
+
+	logging.Logger.Info("GenerateAuthTicket", zap.String("payload", payload), zap.String("client_id", clientID), zap.String("round", round))
+
+	signature, err := node.Self.Sign(payload)
 	if err != nil {
 		return nil, common.NewError("signature_failed", "signature failed")
 	}
-
 	return &AuthTicketResponse{
 		AuthTicket: signature,
 	}, nil

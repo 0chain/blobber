@@ -2,18 +2,24 @@ package allocation
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
-	"fmt"
+	"math"
 	"path/filepath"
 	"strings"
+	"time"
 
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
+	"go.uber.org/zap"
+	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/util"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
+	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
 // swagger:model UploadFileChanger
@@ -23,93 +29,27 @@ type UploadFileChanger struct {
 }
 
 // ApplyChange update references, and create a new FileRef
-func (nf *UploadFileChanger) applyChange(ctx context.Context, rootRef *reference.Ref, change *AllocationChange,
-	allocationRoot string, ts common.Timestamp, fileIDMeta map[string]string) (*reference.Ref, error) {
+func (nf *UploadFileChanger) applyChange(ctx context.Context,
+	ts common.Timestamp, allocationVersion int64, collector reference.QueryCollector) error {
 
-	totalRefs, err := reference.CountRefs(ctx, nf.AllocationID)
-	if err != nil {
-		return nil, err
+	if nf.AllocationID == "" {
+		return common.NewError("invalid_parameter", "allocation_id is required")
 	}
-
-	if int64(config.Configuration.MaxAllocationDirFiles) <= totalRefs {
-		return nil, common.NewErrorf("max_alloc_dir_files_reached",
-			"maximum files and directories already reached: %v", err)
-	}
-
-	fields, err := common.GetPathFields(filepath.Dir(nf.Path))
-	if err != nil {
-		return nil, err
-	}
-	if rootRef.CreatedAt == 0 {
-		rootRef.CreatedAt = ts
-	}
-
-	rootRef.UpdatedAt = ts
-	rootRef.HashToBeComputed = true
-
-	dirRef := rootRef
-	for i := 0; i < len(fields); i++ {
-		found := false
-		for _, child := range dirRef.Children {
-			if child.Name == fields[i] {
-				if child.Type != reference.DIRECTORY {
-					return nil, common.NewError("invalid_reference_path", "Reference path has invalid ref type")
-				}
-				dirRef = child
-				dirRef.UpdatedAt = ts
-				dirRef.HashToBeComputed = true
-				found = true
-			}
-		}
-
-		if len(dirRef.Children) >= config.Configuration.MaxObjectsInDir {
-			return nil, common.NewErrorf("max_objects_in_dir_reached",
-				"maximum objects in directory %s reached: %v", dirRef.Path, config.Configuration.MaxObjectsInDir)
-		}
-
-		if !found {
-			newRef := reference.NewDirectoryRef()
-			newRef.AllocationID = dirRef.AllocationID
-			newRef.Path = "/" + strings.Join(fields[:i+1], "/")
-			fileID, ok := fileIDMeta[newRef.Path]
-			if !ok || fileID == "" {
-				return nil, common.NewError("invalid_parameter",
-					fmt.Sprintf("file path %s has no entry in fileID meta", newRef.Path))
-			}
-			newRef.FileID = fileID
-			newRef.ParentPath = "/" + strings.Join(fields[:i], "/")
-			newRef.Name = fields[i]
-			newRef.CreatedAt = ts
-			newRef.UpdatedAt = ts
-			newRef.HashToBeComputed = true
-
-			dirRef.AddChild(newRef)
-			dirRef = newRef
-		}
-	}
-
-	for _, child := range dirRef.Children {
-		if child.Name == nf.Filename {
-			return nil, common.NewError("duplicate_file", "File already exists")
-		}
-	}
-
+	now := time.Now()
+	parentPath := filepath.Dir(nf.Path)
+	nf.LookupHash = reference.GetReferenceLookup(nf.AllocationID, nf.Path)
 	newFile := &reference.Ref{
 		ActualFileHash:          nf.ActualHash,
 		ActualFileHashSignature: nf.ActualFileHashSignature,
 		ActualFileSize:          nf.ActualSize,
-		AllocationID:            dirRef.AllocationID,
-		ValidationRoot:          nf.ValidationRoot,
-		ValidationRootSignature: nf.ValidationRootSignature,
+		AllocationID:            nf.AllocationID,
 		CustomMeta:              nf.CustomMeta,
-		FixedMerkleRoot:         nf.FixedMerkleRoot,
 		Name:                    nf.Filename,
 		Path:                    nf.Path,
-		ParentPath:              dirRef.Path,
+		ParentPath:              parentPath,
 		Type:                    reference.FILE,
 		Size:                    nf.Size,
 		MimeType:                nf.MimeType,
-		AllocationRoot:          allocationRoot,
 		ThumbnailHash:           nf.ThumbnailHash,
 		ThumbnailSize:           nf.ThumbnailSize,
 		ActualThumbnailHash:     nf.ActualThumbnailHash,
@@ -119,21 +59,63 @@ func (nf *UploadFileChanger) applyChange(ctx context.Context, rootRef *reference
 		ChunkSize:               nf.ChunkSize,
 		CreatedAt:               ts,
 		UpdatedAt:               ts,
-		HashToBeComputed:        true,
-		IsPrecommit:             true,
+		LookupHash:              nf.LookupHash,
+		DataHash:                nf.DataHash,
+		DataHashSignature:       nf.DataHashSignature,
+		PathLevel:               len(strings.Split(strings.TrimRight(nf.Path, "/"), "/")),
+		NumBlocks:               int64(math.Ceil(float64(nf.Size*1.0) / float64(nf.ChunkSize))),
 		FilestoreVersion:        filestore.VERSION,
+		AllocationVersion:       allocationVersion,
+		NumUpdates:              1,
+	}
+	newFile.FileMetaHash = encryption.FastHash(newFile.GetFileMetaHashData())
+	elapsedNewFile := time.Since(now)
+	// find if ref exists
+	var refResult struct {
+		ID         int64
+		Type       string
+		NumUpdates int64 `gorm:"column:num_of_updates" json:"num_of_updates"`
 	}
 
-	fileID, ok := fileIDMeta[newFile.Path]
-	if !ok || fileID == "" {
-		return nil, common.NewError("invalid_parameter",
-			fmt.Sprintf("file path %s has no entry in fileID meta", newFile.Path))
+	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		tx := datastore.GetStore().GetTransaction(ctx)
+		return tx.Model(&reference.Ref{}).Select("id", "type", "num_of_updates").Where("lookup_hash = ?", newFile.LookupHash).Take(&refResult).Error
+	}, &sql.TxOptions{
+		ReadOnly: true,
+	})
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return err
 	}
-	newFile.FileID = fileID
 
-	dirRef.AddChild(newFile)
-
-	return rootRef, nil
+	if refResult.ID > 0 {
+		if !nf.CanUpdate {
+			return common.NewError("prohibited_allocation_file_options", "Cannot update data in this allocation.")
+		}
+		if refResult.Type != reference.FILE {
+			return common.NewError("invalid_reference_path", "Directory already exists with the same path")
+		}
+		deleteRecord := &reference.Ref{
+			ID:         refResult.ID,
+			LookupHash: newFile.LookupHash,
+			Type:       refResult.Type,
+		}
+		collector.DeleteRefRecord(deleteRecord)
+		newFile.NumUpdates = refResult.NumUpdates + 1
+	}
+	elapsedNewFileRecord := time.Since(now) - elapsedNewFile
+	// get parent id
+	parent := filepath.Dir(nf.Path)
+	// create or get parent directory
+	parentRef, err := reference.Mkdir(ctx, nf.AllocationID, parent, allocationVersion, ts, collector)
+	if err != nil {
+		return err
+	}
+	elapsedMkdir := time.Since(now) - elapsedNewFileRecord - elapsedNewFile
+	newFile.ParentID = &parentRef.ID
+	collector.CreateRefRecord(newFile)
+	elapsedCreateRefRecord := time.Since(now) - elapsedMkdir - elapsedNewFileRecord - elapsedNewFile
+	logging.Logger.Info("UploadFileChanger", zap.Duration("elapsedNewFile", elapsedNewFile), zap.Duration("elapsedNewFileRecord", elapsedNewFileRecord), zap.Duration("elapsedMkdir", elapsedMkdir), zap.Duration("elapsedCreateRefRecord", elapsedCreateRefRecord), zap.Duration("elapsedTotal", time.Since(now)))
+	return err
 }
 
 // Marshal marshal and change to persistent to postgres

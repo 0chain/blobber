@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/0chain/gosdk/core/zcncrypto"
-	"github.com/0chain/gosdk/sdks"
-	"github.com/0chain/gosdk/sdks/blobber"
+	"github.com/0chain/gosdk_common/core/zcncrypto"
+	"github.com/0chain/gosdk_common/sdks"
+	"github.com/0chain/gosdk_common/sdks/blobber"
 )
 
 const (

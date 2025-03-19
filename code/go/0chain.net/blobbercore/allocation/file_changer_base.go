@@ -8,10 +8,11 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
+	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
+	"go.uber.org/zap"
 )
 
-// swagger:model BaseFileChanger 
+// swagger:model BaseFileChanger
 // BaseFileChanger base file change processor
 type BaseFileChanger struct {
 	//client side: unmarshal them from 'updateMeta'/'uploadMeta'
@@ -34,16 +35,12 @@ type BaseFileChanger struct {
 	//client side:
 	MimeType string `json:"mimetype,omitempty"`
 	//client side:
-	//client side:
-	FixedMerkleRoot string `json:"fixed_merkle_root,omitempty"`
 
 	//server side: update them by ChangeProcessor
-	AllocationID string `json:"allocation_id"`
-	//client side:
-	ValidationRootSignature string `json:"validation_root_signature,omitempty"`
-	//client side:
-	ValidationRoot string `json:"validation_root,omitempty"`
-	Size           int64  `json:"size"`
+	AllocationID      string `json:"allocation_id"`
+	DataHash          string `json:"data_hash"`
+	DataHashSignature string `json:"data_hash_signature"`
+	Size              int64  `json:"size"`
 	//server side:
 	ThumbnailHash     string `json:"thumbnail_content_hash,omitempty"`
 	ThumbnailSize     int64  `json:"thumbnail_size"`
@@ -60,16 +57,15 @@ type BaseFileChanger struct {
 	ChunkEndIndex   int    `json:"chunk_end_index,omitempty"`   // end index of chunks. all chunks MUST be uploaded one by one because of CompactMerkleTree
 	ChunkHash       string `json:"chunk_hash,omitempty"`
 	UploadOffset    int64  `json:"upload_offset,omitempty"` // It is next position that new incoming chunk should be append to
-	PathHash        string `json:"-"`                       // hash of path
+	CanUpdate       bool   `json:"can_update"`              // can file be updated or not
+	LookupHash      string `json:"-"`                       // hash of allocationID+path
 }
 
 // swagger:model UploadResult
 type UploadResult struct {
-	Filename        string `json:"filename"`
-	Size            int64  `json:"size"`
-	Hash            string `json:"hash"`
-	ValidationRoot  string `json:"validation_root"`
-	FixedMerkleRoot string `json:"fixed_merkle_root"`
+	Filename string `json:"filename"`
+	Size     int64  `json:"size"`
+	Hash     string `json:"hash"`
 
 	// UploadLength indicates the size of the entire upload in bytes. The value MUST be a non-negative integer.
 	UploadLength int64 `json:"upload_length"`
@@ -108,7 +104,8 @@ func (fc *BaseFileChanger) DeleteTempFile() error {
 	fileInputData := &filestore.FileInputData{}
 	fileInputData.Name = fc.Filename
 	fileInputData.Path = fc.Path
-	fileInputData.ValidationRoot = fc.ValidationRoot
+	fileInputData.DataHash = fc.DataHash
+	fileInputData.LookupHash = fc.LookupHash
 	err := filestore.GetFileStore().DeleteTempFile(fc.AllocationID, fc.ConnectionID, fileInputData)
 	if fc.ThumbnailSize > 0 {
 		fileInputData := &filestore.FileInputData{}
@@ -122,11 +119,15 @@ func (fc *BaseFileChanger) DeleteTempFile() error {
 
 func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context, mut *sync.Mutex) error {
 
+	if fc.LookupHash == "" {
+		fc.LookupHash = reference.GetReferenceLookup(fc.AllocationID, fc.Path)
+	}
 	if fc.ThumbnailSize > 0 {
 		fileInputData := &filestore.FileInputData{}
 		fileInputData.Name = fc.ThumbnailFilename
 		fileInputData.Path = fc.Path
 		fileInputData.ThumbnailHash = fc.ThumbnailHash
+		fileInputData.LookupHash = fc.LookupHash
 		fileInputData.ChunkSize = fc.ChunkSize
 		fileInputData.IsThumbnail = true
 		_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fc.ConnectionID, fileInputData)
@@ -137,13 +138,14 @@ func (fc *BaseFileChanger) CommitToFileStore(ctx context.Context, mut *sync.Mute
 	fileInputData := &filestore.FileInputData{}
 	fileInputData.Name = fc.Filename
 	fileInputData.Path = fc.Path
-	fileInputData.ValidationRoot = fc.ValidationRoot
-	fileInputData.FixedMerkleRoot = fc.FixedMerkleRoot
+	fileInputData.DataHash = fc.DataHash
+	fileInputData.LookupHash = fc.LookupHash
 	fileInputData.ChunkSize = fc.ChunkSize
 	fileInputData.Size = fc.Size
-	fileInputData.Hasher = GetHasher(fc.ConnectionID, encryption.Hash(fc.Path))
+	fileInputData.Hasher = GetHasher(fc.ConnectionID, fc.LookupHash)
 	if fileInputData.Hasher == nil {
-		return common.NewError("invalid_parameters", "Invalid parameters. Error getting hasher for commit.")
+		logging.Logger.Error("CommitToFileStore: Error getting hasher", zap.String("connection_id", fc.ConnectionID), zap.String("lookup_hash", fc.LookupHash))
+		return common.NewError("file_store_error", "Error getting hasher")
 	}
 	_, err := filestore.GetFileStore().CommitWrite(fc.AllocationID, fc.ConnectionID, fileInputData)
 	if err != nil {

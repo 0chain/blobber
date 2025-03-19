@@ -8,14 +8,12 @@ import (
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/blobberhttp"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/writemarker"
 	"github.com/0chain/blobber/code/go/0chain.net/core/build"
 	"github.com/0chain/blobber/code/go/0chain.net/core/chain"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/lock"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	"github.com/0chain/gosdk/zcncore"
+	"github.com/0chain/gosdk_common/core/client"
 	"go.uber.org/zap"
 
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -79,16 +77,19 @@ func HomepageHandler(w http.ResponseWriter, r *http.Request) {
 	)
 
 	fmt.Fprintf(w, "<div>Miners ...\n")
-	network := zcncore.GetNetwork()
-	for _, miner := range network.Miners {
-		fmt.Fprintf(w, "%v\n", miner)
+	network, err := client.GetNetwork(context.Background())
+	if err == nil {
+		fmt.Fprintf(w, "<div>Miners ...\n")
+		for _, miner := range network.Miners {
+			fmt.Fprintf(w, "%v\n", miner)
+		}
+		fmt.Fprintf(w, "</div>\n")
+		fmt.Fprintf(w, "<div>Sharders ...\n")
+		for _, sharder := range network.Sharders {
+			fmt.Fprintf(w, "%v\n", sharder)
+		}
+		fmt.Fprintf(w, "</div>\n")
 	}
-	fmt.Fprintf(w, "</div>\n")
-	fmt.Fprintf(w, "<div>Sharders ...\n")
-	for _, sharder := range network.Sharders {
-		fmt.Fprintf(w, "%v\n", sharder)
-	}
-	fmt.Fprintf(w, "</div>\n")
 	fmt.Fprintf(w, "</br>")
 	fmt.Fprintf(w, "<div>Running since %v (Total elapsed time: %v)</div>\n", StartTime.Format(common.DateTimeFormat), time.Since(StartTime))
 	fmt.Fprintf(w, "</br>")
@@ -127,10 +128,6 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 
 		mutex := lock.GetMutex(allocation.Allocation{}.TableName(), allocationID)
 		Logger.Info("Locking allocation", zap.String("allocation_id", allocationID))
-		wmSet := writemarker.SetCommittingMarker(allocationID, true)
-		if !wmSet {
-			return nil, http.StatusBadRequest, common.NewError("pending_markers", "Committing marker set failed")
-		}
 		mutex.Lock()
 		defer mutex.Unlock()
 		ctx = GetMetaDataStore().CreateTransaction(ctx)
@@ -144,7 +141,6 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 				if rollErr != nil {
 					Logger.Error("couldn't rollback", zap.Error(err))
 				}
-				writemarker.SetCommittingMarker(allocationID, false)
 			}
 		}()
 
@@ -160,14 +156,6 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 		}
 
 		Logger.Info("commit_success", zap.String("allocation_id", allocationID), zap.Any("response", resp))
-
-		if blobberRes, ok := resp.(*blobberhttp.CommitResult); ok {
-			// Save the write marker data
-			writemarker.SaveMarkerData(allocationID, blobberRes.WriteMarker.WM.Timestamp, blobberRes.WriteMarker.WM.ChainLength)
-		} else {
-			Logger.Error("Invalid response type for commit handler")
-			return resp, http.StatusInternalServerError, common.NewError("invalid_response_type", "Invalid response type for commit handler")
-		}
 		return
 	}
 }

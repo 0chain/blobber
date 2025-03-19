@@ -14,14 +14,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/0chain/gosdk/core/zcncrypto"
+	"github.com/0chain/gosdk_common/core/zcncrypto"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 
 	"github.com/go-openapi/runtime/middleware"
 
-	"github.com/0chain/gosdk/constants"
-	"github.com/0chain/gosdk/zboxcore/fileref"
+	"github.com/0chain/gosdk_common/constants"
+	"github.com/0chain/gosdk_common/zboxcore/fileref"
 	"github.com/didip/tollbooth/v6/limiter"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
@@ -285,7 +285,6 @@ func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF
 		defer func() {
 			tx.Rollback()
 		}()
-
 		res, err := handler(ctx, r)
 		return res, err
 	}
@@ -312,21 +311,21 @@ func Authenticate0Box(handler common.ReqRespHandlerf) common.ReqRespHandlerf {
 		signature := r.Header.Get("Zbox-Signature")
 		if signature == "" {
 			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte("Invalid signature")) // nolint
+			w.Write([]byte("Invalid signature " + signature)) // nolint
 			return
 		}
 
 		signatureScheme := zcncrypto.NewSignatureScheme(config.Configuration.SignatureScheme)
 		if err := signatureScheme.SetPublicKey(common.PublicKey0box); err != nil {
 			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte("Invalid signature")) // nolint
+			w.Write([]byte("Invalid signature 2")) // nolint
 			return
 		}
 
 		success, err := signatureScheme.Verify(signature, hex.EncodeToString([]byte(common.PublicKey0box)))
 		if err != nil || !success {
 			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte("Invalid signature")) // nolint
+			w.Write([]byte("Invalid signature 3" + common.PublicKey0box)) // nolint
 			return
 		}
 

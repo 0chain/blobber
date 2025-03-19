@@ -13,6 +13,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
+	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/sha3"
@@ -41,7 +42,7 @@ func challengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 
 	time.Sleep(1 * time.Second)
 
-	allocationObj, err := GetProtocolImpl().VerifyAllocationTransaction(ctx, challengeObj.AllocationID)
+	allocationObj, err := requestAllocation(challengeObj.AllocationID)
 	if err != nil {
 		logging.Logger.Error("Error verifying the allocation from BC", zap.String("allocation_id", challengeObj.AllocationID), zap.Error(err))
 		return nil, common.NewError("invalid_parameters", "Allocation could not be verified. "+err.Error())
@@ -56,6 +57,33 @@ func challengeHandler(ctx context.Context, r *http.Request) (interface{}, error)
 	updateStats(true)
 
 	return ValidValidationTicket(challengeObj, challengeRequest.ChallengeID, challengeHash)
+}
+
+func requestAllocation(allocID string) (allocation *Allocation, err error) {
+	var b []byte
+	b, err = transaction.MakeSCRestAPICall(
+		transaction.STORAGE_CONTRACT_ADDRESS,
+		"/allocation",
+		map[string]string{"allocation": allocID})
+	if err != nil {
+		return
+	}
+	sa := new(transaction.StorageAllocation)
+	err = json.Unmarshal(b, sa)
+	if err != nil {
+		return
+	}
+	allocation = &Allocation{
+		ID:                    sa.ID,
+		DataShards:            sa.DataShards,
+		ParityShards:          sa.ParityShards,
+		Size:                  sa.Size,
+		Expiration:            sa.Expiration,
+		Owner:                 sa.OwnerID,
+		OwnerPublicKey:        sa.OwnerPublicKey,
+		OwnerSigningPublicKey: sa.OwnerSigningPublicKey,
+	}
+	return
 }
 
 func NewChallengeRequest(r *http.Request) (*ChallengeRequest, string, error) {

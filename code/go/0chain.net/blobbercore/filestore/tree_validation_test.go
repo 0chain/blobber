@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
-	"github.com/0chain/gosdk/core/util"
+	"github.com/0chain/gosdk_common/core/util"
 	"github.com/stretchr/testify/require"
 )
 

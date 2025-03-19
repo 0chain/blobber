@@ -35,7 +35,6 @@ type RefResult struct {
 	OffsetPath string                    `json:"offset_path,omitempty"` //used for pagination; index for path is created in database
 	OffsetDate common.Timestamp          `json:"offset_date,omitempty"` //used for pagination; idex for updated_at is created in database
 	Refs       *[]reference.PaginatedRef `json:"refs"`
-	LatestWM   *writemarker.WriteMarker  `json:"latest_write_marker"`
 }
 
 // swagger:model RecentRefResult
@@ -50,9 +49,9 @@ type ObjectPathResult struct {
 
 // swagger:model ListResult
 type ListResult struct {
-	AllocationRoot string                   `json:"allocation_root"`
-	Meta           map[string]interface{}   `json:"meta_data"`
-	Entities       []map[string]interface{} `json:"list"`
+	AllocationVersion int64                    `json:"allocation_version"`
+	Meta              map[string]interface{}   `json:"meta_data"`
+	Entities          []map[string]interface{} `json:"list"`
 }
 
 // swagger:model DownloadResponse
@@ -69,4 +68,8 @@ type LatestWriteMarkerResult struct {
 	LatestWM *writemarker.WriteMarker `json:"latest_write_marker"`
 	PrevWM   *writemarker.WriteMarker `json:"prev_write_marker"`
 	Version  string                   `json:"version"`
+}
+
+type LatestVersionMarkerResult struct {
+	VersionMarker *writemarker.VersionMarker `json:"version_marker"`
 }

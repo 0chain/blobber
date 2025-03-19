@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 
-	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
+	zencryption "github.com/0chain/gosdk_common/zboxcore/encryption"
 )
 
 // ChunkEncoder encode/decode chunk data

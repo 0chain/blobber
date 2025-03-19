@@ -98,19 +98,19 @@ func deleteMarkerData(allocationID string) {
 // )
 
 func SetupWorkers(ctx context.Context) {
-	var res []allocation.Res
+	// var res []allocation.Res
 
-	err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-		res = allocation.Repo.GetAllocationIds(ctx)
-		return nil
-	})
-	if err != nil && err != gorm.ErrRecordNotFound {
-		logging.Logger.Error("error_getting_allocations_worker",
-			zap.Any("error", err))
-	}
+	// err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+	// 	res = allocation.Repo.GetAllocationIds(ctx)
+	// 	return nil
+	// })
+	// if err != nil && err != gorm.ErrRecordNotFound {
+	// 	logging.Logger.Error("error_getting_allocations_worker",
+	// 		zap.Any("error", err))
+	// }
 
-	startRedeem(ctx, res)
-	go startCollector(ctx)
+	// startRedeem(ctx, res)
+	// go startCollector(ctx)
 	// go startCleanupWorker(ctx)
 }
 

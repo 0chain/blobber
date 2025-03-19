@@ -103,7 +103,10 @@ CREATE TABLE allocations (
     cleaned_up boolean DEFAULT false NOT NULL,
     finalized boolean DEFAULT false NOT NULL,
     file_options integer DEFAULT 63 NOT NULL,
-    start_time bigint NOT NULL
+    start_time bigint NOT NULL,
+    allocation_version bigint DEFAULT 0 NOT NULL,
+    prev_used_size bigint DEFAULT 0 NOT NULL,
+    prev_blobber_size_used bigint DEFAULT 0 NOT NULL
 );
 
 
@@ -329,7 +332,6 @@ ALTER TABLE read_pools OWNER TO blobber_user;
 
 CREATE TABLE reference_objects (
     id bigint NOT NULL,
-    file_id text,
     type character varying(1),
     allocation_id character varying(64) NOT NULL,
     lookup_hash character varying(64) NOT NULL,
@@ -337,25 +339,17 @@ CREATE TABLE reference_objects (
     thumbnail_filename text,
     path character varying(1000) NOT NULL COLLATE pg_catalog."POSIX",
     file_meta_hash character varying(64) NOT NULL,
-    hash character varying(64) NOT NULL,
     num_of_blocks bigint DEFAULT 0 NOT NULL,
-    path_hash character varying(64) NOT NULL,
     parent_path character varying(999),
     level bigint DEFAULT 0 NOT NULL,
     custom_meta text NOT NULL,
-    validation_root character varying(64) NOT NULL,
-    prev_validation_root text,
-    validation_root_signature character varying(64),
     size bigint DEFAULT 0 NOT NULL,
-    fixed_merkle_root character varying(64) NOT NULL,
     actual_file_size bigint DEFAULT 0 NOT NULL,
     actual_file_hash_signature character varying(64),
     actual_file_hash character varying(64) NOT NULL,
     mimetype character varying(255) NOT NULL,
-    allocation_root character varying(64) NOT NULL,
     thumbnail_size bigint DEFAULT 0 NOT NULL,
     thumbnail_hash character varying(64) NOT NULL,
-    prev_thumbnail_hash text,
     actual_thumbnail_size bigint DEFAULT 0 NOT NULL,
     actual_thumbnail_hash character varying(64) NOT NULL,
     encrypted_key character varying(64),
@@ -363,10 +357,13 @@ CREATE TABLE reference_objects (
     created_at bigint,
     updated_at bigint,
     deleted_at timestamp with time zone,
-    is_precommit boolean DEFAULT false NOT NULL,
     chunk_size bigint DEFAULT 65536 NOT NULL,
     num_of_updates bigint,
-    num_of_block_downloads bigint
+    num_of_block_downloads bigint,
+    data_hash character varying(64),
+    data_hash_signature character varying(64),
+    parent_id bigint DEFAULT NULL,
+    allocation_version bigint DEFAULT 0 NOT NULL
 );
 
 
@@ -575,8 +572,6 @@ ALTER TABLE ONLY marketplace_share_info ALTER COLUMN id SET DEFAULT nextval('mar
 ALTER TABLE ONLY reference_objects ALTER COLUMN id SET DEFAULT nextval('reference_objects_id_seq'::regclass);
 
 
-ALTER TABLE ONLY reference_objects ADD CONSTRAINT path_commit UNIQUE(lookup_hash,is_precommit);
-
 --
 -- Name: terms id; Type: DEFAULT; Schema: public; Owner: blobber_user
 --
@@ -759,7 +754,7 @@ CREATE INDEX idx_created_at ON reference_objects USING btree (created_at DESC);
 -- Name: idx_lookup_hash; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX idx_lookup_hash ON reference_objects USING btree (lookup_hash);
+CREATE UNIQUE INDEX idx_lookup_hash_deleted ON reference_objects USING btree (lookup_hash,(deleted_at IS NULL)) INCLUDE(id,type,num_of_updates);
 
 
 --
@@ -787,14 +782,20 @@ CREATE INDEX idx_name_gin ON reference_objects USING gin (to_tsvector('english':
 -- Name: idx_parent_path_alloc; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX idx_parent_path_alloc ON reference_objects USING btree (allocation_id, parent_path);
+-- CREATE INDEX idx_parent_path_alloc ON reference_objects USING btree (allocation_id, parent_path) WHERE deleted_at IS NULL;
+
+--
+-- Name: idx_parent_id; Type: INDEX; Schema: public; Owner: blobber_user
+--
+
+CREATE INDEX idx_parent_id ON reference_objects USING btree (parent_id);
 
 
 --
 -- Name: idx_path_alloc; Type: INDEX; Schema: public; Owner: blobber_user
 --
 
-CREATE INDEX idx_path_alloc ON reference_objects USING btree (allocation_id, path);
+CREATE INDEX idx_path_alloc ON reference_objects USING btree (allocation_id, path)  WHERE deleted_at IS NULL;
 
 
 --
@@ -840,13 +841,6 @@ CREATE INDEX idx_write_pools_cab ON write_pools USING btree (allocation_id);
 
 
 --
--- Name: path_idx; Type: INDEX; Schema: public; Owner: blobber_user
---
-
-CREATE INDEX path_idx ON reference_objects USING btree (path);
-
-
---
 -- Name: allocation_changes fk_allocation_connections_changes; Type: FK CONSTRAINT; Schema: public; Owner: blobber_user
 --
 
@@ -855,18 +849,18 @@ ALTER TABLE ONLY allocation_changes
 
 
  --
+ -- Name: fk_reference_objects; TYPE FK CONSTRAINT; Schema: public; Owner: blobber_user
+ --
+
+ ALTER TABLE ONLY reference_objects
+     ADD CONSTRAINT fk_reference_objects FOREIGN KEY (parent_id) REFERENCES reference_objects(id) ON DELETE CASCADE;    
+
+
+ --
  -- Name: connection_id_index; Type: INDEX; Schema: public; Owner: blobber_user
  --   
 
 CREATE INDEX connection_id_index ON allocation_changes USING btree (connection_id);
-
-
---
--- Name: file_stats fk_file_stats_ref; Type: FK CONSTRAINT; Schema: public; Owner: blobber_user
---
-
-ALTER TABLE ONLY file_stats
-    ADD CONSTRAINT fk_file_stats_ref FOREIGN KEY (ref_id) REFERENCES reference_objects(id) ON DELETE CASCADE;
 
 
 --

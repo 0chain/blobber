@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -21,12 +22,13 @@ import (
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
-	"github.com/0chain/blobber/code/go/0chain.net/core/util"
 	"github.com/0chain/blobber/code/go/0chain.net/validatorcore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/validatorcore/storage"
+	coreTxn "github.com/0chain/gosdk_common/core/transaction"
 
 	"github.com/0chain/gosdk/zboxcore/sdk"
-	"github.com/0chain/gosdk/zcncore"
+	"github.com/0chain/gosdk_common/core/client"
+	"github.com/0chain/gosdk_common/zcncore"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
@@ -202,28 +204,26 @@ func RegisterValidator() {
 	}
 
 	for {
-		txn, err := storage.GetProtocolImpl().RegisterValidator(common.GetRootContext())
+		sn := &transaction.StorageNode{}
+		sn.ID = node.Self.ID
+		sn.BaseURL = node.Self.GetURLBase()
+		sn.StakePoolSettings.DelegateWallet = config.Configuration.DelegateWallet
+		sn.StakePoolSettings.NumDelegates = config.Configuration.NumDelegates
+		sn.StakePoolSettings.ServiceCharge = config.Configuration.ServiceCharge
+
+		hash, out, _, _, err := coreTxn.SmartContractTxn(transaction.STORAGE_CONTRACT_ADDRESS, coreTxn.SmartContractTxnData{
+			Name:      transaction.ADD_VALIDATOR_SC_NAME,
+			InputArgs: sn,
+		}, true)
 		if err != nil {
-			Logger.Error("Error registering validator", zap.Any("err", err))
+			Logger.Error("Add validator transaction could not be verified", zap.Any("err", err), zap.String("txn.Hash", hash))
 			continue
 		}
-		time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-		txnVerified := false
-		verifyRetries := 0
-		for verifyRetries < util.MAX_RETRIES {
-			time.Sleep(transaction.SLEEP_FOR_TXN_CONFIRMATION * time.Second)
-			t, err := transaction.VerifyTransactionWithNonce(txn.Hash, txn.GetTransaction().GetTransactionNonce())
-			if err == nil {
-				Logger.Info("Transaction for adding validator accepted and verified", zap.String("txn_hash", t.Hash), zap.Any("txn_output", t.TransactionOutput))
-				go handler.StartHealthCheck(common.GetRootContext(), common.ProviderTypeValidator)
-				return
-			}
-			verifyRetries++
-		}
 
-		if !txnVerified {
-			Logger.Error("Add validator transaction could not be verified", zap.Any("err", err), zap.String("txn.Hash", txn.Hash))
-		}
+		Logger.Info("Transaction for adding validator accepted and verified", zap.String("txn_hash", hash), zap.Any("txn_output", out))
+
+		go handler.StartHealthCheck(common.GetRootContext(), common.ProviderTypeValidator)
+		break
 	}
 
 }
@@ -232,17 +232,16 @@ func SetupValidatorOnBC(logDir string) error {
 	var logName = logDir + "/validator.log"
 	zcncore.SetLogFile(logName, false)
 	zcncore.SetLogLevel(3)
-	if err := zcncore.InitZCNSDK(serverChain.BlockWorker, config.Configuration.SignatureScheme); err != nil {
+	err := client.InitSDK("{}", serverChain.BlockWorker, config.Configuration.ChainID, config.Configuration.SignatureScheme, int64(0), false)
+	if err != nil {
 		return err
 	}
-	if err := zcncore.SetWalletInfo(node.Self.GetWalletString(), false); err != nil {
+
+	err = zcncore.SetGeneralWalletInfo(node.Self.GetWalletString(), config.Configuration.SignatureScheme)
+	if err != nil {
 		return err
 	}
-	var blob []string
-	if err := sdk.InitStorageSDK(node.Self.GetWalletString(), serverChain.BlockWorker,
-		config.Configuration.ChainID, config.Configuration.SignatureScheme, blob, int64(0)); err != nil {
-		return err
-	}
+
 	go RegisterValidator()
 	return nil
 }
@@ -254,7 +253,7 @@ func HomePageHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "<div>Working on the chain: %v</div>\n", mc.ID)
 	fmt.Fprintf(w, "<div>I am a validator with <ul><li>id:%v</li><li>public_key:%v</li><li>build_tag:%v</li></ul></div>\n", node.Self.ID, node.Self.PublicKey, build.BuildTag)
 	fmt.Fprintf(w, "<div>Miners ...\n")
-	network := zcncore.GetNetwork()
+	network, _ := client.GetNetwork(context.Background())
 	for _, miner := range network.Miners {
 		fmt.Fprintf(w, "%v\n", miner)
 	}

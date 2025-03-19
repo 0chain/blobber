@@ -11,7 +11,7 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/blobber/code/go/0chain.net/validatorcore/storage/writemarker"
-	"github.com/0chain/gosdk/core/util"
+	"github.com/0chain/gosdk_common/core/util"
 
 	"github.com/mitchellh/mapstructure"
 
@@ -263,14 +263,15 @@ func (op *ObjectPath) Verify(allocationID string, challengeRand int64) error {
 }
 
 type Allocation struct {
-	ID             string           `json:"id"`
-	DataShards     int              `json:"data_shards"`
-	ParityShards   int              `json:"parity_shards"`
-	Size           int64            `json:"size"`
-	UsedSize       int64            `json:"used_size"`
-	Expiration     common.Timestamp `json:"expiration_date"`
-	Owner          string           `json:"owner_id"`
-	OwnerPublicKey string           `json:"owner_public_key"`
+	ID                    string           `json:"id"`
+	DataShards            int64            `json:"data_shards"`
+	ParityShards          int64            `json:"parity_shards"`
+	Size                  int64            `json:"size"`
+	UsedSize              int64            `json:"used_size"`
+	Expiration            common.Timestamp `json:"expiration_date"`
+	Owner                 string           `json:"owner_id"`
+	OwnerPublicKey        string           `json:"owner_public_key"`
+	OwnerSigningPublicKey string           `json:"owner_signing_public_key"`
 }
 
 type ChallengeProof struct {

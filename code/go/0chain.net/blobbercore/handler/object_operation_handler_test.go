@@ -16,23 +16,24 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 
-	"github.com/0chain/gosdk/zboxcore/client"
+	"github.com/0chain/gosdk_common/core/client"
+	"github.com/0chain/gosdk_common/core/zcncrypto"
 	mocket "github.com/selvatico/go-mocket"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 
-	"github.com/0chain/gosdk/zboxcore/fileref"
+	"github.com/0chain/gosdk_common/zboxcore/fileref"
 
-	"github.com/0chain/gosdk/zboxcore/blockchain"
+	"github.com/0chain/gosdk_common/zboxcore/blockchain"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	c_common "github.com/0chain/gosdk/core/common"
-	"github.com/0chain/gosdk/zboxcore/marker"
+	c_common "github.com/0chain/gosdk_common/core/common"
+	"github.com/0chain/gosdk_common/zboxcore/marker"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
-	"github.com/0chain/gosdk/constants"
+	"github.com/0chain/gosdk_common/constants"
 	"github.com/stretchr/testify/require"
 
 	"testing"
@@ -56,10 +57,8 @@ func TestDownloadFile(t *testing.T) {
 	)
 	ts := time.Now().Add(time.Hour)
 	var mockLongTimeInFuture = common.Timestamp(ts.Unix()) + common.Timestamp(time.Second*1000)
-	var mockClient client.Client
-	require.NoError(t, json.Unmarshal([]byte(mockClientWallet), &mockClient))
-	var mockOwner client.Client
-	require.NoError(t, json.Unmarshal([]byte(mockOwnerWallet), &mockOwner))
+	mockClient, _ := client.PopulateClient(mockClientWallet, "bls0chain")
+	mockOwner, _ := client.PopulateClient(mockOwnerWallet, "bls0chain")
 	var (
 		now = c_common.Timestamp(time.Now().Unix())
 	)
@@ -84,7 +83,7 @@ func TestDownloadFile(t *testing.T) {
 			isRevoked       bool
 			isFundedBlobber bool
 			isFunded0Chain  bool
-			payerId         client.Client
+			payerId         zcncrypto.Wallet
 
 			// client input from gosdk's BlockDownloadRequest,
 			inData blockDownloadRequest
@@ -121,15 +120,17 @@ func TestDownloadFile(t *testing.T) {
 		if p.useAuthTicket {
 			authTicket := &marker.AuthTicket{
 				AllocationID: p.inData.allocationID,
-				ClientID:     client.GetClientID(),
+				ClientID:     client.Wallet().ClientID,
 				Expiration:   int64(time.Duration(now) + 10000*time.Second),
 				OwnerID:      mockOwner.ClientID,
 				Timestamp:    int64(common.Now()),
 				FilePathHash: p.inData.pathHash,
 			}
-			require.NoError(t, client.PopulateClient(mockOwnerWallet, "bls0chain"))
+			_, err := client.PopulateClient(mockOwnerWallet, "bls0chain")
+			require.NoError(t, err)
 			require.NoError(t, authTicket.Sign())
-			require.NoError(t, client.PopulateClient(mockClientWallet, "bls0chain"))
+			_, err = client.PopulateClient(mockClientWallet, "bls0chain")
+			require.NoError(t, err)
 			authTicketBytes, _ := json.Marshal(authTicket)
 			auth := base64.StdEncoding.EncodeToString(authTicketBytes)
 			req.Header.Set("X-Auth-Token", auth)
@@ -139,8 +140,8 @@ func TestDownloadFile(t *testing.T) {
 		}
 	}
 
-	makeMockMakeSCRestAPICall := func(t *testing.T, p parameters) func(scAddress string, relativePath string, params map[string]string) ([]byte, error) {
-		return func(scAddress string, relativePath string, params map[string]string) ([]byte, error) {
+	makeMockMakeSCRestAPICall := func(t *testing.T, p parameters) func(scAddress string, relativePath string, params map[string]string, options ...string) ([]byte, error) {
+		return func(scAddress string, relativePath string, params map[string]string, options ...string) ([]byte, error) {
 			require.New(t)
 			require.EqualValues(t, scAddress, transaction.STORAGE_CONTRACT_ADDRESS)
 			switch relativePath {
@@ -290,9 +291,9 @@ func TestDownloadFile(t *testing.T) {
 
 	setupCtx := func(p parameters) context.Context {
 		ctx := context.TODO()
-		ctx = context.WithValue(ctx, constants.ContextKeyClient, client.GetClientID())
+		ctx = context.WithValue(ctx, constants.ContextKeyClient, client.Id())
 		ctx = context.WithValue(ctx, constants.ContextKeyAllocation, p.inData.allocationTx)
-		ctx = context.WithValue(ctx, constants.ContextKeyClientKey, client.GetClientPublicKey())
+		ctx = context.WithValue(ctx, constants.ContextKeyClientKey, client.PublicKey())
 
 		ctx = datastore.GetStore().CreateTransaction(ctx)
 
@@ -455,9 +456,11 @@ func TestDownloadFile(t *testing.T) {
 			func(t *testing.T) {
 				setupParams(&test.parameters)
 				if test.parameters.isOwner {
-					require.NoError(t, client.PopulateClient(mockOwnerWallet, "bls0chain"))
+					_, err := client.PopulateClient(mockOwnerWallet, "bls0chain")
+					require.NoError(t, err)
 				} else {
-					require.NoError(t, client.PopulateClient(mockClientWallet, "bls0chain"))
+					_, err := client.PopulateClient(mockClientWallet, "bls0chain")
+					require.NoError(t, err)
 				}
 				transaction.MakeSCRestAPICall = makeMockMakeSCRestAPICall(t, test.parameters)
 				request := setupRequest(test.parameters)

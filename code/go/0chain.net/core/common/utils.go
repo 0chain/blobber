@@ -47,6 +47,29 @@ func GetParentPaths(fPath string) ([]string, error) {
 	return paths[2:], nil
 }
 
+func GetAllParentPaths(fPath string) ([]string, error) {
+	if fPath == "" {
+		return nil, nil
+	}
+	if fPath == "/" {
+		return []string{"/"}, nil
+	}
+
+	fPath = filepath.Clean(fPath)
+	if !filepath.IsAbs(fPath) {
+		return nil, NewError("invalid_path", fmt.Sprintf("%v is not absolute path", fPath))
+	}
+	splittedPaths := strings.Split(fPath, "/")
+	var paths []string
+	for i := 0; i < len(splittedPaths); i++ {
+		subPath := strings.Join(splittedPaths[0:i], "/")
+		paths = append(paths, subPath)
+	}
+	returnPaths := []string{"/"}
+	returnPaths = append(returnPaths, paths[2:]...)
+	return returnPaths, nil
+}
+
 // GetPathFields will return slice of fields of path.
 // For path /a/b/c/d/e/f.txt it will return [a, b, c, d, e, f.txt],nil
 func GetPathFields(p string) ([]string, error) {

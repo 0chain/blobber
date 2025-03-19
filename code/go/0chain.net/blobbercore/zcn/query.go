@@ -6,30 +6,23 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/0chain/gosdk/zcncore"
+	"github.com/0chain/gosdk/zboxcore/sdk"
+	"github.com/0chain/gosdk_common/zcncore"
 )
 
 var ErrBlobberNotFound = errors.New("blobber is not found on chain")
 
 // GetBlobber try to get blobber info from chain.
-func GetBlobber(blobberID string) (*zcncore.Blobber, error) {
-	cb := &getBlobberCallback{}
-	cb.wg.Add(1)
-	if err := zcncore.GetBlobber(blobberID, cb); err != nil {
-		cb.wg.Done()
+func GetBlobber(blobberID string) (*sdk.Blobber, error) {
+	var (
+		blobber *sdk.Blobber
+		err     error
+	)
+	if blobber, err = sdk.GetBlobber(blobberID); err != nil {
 		return nil, err
 	}
 
-	cb.wg.Wait()
-	if cb.Error != nil {
-		return nil, cb.Error
-	}
-
-	if cb.Blobber == nil {
-		return nil, ErrBlobberNotFound
-	}
-
-	return cb.Blobber, nil
+	return blobber, nil
 
 }
 

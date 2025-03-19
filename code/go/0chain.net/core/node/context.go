@@ -3,7 +3,7 @@ package node
 import (
 	"context"
 
-	"github.com/0chain/gosdk/constants"
+	"github.com/0chain/gosdk_common/constants"
 )
 
 const SELF_NODE constants.ContextKey = "SELF_NODE"
