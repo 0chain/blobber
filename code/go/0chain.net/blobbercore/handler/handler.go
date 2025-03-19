@@ -325,7 +325,7 @@ func Authenticate0Box(handler common.ReqRespHandlerf) common.ReqRespHandlerf {
 		success, err := signatureScheme.Verify(signature, hex.EncodeToString([]byte(common.PublicKey0box)))
 		if err != nil || !success {
 			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte("Invalid signature 3")) // nolint
+			w.Write([]byte("Invalid signature 3" + common.PublicKey0box)) // nolint
 			return
 		}
 
