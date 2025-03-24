@@ -349,33 +349,27 @@ func deleteAllocation(ctx context.Context, a *Allocation) (err error) {
 	return err
 }
 
-func RecoverTrie() {
+func RecoverTrie(recoverAllocs []string) {
 	var (
-		allocs []*Allocation
-		err    error
-		offset int64
+		err error
 	)
 
-	for {
+	for _, allocID := range recoverAllocs {
+		var alloc *Allocation
 		err = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-			allocs, err = Repo.GetAllocations(ctx, offset)
+			alloc, err = Repo.GetAllocationFromDB(ctx, allocID)
 			return err
 		})
 		if err != nil {
 			logging.Logger.Error("recover_trie_fetch_alloc", zap.Error(err))
 			return
 		}
-		if len(allocs) == 0 {
-			return
-		}
-		offset += int64(len(allocs))
-		// recover trie of each allocation
-		for _, a := range allocs {
-			logging.Logger.Info("recover_trie", zap.String("allocation_id", a.ID))
-			err = a.recoverTrie()
-			if err != nil {
-				logging.Logger.Error("recover_trie", zap.Error(err))
-			}
+
+		// recover trie of allocation
+		logging.Logger.Info("recover_trie", zap.String("allocation_id", alloc.ID))
+		err = alloc.recoverTrie()
+		if err != nil {
+			logging.Logger.Error("recover_trie", zap.Error(err))
 		}
 	}
 }

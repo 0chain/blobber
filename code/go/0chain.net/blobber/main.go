@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
@@ -61,7 +62,7 @@ func main() {
 
 	if recoverTrie {
 		logging.Logger.Info("Recovering trie")
-		allocation.RecoverTrie()
+		allocation.RecoverTrie(config.Configuration.RecoverAllocations)
 	}
 
 	// todo: activate this when gRPC functionalities are implemented
