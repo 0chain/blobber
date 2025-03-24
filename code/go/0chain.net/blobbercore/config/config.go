@@ -157,9 +157,10 @@ type Config struct {
 	MinConfirmation int
 
 	// MountPoint is where allocation files are stored. This is basically arranged in RAID5.
-	MountPoint    string
-	AllocDirLevel []int
-	FileDirLevel  []int
+	MountPoint         string
+	AllocDirLevel      []int
+	FileDirLevel       []int
+	RecoverAllocations []string
 	// AutomacitUpdate Whether to automatically update blobber updates to blockchain
 	AutomaticUpdate       bool
 	BlobberUpdateInterval time.Duration
@@ -291,6 +292,7 @@ func ReadConfig(deploymentMode int) {
 	if w := Configuration.DelegateWallet; len(w) != 64 {
 		log.Fatal("invalid delegate wallet:", w)
 	}
+	Configuration.RecoverAllocations = viper.GetStringSlice("recover_allocations")
 
 	Configuration.MinSubmit = viper.GetInt("min_submit")
 	if Configuration.MinSubmit < 1 {
