@@ -192,7 +192,7 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 			if blobberRes.WriteMarker != nil {
 				writemarker.SaveMarkerData(allocationID, blobberRes.WriteMarker.WM.Timestamp, blobberRes.WriteMarker.WM.ChainLength)
 				trie := blobberRes.Trie
-				if trie != nil {
+				if trie != nil && blobberRes.WriteMarker.WM.AllocationRoot != blobberRes.WriteMarker.WM.PreviousAllocationRoot {
 					_ = trie.DeleteNodes()
 					blobberRes.Trie = nil
 				}
