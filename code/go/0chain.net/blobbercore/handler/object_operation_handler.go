@@ -609,12 +609,16 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	elapsedGetLock := time.Since(startTime) - elapsedAllocation
-
+	var result blobberhttp.CommitResult
 	connectionObj, err := allocation.GetAllocationChanges(ctx, connectionID, allocationID, clientID)
 	if err != nil {
 		// might be good to check if blobber already has stored writemarker
 		return nil, common.NewErrorf("invalid_parameters",
 			"Invalid connection id. Connection id was not found: %v", err)
+	}
+	if connectionObj.Status == allocation.CommittedConnection {
+		result.Success = true
+		return &result, nil
 	}
 	if len(connectionObj.Changes) == 0 {
 		logging.Logger.Info("commit_write_empty", zap.String("connection_id", connectionID))
@@ -636,7 +640,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			"Max size reached for the allocation with this blobber")
 	}
 
-	var result blobberhttp.CommitResult
 	versionMarkerStr := r.FormValue("version_marker")
 	if versionMarkerStr == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid version marker passed")
@@ -711,7 +714,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 	}
 
 	elapsedSaveAllocation := time.Since(startTime) - elapsedAllocation - elapsedGetLock -
-		elapsedGetConnObj - elapsedApplyChanges
+		elapsedGetConnObj - elapsedMoveToFilestore - elapsedApplyChanges
 
 	err = connectionObj.CommitToFileStore(ctx)
 	if err != nil {
@@ -719,7 +722,7 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 			return nil, common.NewError("file_store_error", "Error committing to file store. "+err.Error())
 		}
 	}
-	elapsedCommitStore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedApplyChanges - elapsedSaveAllocation
+	elapsedCommitStore := time.Since(startTime) - elapsedAllocation - elapsedGetLock - elapsedGetConnObj - elapsedMoveToFilestore - elapsedApplyChanges - elapsedSaveAllocation
 	logging.Logger.Info("commit_filestore", zap.String("allocation_id", allocationId))
 	connectionObj.DeleteChanges(ctx)
 
@@ -741,7 +744,6 @@ func (fsh *StorageHandler) CommitWrite(ctx context.Context, r *http.Request) (*b
 
 	//Delete connection object and its changes
 
-	db.Delete(connectionObj)
 	go allocation.DeleteConnectionObjEntry(connectionID)
 	go AddWriteMarkerCount(clientID, connectionObj.Size <= 0)
 

@@ -82,7 +82,7 @@ func cleanupTempFiles(ctx context.Context) {
 	then := now.Add(time.Duration(-config.Configuration.OpenConnectionWorkerTolerance) * time.Second)
 
 	var openConnectionsToDelete []allocation.AllocationChangeCollector
-	db.Table((&allocation.AllocationChangeCollector{}).TableName()).Where("updated_at < ? AND status IN (?,?)", then, allocation.NewConnection, allocation.InProgressConnection).Preload("Changes").Find(&openConnectionsToDelete)
+	db.Table((&allocation.AllocationChangeCollector{}).TableName()).Where("updated_at < ?", then).Preload("Changes").Find(&openConnectionsToDelete)
 
 	for i := 0; i < len(openConnectionsToDelete); i++ {
 		connection := &openConnectionsToDelete[i]
@@ -96,10 +96,12 @@ func cleanupTempFiles(ctx context.Context) {
 		nctx := datastore.GetStore().CreateTransaction(ctx)
 		ndb := datastore.GetStore().GetTransaction(nctx)
 		var errorOccurred bool
-		for _, changeProcessor := range connection.AllocationChanges {
-			if err := changeProcessor.DeleteTempFile(); err != nil {
-				errorOccurred = true
-				logging.Logger.Error("AllocationChangeProcessor_DeleteTempFile", zap.Error(err))
+		if connection.Status == allocation.InProgressConnection || connection.Status == allocation.NewConnection {
+			for _, changeProcessor := range connection.AllocationChanges {
+				if err := changeProcessor.DeleteTempFile(); err != nil {
+					errorOccurred = true
+					logging.Logger.Error("AllocationChangeProcessor_DeleteTempFile", zap.Error(err))
+				}
 			}
 		}
 
