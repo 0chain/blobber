@@ -156,7 +156,6 @@ func GetAllocationChanges(ctx context.Context, connectionID, allocationID, clien
 		cc.ComputeProperties()
 		// Load connection Obj size from memory
 		cc.Size = GetConnectionObjSize(connectionID)
-		cc.Status = InProgressConnection
 		return cc, nil
 	}
 
@@ -369,6 +368,11 @@ func (a *AllocationChangeCollector) MoveToFilestore(ctx context.Context, allocat
 	}
 
 	wg.Wait()
+	err = filestore.GetFileStore().DeletePreCommitDir(a.AllocationID)
+	if err != nil {
+		logging.Logger.Error("Error while deleting precommit dir", zap.Error(err))
+		return err
+	}
 	return nil
 }
 
