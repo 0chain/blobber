@@ -134,13 +134,11 @@ func TestStore(t *testing.T) {
 	require.NotNil(t, alloc)
 
 	require.Equal(t, ip.allocatedSize, alloc.allocatedSize)
-	require.Equal(t, ip.totalRefs, alloc.filesNumber)
 	require.Equal(t, ip.usedSize, alloc.filesSize)
 
 }
 
 func setupMockForFileManagerInit(mock sqlmock.Sqlmock, ip initParams) {
-	aa := sqlmock.AnyArg()
 	mock.ExpectBegin()
 
 	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "allocations"`)).
@@ -151,12 +149,6 @@ func setupMockForFileManagerInit(mock sqlmock.Sqlmock, ip initParams) {
 		).AddRow(
 			ip.allocID, ip.allocatedSize, ip.usedSize,
 		),
-		)
-
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "reference_objects" WHERE`)).
-		WithArgs(aa, aa).
-		WillReturnRows(
-			sqlmock.NewRows([]string{"count"}).AddRow(ip.totalRefs),
 		)
 
 	mock.ExpectCommit()
