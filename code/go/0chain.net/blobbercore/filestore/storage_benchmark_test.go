@@ -18,6 +18,10 @@ import (
 
 var enableDirectIO = flag.Bool("enable_directio", false, "Enable O_DIRECT/direct I/O for WriteFile benchmark")
 
+var minFileSize = flag.Float64("min_file_size", 1.0, "Minimum file size in MB (can be fractional, e.g., 0.01 for 10KB)")
+var maxFileSize = flag.Float64("max_file_size", 10.0, "Maximum file size in MB (can be fractional)")
+var nFiles = flag.Int("n_files", 5000, "Number of files to generate")
+
 // Helper to generate a random file of given size with a unique index
 func generateRandomFileWithIndex(path string, size int64, idx int) error {
 	f, err := os.Create(path)
@@ -47,6 +51,30 @@ func generateRandomFileWithIndex(path string, size int64, idx int) error {
 	return err
 }
 
+// generateRandomFilesInRange generates n files in dir with random sizes between minMB and maxMB (in MB, float64),
+// each file has a unique index in its name and content. Returns the list of file paths and their sizes.
+func generateRandomFilesInRange(dir string, n int, minMB, maxMB float64) ([]string, []int64, error) {
+	if minMB > maxMB || minMB <= 0 || n <= 0 {
+		return nil, nil, fmt.Errorf("invalid input parameters")
+	}
+	files := make([]string, n)
+	sizes := make([]int64, n)
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for i := 0; i < n; i++ {
+		sizeMB := minMB + rng.Float64()*(maxMB-minMB)
+		size := int64(sizeMB * 1024 * 1024)
+		if size < 1 {
+			size = 1 // at least 1 byte
+		}
+		files[i] = filepath.Join(dir, fmt.Sprintf("src_%d.data", i))
+		sizes[i] = size
+		if err := generateRandomFileWithIndex(files[i], size, i); err != nil {
+			return nil, nil, fmt.Errorf("failed to generate file %d: %w", i, err)
+		}
+	}
+	return files, sizes, nil
+}
+
 // Minimal config and logger setup for the test
 func setupTestConfigAndLogger() {
 	// Minimal config
@@ -57,19 +85,12 @@ func setupTestConfigAndLogger() {
 }
 
 func BenchmarkWriteFile_O_DIRECT_Batch(b *testing.B) {
-	const (
-		fileSize = 4 * 1024 * 1024 // 4MB per file
-		nFiles   = 100
-	)
 	tmpDir := b.TempDir()
 
-	// Generate 1000 random files with unique content (not timed)
-	srcFiles := make([]string, nFiles)
-	for i := 0; i < nFiles; i++ {
-		srcFiles[i] = filepath.Join(tmpDir, fmt.Sprintf("src_%d.data", i))
-		if err := generateRandomFileWithIndex(srcFiles[i], fileSize, i); err != nil {
-			b.Fatalf("failed to generate file %d: %v", i, err)
-		}
+	// Generate files of random size given on the range of min and max file size
+	srcFiles, _, err := generateRandomFilesInRange(tmpDir, *nFiles, *minFileSize, *maxFileSize)
+	if err != nil {
+		b.Fatalf("failed to generate files: %v", err)
 	}
 
 	// Prepare FileStore (mock as needed)
@@ -82,8 +103,8 @@ func BenchmarkWriteFile_O_DIRECT_Batch(b *testing.B) {
 	b.ResetTimer()
 	setupTestConfigAndLogger()
 	for bench := 0; bench < b.N; bench++ {
-		writtenFiles := make([]string, nFiles)
-		for i := 0; i < nFiles; i++ {
+		writtenFiles := make([]string, *nFiles)
+		for i := 0; i < *nFiles; i++ {
 			src, err := os.Open(srcFiles[i])
 			if err != nil {
 				b.Fatalf("failed to open src file %d: %v", i, err)
@@ -93,7 +114,7 @@ func BenchmarkWriteFile_O_DIRECT_Batch(b *testing.B) {
 				Name:         fileName,
 				Path:         "/" + fileName,
 				FilePathHash: fmt.Sprintf("dummyhash_%d", i),
-				Size:         fileSize,
+				// Size:         fileSize,
 			}
 			var infile multipart.File = src
 
