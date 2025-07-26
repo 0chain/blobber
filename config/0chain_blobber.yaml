@@ -25,7 +25,8 @@ update_allocations_interval: 60m
 finalize_allocations_interval: 24h
 
 # maximum limit on the number of combined directories and files on each allocation
-max_dirs_files: 50000
+# Default is 50000
+max_dirs_files: 100000000000
 
 # maximum limit on the number of objects in a directory
 max_objects_dir: 1000
@@ -57,32 +58,35 @@ rate_limiters:
 
   # Commit Request Per second. Commit endpoint is resource intensive.
   # Default is 0.5
-  commit_rps: 1600
+  commit_rps: 4000
   # File Request Per Second. This rps is used to rate limit basically upload and download requests.
   # Its better to have 2 request per second. Default is 1
-  file_rps: 1600
+  file_rps: 4000
   # Object Request Per Second. This rps is used to rate limit GetReferencePath, GetObjectTree, etc.
   # which is resource intensive. Default is 0.5
-  object_rps: 1600
+  object_rps: 4000
   # General Request Per Second. This rps is used to rate limit endpoints like copy, rename, get file metadata,
   # get paginated refs, etc. Default is 5
-  general_rps: 1600
+  general_rps: 4000
   # Number of blocks downloaded in a day. Default is 100GB(the value needs to be in blocks which is data/64KB)
-  block_limit_daily: 1562500
+  # Default is 1562500
+  block_limit_daily: 100000000000
   # Max blocks per download request. Default is 500
-  block_limit_request: 500
+  block_limit_request: 100000000000
   # Max blocks in a month for a client. Default is 2000GB(the value needs to be in blocks which is data/64KB)
-  block_limit_monthly: 31250000
+  # Default is 31250000
+  block_limit_monthly: 100000000000
   # Max upload limit in a month for a client. Default is 2000GB(the value needs to be in blocks which is data/64KB)
-  upload_limit_monthly: 31250000
+  # Default is 31250000
+  upload_limit_monthly: 100000000000
   # Max commit limit in a month for a client. Default is 30000
-  commit_limit_monthly: 1000000000
+  commit_limit_monthly: 100000000000
   # Max commit limit in a day for a client. Default is 1600
-  commit_limit_daily: 1600
+  commit_limit_daily: 100000000000
   # Max commit limit with size zero or less in a day for a client. Default is 400
-  commit_zero_limit_daily: 400
+  commit_zero_limit_daily: 100000000000
   # Max connection changes in a batch. Default is 100
-  max_connection_changes: 100
+  max_connection_changes: 100000000000
   
 server_chain:
   id: "0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe"
