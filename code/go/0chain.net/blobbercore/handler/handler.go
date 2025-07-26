@@ -274,6 +274,10 @@ func setupHandlers(s *mux.Router) {
 		RateLimitByGeneralRL(WithTxHandler(LoadPlaylistFile))).
 		Methods(http.MethodGet, http.MethodOptions)
 
+	// Add at the end of the file, before any closing brackets
+	// Handler for /v1/auth/signature
+	s.HandleFunc("/v1/auth/getAuthTicketWithClientId", RateLimitByGeneralRL(common.ToJSONResponse(GenerateAuthSignature)))
+
 }
 
 func WithReadOnlyConnection(handler common.JSONResponderF) common.JSONResponderF {
@@ -2023,4 +2027,77 @@ func HTMLHeader(w http.ResponseWriter, title string) {
 }
 func HTMLFooter(w http.ResponseWriter) {
 	fmt.Fprintf(w, "</body></html>")
+}
+
+// Add at the end of the file, before any closing brackets
+// Handler for /v1/auth/signature
+func GenerateAuthSignature(ctx context.Context, r *http.Request) (interface{}, error) {
+	type authTicketRequest struct {
+		PublicKey   string `json:"public_key"`
+		PrivateKey  string `json:"private_key"`
+		BlobberURL  string `json:"blobber_url"`
+		ClientID    string `json:"client_id"`
+		RoundExpiry int    `json:"round_expiry"`
+	}
+	type authTicketResponse struct {
+		AuthTicket string `json:"auth_ticket,omitempty"`
+		ClientID   string `json:"client_id,omitempty"`
+		Error      string `json:"error,omitempty"`
+	}
+	var req authTicketRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return authTicketResponse{Error: "invalid request: " + err.Error()}, nil
+	}
+
+	signatureScheme := zcncrypto.NewSignatureScheme("bls0chain")
+	_ = signatureScheme.SetPrivateKey(req.PrivateKey)
+	_ = signatureScheme.SetPublicKey(req.PublicKey)
+
+	signature, err := signatureScheme.Sign(hex.EncodeToString([]byte(req.PublicKey)))
+	if err != nil {
+		return authTicketResponse{Error: err.Error()}, nil
+	}
+
+	url := req.BlobberURL + "/v1/auth/generate?client_id=" + req.ClientID + "&round=" + strconv.FormatInt(int64(req.RoundExpiry), 10)
+	httpReq, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return authTicketResponse{Error: err.Error()}, nil
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Zbox-Signature", signature)
+	client := &http.Client{}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return authTicketResponse{Error: err.Error()}, nil
+	}
+	defer resp.Body.Close()
+	var responseMap map[string]string
+	err = json.NewDecoder(resp.Body).Decode(&responseMap)
+	if err != nil {
+		return authTicketResponse{Error: err.Error()}, nil
+	}
+	authTicket := responseMap["auth_ticket"]
+	if authTicket == "" {
+		return authTicketResponse{Error: "Error getting auth ticket from blobber"}, nil
+	}
+
+	// Read client_id from blob_op_wallet.json just before returning
+	data, err := os.ReadFile("/var/0chain/blobber/blob_op_wallet.json")
+	if err != nil {
+		return authTicketResponse{Error: "read blob_op_wallet: " + err.Error()}, nil
+	}
+	type wallet struct {
+		ClientID  string `json:"client_id"`
+		ClientKey string `json:"client_key"`
+		Keys      []struct {
+			PublicKey  string `json:"public_key"`
+			PrivateKey string `json:"private_key"`
+		} `json:"keys"`
+	}
+	var wlt wallet
+	if err := json.Unmarshal(data, &wlt); err != nil {
+		return authTicketResponse{Error: "parse blob_op_wallet: " + err.Error()}, nil
+	}
+
+	return authTicketResponse{AuthTicket: authTicket, ClientID: wlt.ClientID}, nil
 }
