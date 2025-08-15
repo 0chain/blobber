@@ -27,6 +27,7 @@ type PREChunkEncoder struct {
 	EncryptedKey              string
 	ReEncryptionKey           string
 	ClientEncryptionPublicKey string
+	LookupHash                string
 }
 
 // Encode encode chunk data with PREEncryptionScheme for subscriber to download it
@@ -36,7 +37,7 @@ func (r *PREChunkEncoder) Encode(chunkSize int, data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	if err := encscheme.InitForDecryption("filetype:audio", r.EncryptedKey); err != nil {
+	if err := encscheme.InitForDecryption(r.LookupHash, r.EncryptedKey); err != nil {
 		return nil, err
 	}
 
