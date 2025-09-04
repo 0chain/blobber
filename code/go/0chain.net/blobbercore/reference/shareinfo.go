@@ -65,6 +65,80 @@ func DeleteShareInfo(ctx context.Context, shareInfo *ShareInfo) error {
 	return nil
 }
 
+// CheckPublicShareExists checks if a public share exists for a file
+func CheckPublicShareExists(ctx context.Context, filePathHash string) (bool, error) {
+	db := datastore.GetStore().GetTransaction(ctx)
+	var count int64
+
+	err := db.Model(&ShareInfo{}).
+		Where("file_path_hash = ? AND revoked = ?", filePathHash, false).
+		Count(&count).Error
+
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
+// GetPublicShareRecipients gets all recipients of a public share for a specific owner
+func GetPublicShareRecipients(ctx context.Context, ownerID, filePathHash string) ([]ShareInfo, error) {
+	db := datastore.GetStore().GetTransaction(ctx)
+	var recipients []ShareInfo
+
+	err := db.Model(&ShareInfo{}).
+		Where("owner_id = ? AND file_path_hash = ? AND revoked = ?", ownerID, filePathHash, false).
+		Find(&recipients).Error
+
+	return recipients, err
+}
+
+// RemovePublicShareRecipient removes a specific recipient from a public share
+func RemovePublicShareRecipient(ctx context.Context, shareInfo *ShareInfo) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+
+	result := db.Model(&ShareInfo{}).
+		Where(&ShareInfo{
+			ClientID:     shareInfo.ClientID,
+			FilePathHash: shareInfo.FilePathHash,
+			Revoked:      false,
+		}).
+		Updates(ShareInfo{
+			Revoked: true,
+		})
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+func DeletePublicShareInfo(ctx context.Context, shareInfo *ShareInfo) error {
+	db := datastore.GetStore().GetTransaction(ctx)
+
+	result := db.Model(&ShareInfo{}).
+		Where(&ShareInfo{
+			FilePathHash: shareInfo.FilePathHash,
+			Revoked:      false,
+		}).
+		Updates(ShareInfo{
+			Revoked: true,
+		})
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
 func UpdateShareInfo(ctx context.Context, shareInfo *ShareInfo) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 
