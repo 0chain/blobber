@@ -1940,7 +1940,7 @@ func RemovePublicShareRecipient(ctx context.Context, r *http.Request) (interface
 		return nil, common.NewError("invalid_parameters", "Invalid file path")
 	}
 
-	recipientClientID, _ := common.GetField(r, "recipient_client_id")
+	recipientClientID, _ := common.GetField(r, "recipientClientId")
 	if recipientClientID == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid recipient client ID")
 	}
