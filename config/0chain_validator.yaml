@@ -1,13 +1,13 @@
 version: 1.0
 
 # delegate wallet (must be set)
-delegate_wallet: '9c693cb14f29917968d6e8c909ebbea3425b4c1bc64b6732cadc2a1869f49be9'
+delegate_wallet: 'c4a3573c7f7c2e31210c1988d49ee2b6c2009fe67613457904ea7109cae1f4c9'
 # maximum allowed number of stake holders
 num_delegates: 1
 # service charge of related blobber
-service_charge: 1 #TODO CHECK IF 0 WORKS WELL
+service_charge: 0.1 #TODO CHECK IF 0 WORKS WELL
 
-block_worker: https://dev.0chain.net/dns
+block_worker: http://198.18.0.98:9091
 
 rate_limiters:
   # Rate limiters will use this duration to clean unused token buckets.
