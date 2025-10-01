@@ -6,7 +6,7 @@ echo $GIT_COMMIT
 
 echo "1> set DOCKER_IMAGE & DOCKER_BUILD"
 if [ -z "$DOCKER_BUILD" ]; then  
-    if [ "x86_64" != "$(uname -m)" ]; then
+    if [ "x86_64" != "$(uname -m)" ] && [ "$(uname)" != "Darwin" ]; then
         #docker buildx use blobber_buildx || docker buildx create --name blobber_buildx --use
         DOCKER_BUILD="buildx build --platform linux/arm64"
     else

@@ -17,6 +17,8 @@ services:
     image: validator
     environment:
       - DOCKER= true
+      - MINER_ADDRESSES=http://198.18.0.71:7071,http://198.18.0.72:7072,http://198.18.0.73:7073,http://198.18.0.74:7074
+      - SHARDER_ADDRESSES=http://198.18.0.81:7171
     volumes:
       - ../config:/validator/config
       - ./blobber${BLOBBER}/data:/validator/data
@@ -35,6 +37,10 @@ services:
   blobber:
     image: blobber
     stop_grace_period: 1m
+    environment:
+      - DOCKER= true
+      - MINER_ADDRESSES=http://198.18.0.71:7071,http://198.18.0.72:7072,http://198.18.0.73:7073,http://198.18.0.74:7074
+      - SHARDER_ADDRESSES=http://198.18.0.81:7171
     depends_on:
       - validator
     links:

@@ -124,16 +124,26 @@ cd $HOME/.zcn/
   
 9. Open both the `blobber/config/0chain_validator.yaml` and `blobber/config/0chain_blobber.yaml` and edit the `delegate_wallet` value with your `client_id` value.
 
-10. Now run the blobbers by navigating into blobber directories for Blobber1 (git/blobber/docker.local/blobber1) and run the container using
+10. Now run the blobbers using
 
 ```
 # For locally build images
-../bin/blobber.start_bls.sh
+make blobbers_start num=n
+
+where n is the number of blobbers you want to run
 
 # For remote images
 ../bin/p0blobber.start.sh
 
 ```
+11. Stop the blobbers
+```
+make blobbers_stop
+
+# To clear the logs use
+make clear-all-blobbers
+```
+
 **_Note: Replace the localhost form `docker.local/p0docker-compose.yml` to your public IP if you are trying to connect to another network ._**
 
 If you are facing `insufficient balance to pay fee` errors when starting blobbers, you can turn 
