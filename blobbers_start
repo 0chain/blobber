@@ -1,0 +1,47 @@
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR"
+
+usage() {
+  cat <<EOF
+Usage: $(basename "$0") num=<count>
+
+Starts the specified number of blobbers by invoking the Makefile target
+defined in ${PROJECT_ROOT}/Makefile.
+EOF
+}
+
+NUM=""
+
+for arg in "$@"; do
+  case "$arg" in
+    num=*)
+      NUM="${arg#num=}"
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $arg" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+if [[ -z "$NUM" ]]; then
+  echo "Error: num parameter is required." >&2
+  usage
+  exit 1
+fi
+
+if ! [[ "$NUM" =~ ^[1-9][0-9]*$ ]]; then
+  echo "Error: num must be a positive integer." >&2
+  exit 1
+fi
+
+make -C "$PROJECT_ROOT" blobbers_start "num=$NUM"
+

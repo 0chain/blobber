@@ -97,7 +97,7 @@ Sometimes in Apple Silicon devices (m1/m2 macbooks), buildx will not work for bu
 ```
 DOCKER_BUILD=build ./docker.local/bin/build.base.sh
 DOCKER_BUILD=build ./docker.local/bin/build.blobber.sh
-DOCKER_BUILD=build ./docker.local/bin/build.validator.sh.
+DOCKER_BUILD=build ./docker.local/bin/build.validator.sh
 ```
 
 4. To link to local gosdk so that the changes are reflected on the blobber build please use the below command(optional)
@@ -128,7 +128,7 @@ cd $HOME/.zcn/
 
 ```
 # For locally build images
-make blobbers_start num=n
+./blobbers_start num=n
 
 where n is the number of blobbers you want to run
 

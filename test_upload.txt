@@ -1,0 +1,22 @@
+This is a test file for uploading to the blobber allocation.
+
+File Details:
+- Created: 2025-01-01
+- Purpose: Testing file upload functionality
+- Content: Sample text for verification
+
+Test Content:
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
+Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
+
+This file contains:
+- Basic text content
+- Multiple lines
+- Special characters: !@#$%^&*()
+- Numbers: 1234567890
+- Mixed case: Hello World
+
+End of test file.
+
+
