@@ -68,7 +68,8 @@ func registerOnChain() error {
 	go setupWorkers(ctx)
 
 	// go StartHealthCheck(ctx, common.ProviderTypeBlobber)
-	go handleCommon.StartHealthCheck(ctx, common.ProviderTypeBlobber)
+	// Health check transactions disabled - unnecessary for this deployment
+	// go handleCommon.StartHealthCheck(ctx, common.ProviderTypeBlobber)
 	go startRefreshSettings(ctx)
 
 	return err
