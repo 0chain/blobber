@@ -12,21 +12,19 @@ on:
 jobs:
   linter:
     name: Lints
-    runs-on: [self-hosted,blobber-runner]
+    runs-on: [hetzner-build]
+    env:
+      HOME: /root
+      GOCACHE: /root/.cache/go-build
+      GOPATH: /root/go
     steps:
-      # - name: Setup go
-      #   uses: actions/setup-go@v3
-      #   with:
-      #     go-version: ^1.22 # The Go version to download (if necessary) and use.
-
       - name: Clone blobber
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install Packages
         run: |
           sudo apt-get update
-          sudo apt-get -y install build-essential nghttp2 libnghttp2-dev libssl-dev
-          sudo apt-get install wget
+          sudo apt-get -y install build-essential nghttp2 libnghttp2-dev libssl-dev wget
 
       - name: Buf-lint
         if: success()
@@ -35,7 +33,6 @@ jobs:
       - name: Build Base
         run: |
           ./docker.local/bin/build.base.sh
-          golangci-lint cache clean
 
       - name: Golangci-lint
         uses: golangci/golangci-lint-action@v3
@@ -46,20 +43,23 @@ jobs:
           skip-pkg-cache: true
           skip-build-cache: true
 
-
   unit-tests:
     name: Unit Tests
-    runs-on: [self-hosted,arc-runner]
+    runs-on: [hetzner-testsuite]
+    env:
+      HOME: /root
+      GOCACHE: /root/.cache/go-build
+      GOPATH: /root/go
     steps:
+      - name: Clone blobber
+        uses: actions/checkout@v3
+
       - name: Setup go
         uses: actions/setup-go@v3
         with:
-          go-version: ^1.22 # The Go version to download (if necessary) and use.
+          go-version: ^1.22
 
-      - name: Clone blobber
-        uses: actions/checkout@v2
-
-      - name: Install Make Command
+      - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get -y install build-essential nghttp2 libnghttp2-dev libssl-dev wget
@@ -68,10 +68,10 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE/code/go/0chain.net/
           CGO_ENABLED=1 go test -tags bn256 -race -coverprofile=coverage.txt -covermode=atomic ./...
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
         with:
-          # fail_ci_if_error: true
           files: ./code/go/0chain.net/coverage.txt
           flags: Unit-Tests
           verbose: true
