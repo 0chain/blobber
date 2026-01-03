@@ -8,7 +8,8 @@ import (
 )
 
 var (
-	Last50Transactions      []string
+	Last50Transactions []string
+	//nolint:unused
 	last50TransactionsMutex sync.Mutex
 )
 
@@ -94,6 +95,7 @@ const (
 
 const STORAGE_CONTRACT_ADDRESS = "6dba10422e368813802877a85039d3985d96760ed844092319743fb3a76712d7"
 
+//nolint:unused
 func updateLast50Transactions(data string) {
 	last50TransactionsMutex.Lock()
 	defer last50TransactionsMutex.Unlock()

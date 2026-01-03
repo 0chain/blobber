@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/0chain/gosdk/zboxcore/sdk"
 	"sync"
+
+	"github.com/0chain/gosdk/zboxcore/sdk"
 
 	"github.com/0chain/gosdk/zcncore"
 )
@@ -26,12 +27,14 @@ func GetBlobber(blobberID string) (*sdk.Blobber, error) {
 
 }
 
+// nolint:unused
 type getBlobberCallback struct {
 	wg      sync.WaitGroup
 	Blobber *zcncore.Blobber
 	Error   error
 }
 
+// nolint:unused
 func (cb *getBlobberCallback) OnInfoAvailable(op int, status int, info string, err string) {
 	defer cb.wg.Done()
 	if status != zcncore.StatusSuccess {
