@@ -19,6 +19,7 @@ var monitor = &nonceMonitor{
 	shouldRefreshFromBalance: true,
 }
 
+// nolint:unused
 type nonceMonitor struct {
 	sync.Mutex
 	failed                   map[int64]int64
