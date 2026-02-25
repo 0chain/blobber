@@ -196,9 +196,6 @@ func (c *ChallengeEntity) getCommitTransaction(ctx context.Context) (*coreTxn.Tr
 	}
 
 	snData := coreTxn.SmartContractTxnData{Name: transaction.CHALLENGE_RESPONSE, InputArgs: sn}
-	if snBytes, err2 := json.Marshal(snData); err2 == nil {
-		transaction.UpdateLast50Transactions(string(snBytes))
-	}
 	_, _, _, txn, err := coreTxn.SmartContractTxn(transaction.STORAGE_CONTRACT_ADDRESS, snData, false)
 	if err != nil {
 		logging.Logger.Info("Failed submitting challenge to the mining network", zap.String("err:", err.Error()))

@@ -2,7 +2,6 @@ package writemarker
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
@@ -10,11 +9,8 @@ import (
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
-	blobberTxn "github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 	"github.com/0chain/gosdk/constants"
-
 	"github.com/0chain/gosdk/core/transaction"
-
 	"go.uber.org/zap"
 )
 
@@ -170,9 +166,6 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context, startSeq int64) 
 	}
 
 	snData := transaction.SmartContractTxnData{Name: CLOSE_CONNECTION_SC_NAME, InputArgs: sn}
-	if snBytes, err2 := json.Marshal(snData); err2 == nil {
-		blobberTxn.UpdateLast50Transactions(string(snBytes))
-	}
 	hash, out, nonce, txn, err = transaction.SmartContractTxn(STORAGE_CONTRACT_ADDRESS, snData, true)
 	if err != nil {
 		Logger.Error("Failed during sending close connection to the miner. ", zap.String("err:", err.Error()))

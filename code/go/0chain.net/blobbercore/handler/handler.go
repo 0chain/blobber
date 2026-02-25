@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bufio"
 	"context"
 	"database/sql"
 	"encoding/hex"
@@ -16,7 +17,6 @@ import (
 
 	"github.com/0chain/gosdk/core/zcncrypto"
 
-	"github.com/0chain/blobber/code/go/0chain.net/core/transaction"
 
 	"github.com/go-openapi/runtime/middleware"
 
@@ -232,7 +232,7 @@ func setupHandlers(s *mux.Router) {
 	// s.HandleFunc("/_stats", common.AuthenticateAdmin(StatsHandler)))
 	s.HandleFunc("/objectlimit", RateLimitByCommmitRL(common.ToJSONResponse(GetObjectLimit)))
 
-	s.HandleFunc("/_logs", RateLimitByCommmitRL(common.ToJSONResponse(GetLogs)))
+	s.HandleFunc("/_logs", RateLimitByCommmitRL(GetLogs))
 
 	// s.HandleFunc("/_cleanupdisk", common.AuthenticateAdmin(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler)))))
 	// s.HandleFunc("/_cleanupdisk", RateLimitByCommmitRL(common.ToJSONResponse(WithReadOnlyConnection(CleanupDiskHandler)))))
@@ -1669,8 +1669,40 @@ func GetObjectLimit(ctx context.Context, r *http.Request) (interface{}, error) {
 	return objLimit, nil
 }
 
-func GetLogs(ctx context.Context, r *http.Request) (interface{}, error) {
-	return transaction.Last50Transactions, nil
+func GetLogs(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+
+	if logging.LogFile == "" {
+		fmt.Fprintln(w, "log file path not initialized")
+		return
+	}
+	f, err := os.Open(logging.LogFile)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer f.Close()
+
+	n := 200
+	if qn := r.URL.Query().Get("lines"); qn != "" {
+		if v, _ := strconv.Atoi(qn); v > 0 && v <= 5000 {
+			n = v
+		}
+	}
+
+	var lines []string
+	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	if len(lines) > n {
+		lines = lines[len(lines)-n:]
+	}
+	for _, l := range lines {
+		fmt.Fprintln(w, l)
+	}
 }
 
 func CleanupDiskHandler(ctx context.Context, r *http.Request) (interface{}, error) {
