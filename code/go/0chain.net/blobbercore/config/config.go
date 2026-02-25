@@ -49,7 +49,7 @@ func SetupDefaultConfig() {
 	viper.SetDefault("service_charge", 0.3)
 
 	viper.SetDefault("update_allocations_interval", time.Duration(-1))
-	viper.SetDefault("finalize_allocations_interval", time.Duration(-1))
+	viper.SetDefault("finalize_allocations_interval", 7*24*time.Hour)
 
 	viper.SetDefault("max_dirs_files", 50000)
 	viper.SetDefault("max_objects_dir", 1000)
