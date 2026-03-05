@@ -392,8 +392,8 @@ func RecoverTrie(recoverAllocs []string) {
 			return err
 		})
 		if err != nil {
-			logging.Logger.Error("recover_trie_fetch_alloc", zap.Error(err))
-			return
+			logging.Logger.Error("recover_trie_fetch_alloc", zap.String("allocation_id", allocID), zap.Error(err))
+			continue
 		}
 
 		// recover trie of allocation
