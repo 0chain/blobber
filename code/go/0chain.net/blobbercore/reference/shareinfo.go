@@ -46,14 +46,8 @@ func DeleteShareInfo(ctx context.Context, shareInfo *ShareInfo) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 
 	result := db.Model(&ShareInfo{}).
-		Where(&ShareInfo{
-			ClientID:     shareInfo.ClientID,
-			FilePathHash: shareInfo.FilePathHash,
-			Revoked:      false,
-		}).
-		Updates(ShareInfo{
-			Revoked: true,
-		})
+		Where("client_id = ? AND file_path_hash = ? AND revoked = ?", shareInfo.ClientID, shareInfo.FilePathHash, false).
+		Updates(map[string]interface{}{"revoked": true})
 
 	if result.Error != nil {
 		return result.Error
@@ -71,7 +65,7 @@ func CheckPublicShareExists(ctx context.Context, filePathHash string) (bool, err
 	var count int64
 
 	err := db.Model(&ShareInfo{}).
-		Where("file_path_hash = ? AND revoked = ?", filePathHash, false).
+		Where("file_path_hash = ? AND client_id = '' AND revoked = ?", filePathHash, false).
 		Count(&count).Error
 
 	if err != nil {
@@ -87,7 +81,8 @@ func GetPublicShareRecipients(ctx context.Context, ownerID, filePathHash string)
 	var recipients []ShareInfo
 
 	err := db.Model(&ShareInfo{}).
-		Where("owner_id = ? AND file_path_hash = ? AND revoked = ?", ownerID, filePathHash, false).
+		Select("id", "owner_id", "client_id", "file_path_hash", "expiry_at", "available_at", "revoked").
+		Where("owner_id = ? AND file_path_hash = ? AND client_id = '' AND revoked = ?", ownerID, filePathHash, false).
 		Find(&recipients).Error
 
 	return recipients, err
@@ -98,14 +93,8 @@ func RemovePublicShareRecipient(ctx context.Context, shareInfo *ShareInfo) error
 	db := datastore.GetStore().GetTransaction(ctx)
 
 	result := db.Model(&ShareInfo{}).
-		Where(&ShareInfo{
-			ClientID:     shareInfo.ClientID,
-			FilePathHash: shareInfo.FilePathHash,
-			Revoked:      false,
-		}).
-		Updates(ShareInfo{
-			Revoked: true,
-		})
+		Where("client_id = ? AND file_path_hash = ? AND revoked = ?", shareInfo.ClientID, shareInfo.FilePathHash, false).
+		Updates(map[string]interface{}{"revoked": true})
 
 	if result.Error != nil {
 		return result.Error
@@ -121,13 +110,8 @@ func DeletePublicShareInfo(ctx context.Context, shareInfo *ShareInfo) error {
 	db := datastore.GetStore().GetTransaction(ctx)
 
 	result := db.Model(&ShareInfo{}).
-		Where(&ShareInfo{
-			FilePathHash: shareInfo.FilePathHash,
-			Revoked:      false,
-		}).
-		Updates(ShareInfo{
-			Revoked: true,
-		})
+		Where("file_path_hash = ? AND client_id = '' AND revoked = ?", shareInfo.FilePathHash, false).
+		Updates(map[string]interface{}{"revoked": true})
 
 	if result.Error != nil {
 		return result.Error

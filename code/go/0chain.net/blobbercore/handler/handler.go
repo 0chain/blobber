@@ -1767,6 +1767,11 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	if clientID != allocationObj.OwnerID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
 	path, _ := common.GetField(r, "path")
 	if path == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid file path")
@@ -1776,11 +1781,6 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	_, err = reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, filePathHash, []string{"id", "type"})
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
-	}
-
-	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if clientID != allocationObj.OwnerID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
 	err = reference.DeleteShareInfo(ctx, &reference.ShareInfo{
@@ -1825,6 +1825,11 @@ func RevokePublicShare(ctx context.Context, r *http.Request) (interface{}, error
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	if clientID != allocationObj.OwnerID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
 	path, _ := common.GetField(r, "path")
 	if path == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid file path")
@@ -1834,11 +1839,6 @@ func RevokePublicShare(ctx context.Context, r *http.Request) (interface{}, error
 	_, err = reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, filePathHash, []string{"id", "type"})
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
-	}
-
-	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if clientID != allocationObj.OwnerID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
 	err = reference.DeletePublicShareInfo(ctx, &reference.ShareInfo{
@@ -1935,6 +1935,11 @@ func RemovePublicShareRecipient(ctx context.Context, r *http.Request) (interface
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	if clientID != allocationObj.OwnerID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
 	path, _ := common.GetField(r, "path")
 	if path == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid file path")
@@ -1949,11 +1954,6 @@ func RemovePublicShareRecipient(ctx context.Context, r *http.Request) (interface
 	_, err = reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, filePathHash, []string{"id", "type"})
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
-	}
-
-	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if clientID != allocationObj.OwnerID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
 	// Remove specific recipient from public share
@@ -2045,6 +2045,11 @@ func CheckPublicShareExists(ctx context.Context, r *http.Request) (interface{}, 
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	if clientID != allocationObj.OwnerID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
 	path, _ := common.GetField(r, "path")
 	if path == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid file path")
@@ -2054,11 +2059,6 @@ func CheckPublicShareExists(ctx context.Context, r *http.Request) (interface{}, 
 	_, err = reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, filePathHash, []string{"id", "type"})
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
-	}
-
-	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if clientID != allocationObj.OwnerID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
 	// Check if public share exists
@@ -2139,6 +2139,11 @@ func GetPublicShareRecipients(ctx context.Context, r *http.Request) (interface{}
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	if clientID != allocationObj.OwnerID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
 	path, _ := common.GetField(r, "path")
 	if path == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid file path")
@@ -2148,11 +2153,6 @@ func GetPublicShareRecipients(ctx context.Context, r *http.Request) (interface{}
 	_, err = reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, filePathHash, []string{"id", "type"})
 	if err != nil {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
-	}
-
-	clientID := ctx.Value(constants.ContextKeyClient).(string)
-	if clientID != allocationObj.OwnerID {
-		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
 	// Get all recipients of the public share
