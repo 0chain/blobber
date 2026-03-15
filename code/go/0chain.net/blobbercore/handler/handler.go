@@ -1784,8 +1784,10 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 	}
 
 	err = reference.DeleteShareInfo(ctx, &reference.ShareInfo{
+		OwnerID:      clientID,
 		ClientID:     refereeClientID,
 		FilePathHash: filePathHash,
+		ShareType:    reference.ShareTypePrivate,
 	})
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		resp := map[string]interface{}{
@@ -1842,6 +1844,7 @@ func RevokePublicShare(ctx context.Context, r *http.Request) (interface{}, error
 	}
 
 	err = reference.DeletePublicShareInfo(ctx, &reference.ShareInfo{
+		OwnerID:      clientID,
 		FilePathHash: filePathHash,
 	})
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -1958,6 +1961,7 @@ func RemovePublicShareRecipient(ctx context.Context, r *http.Request) (interface
 
 	// Remove specific recipient from public share
 	err = reference.RemovePublicShareRecipient(ctx, &reference.ShareInfo{
+		OwnerID:      clientID,
 		ClientID:     recipientClientID,
 		FilePathHash: filePathHash,
 	})
@@ -2061,8 +2065,8 @@ func CheckPublicShareExists(ctx context.Context, r *http.Request) (interface{}, 
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
 
-	// Check if public share exists
-	exists, err := reference.CheckPublicShareExists(ctx, filePathHash)
+	// Check if public share exists for this owner and file
+	exists, err := reference.CheckPublicShareExists(ctx, clientID, filePathHash)
 	if err != nil {
 		return nil, err
 	}
@@ -2286,8 +2290,16 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		ExpiryAt:                  common.ToTime(authTicket.Expiration).UTC(),
 		AvailableAt:               common.ToTime(availableAt).UTC(),
 	}
+	shareType := r.FormValue("share_type")
+	if shareType == "" {
+		shareType = reference.ShareTypePrivate
+	}
+	if shareType != reference.ShareTypePublic && shareType != reference.ShareTypePrivate {
+		shareType = reference.ShareTypePrivate
+	}
+	shareInfo.ShareType = shareType
 
-	existingShare, _ := reference.GetShareInfo(ctx, authTicket.ClientID, authTicket.FilePathHash)
+	existingShare, _ := reference.GetShareInfoByType(ctx, authTicket.ClientID, authTicket.FilePathHash, shareType)
 
 	if existingShare != nil && len(existingShare.OwnerID) > 0 {
 		err = reference.UpdateShareInfo(ctx, &shareInfo)

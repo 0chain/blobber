@@ -41,7 +41,7 @@ func verifyAuthTicket(ctx context.Context, authTokenString string, allocationObj
 
 	}
 	if verifyShare {
-		shareInfo, err := reference.GetShareInfo(ctx, authToken.ClientID, authToken.FilePathHash)
+		shareInfo, err := reference.GetAnyActiveShare(ctx, authToken.ClientID, authToken.FilePathHash)
 		if err != nil || shareInfo == nil {
 			return nil, common.NewError("invalid_share", "client does not have permission to get the file meta. share does not exist")
 		}
