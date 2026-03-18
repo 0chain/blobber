@@ -160,3 +160,7 @@ integration_tests:
 admin:
   username: "admin"
   password: "password"
+
+0box:
+  sync_notify_url: "https://0box.dev.zus.network/v2/sync/notify/blobber"
+  sync_notify_enabled: true
