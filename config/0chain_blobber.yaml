@@ -158,3 +158,5 @@ admin:
 0box:
   client_id: "0box_client_id"
   public_key: "0box_public_key"
+  sync_notify_url: "https://0box.dev.zus.network/v2/sync/notify/blobber"
+  sync_notify_enabled: true

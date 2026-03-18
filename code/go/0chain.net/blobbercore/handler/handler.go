@@ -1811,6 +1811,8 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, err
 	}
 
+	notifySyncEvent(allocationID, clientID, "share_updated")
+
 	resp := map[string]interface{}{
 		"status":  http.StatusNoContent,
 		"message": "Path successfully removed from allocation",
@@ -1953,6 +1955,8 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		Logger.Info(err.Error())
 		return nil, common.NewError("share_info_insert", "Unable to save share info")
 	}
+
+	notifySyncEvent(allocationID, clientID, "share_updated")
 
 	return map[string]interface{}{"message": "Share info added successfully"}, nil
 }
