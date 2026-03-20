@@ -28,4 +28,11 @@ echo "  DOCKER_IMAGE_VALIDATOR=$DOCKER_IMAGE_VALIDATOR"
 
 echo ""
 echo "2> docker build validator"
-DOCKER_BUILDKIT=1 docker $DOCKER_BUILD --progress=plain --build-arg GIT_COMMIT=$GIT_COMMIT --build-arg DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE -f docker.local/validator.Dockerfile . $DOCKER_IMAGE_VALIDATOR
+# Set flags based on build type
+if [[ "$DOCKER_BUILD" == *"buildx"* ]]; then
+    BUILD_FLAGS="--progress=plain"
+else
+    BUILD_FLAGS=""
+fi
+
+docker $DOCKER_BUILD $BUILD_FLAGS --build-arg GIT_COMMIT=$GIT_COMMIT --build-arg DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE -f docker.local/validator.Dockerfile . $DOCKER_IMAGE_VALIDATOR

@@ -419,7 +419,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			return nil, common.NewErrorf("invalid_authticket", "cannot verify auth ticket: %v", err)
 		}
 
-		shareInfo, err = reference.GetShareInfo(ctx, authToken.ClientID, authToken.FilePathHash)
+		shareInfo, err = reference.GetAnyActiveShare(ctx, authToken.ClientID, authToken.FilePathHash)
 		if err != nil || shareInfo == nil {
 			return nil, common.NewError("invalid_share", "client does not have permission to download the file. share does not exist")
 		}

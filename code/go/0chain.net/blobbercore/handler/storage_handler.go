@@ -991,7 +991,7 @@ func (fsh *StorageHandler) GetRefs(ctx context.Context, r *http.Request) (*blobb
 			return nil, common.NewError("json_unmarshall_error", fmt.Sprintf("error parsing authticket: %v", authTokenStr))
 		}
 
-		shareInfo, err := reference.GetShareInfo(ctx, authToken.ClientID, authToken.FilePathHash)
+		shareInfo, err := reference.GetAnyActiveShare(ctx, authToken.ClientID, authToken.FilePathHash)
 		if err != nil {
 			return nil, fsh.convertGormError(err)
 		}
