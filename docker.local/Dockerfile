@@ -14,6 +14,7 @@ RUN cd $SRC_DIR && go mod download
 
 #Add the source code
 ADD ./code/go/0chain.net $SRC_DIR/code/go/0chain.net
+ADD ./goose $SRC_DIR/goose
 
 WORKDIR $SRC_DIR/code/go/0chain.net/blobber
 
