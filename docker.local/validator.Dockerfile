@@ -17,6 +17,8 @@ COPY .  $SRC_DIR
 
 RUN cd $SRC_DIR/ && go mod download 
 
+RUN cd $SRC_DIR && go mod tidy
+
 WORKDIR $SRC_DIR/code/go/0chain.net/validator
 ARG GIT_COMMIT
 ENV GIT_COMMIT=$GIT_COMMIT
