@@ -1833,6 +1833,8 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, err
 	}
 
+	notifySyncEvent(allocationID, clientID, "share_updated", r.Header.Get("X-App-Session-ID"))
+
 	resp := map[string]interface{}{
 		"status":  http.StatusNoContent,
 		"message": "Path successfully removed from allocation",
@@ -1891,7 +1893,7 @@ func RevokePublicShare(ctx context.Context, r *http.Request) (interface{}, error
 		return nil, err
 	}
 
-	notifySyncEvent(allocationID, clientID, "share_updated")
+	notifySyncEvent(allocationID, clientID, "share_updated", r.Header.Get("X-App-Session-ID"))
 
 	resp := map[string]interface{}{
 		"status":  http.StatusNoContent,
@@ -2010,6 +2012,8 @@ func RemovePublicShareRecipient(ctx context.Context, r *http.Request) (interface
 	if err != nil {
 		return nil, err
 	}
+
+	notifySyncEvent(allocationID, clientID, "share_updated", r.Header.Get("X-App-Session-ID"))
 
 	resp := map[string]interface{}{
 		"status":  http.StatusNoContent,
@@ -2346,7 +2350,7 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, common.NewError("share_info_insert", "Unable to save share info")
 	}
 
-	notifySyncEvent(allocationID, clientID, "share_updated")
+	notifySyncEvent(allocationID, clientID, "share_updated", r.Header.Get("X-App-Session-ID"))
 
 	return map[string]interface{}{"message": "Share info added successfully"}, nil
 }
