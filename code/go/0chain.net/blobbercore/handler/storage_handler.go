@@ -392,6 +392,24 @@ func (fsh *StorageHandler) ListEntities(ctx context.Context, r *http.Request) (*
 	}
 
 	authTokenString, _ := common.GetField(r, "auth_token")
+
+	// When the caller claims to be the owner and provides no auth ticket, require
+	// a cryptographic signature to prove ownership. Without this, any client that
+	// sets X-App-Client-ID to the owner's wallet ID bypasses all authorization.
+	// Every other read handler (GetFileMeta, GetFileStats, GetObjectTree, etc.)
+	// already enforces this — ListEntities must too.
+	if clientID == allocationObj.OwnerID && len(authTokenString) == 0 {
+		valid, err := verifySignatureFromRequest(
+			allocationTx,
+			r.Header.Get(common.ClientSignatureHeader),
+			r.Header.Get(common.ClientSignatureHeaderV2),
+			allocationObj.OwnerPublicKey,
+		)
+		if !valid || err != nil {
+			return nil, common.NewError("invalid_signature", "Owner signature verification failed")
+		}
+	}
+
 	if clientID != allocationObj.OwnerID || len(authTokenString) > 0 {
 		authToken, err := fsh.verifyAuthTicket(ctx, authTokenString, allocationObj, fileref, clientID, true)
 		if err != nil {
