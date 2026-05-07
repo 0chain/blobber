@@ -62,6 +62,9 @@ func SetupDefaultConfig() {
 
 	viper.SetDefault("0box.sync_notify_url", "")
 	viper.SetDefault("0box.sync_notify_enabled", false)
+
+	// DiskWriteThreshold: reject uploads when disk is this % full. 0 = disabled.
+	viper.SetDefault("storage.disk_write_threshold", 90)
 }
 
 /*SetupConfig - setup the configuration system */
@@ -161,6 +164,9 @@ type Config struct {
 
 	// MountPoint is where allocation files are stored. This is basically arranged in RAID5.
 	MountPoint         string
+	// DiskWriteThreshold is the disk-usage percentage (0–100) above which uploads
+	// are rejected with 507 Insufficient Storage. 0 disables the check. Default: 90.
+	DiskWriteThreshold int
 	AllocDirLevel      []int
 	FileDirLevel       []int
 	RecoverAllocations []string
@@ -330,6 +336,8 @@ func ReadConfig(deploymentMode int) {
 
 	Configuration.SyncNotifyURL = viper.GetString("0box.sync_notify_url")
 	Configuration.SyncNotifyEnabled = viper.GetBool("0box.sync_notify_enabled")
+
+	Configuration.DiskWriteThreshold = viper.GetInt("storage.disk_write_threshold")
 }
 
 // StorageSCConfiguration will include all the required sc configs to operate blobber

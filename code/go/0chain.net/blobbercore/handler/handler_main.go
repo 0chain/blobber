@@ -20,7 +20,7 @@ func SetupHandlers(r *mux.Router) {
 	s.HandleFunc("/v1/file/list/{allocation}",
 		RateLimitByObjectRL(common.ToJSONResponse(WithReadOnlyConnection(ListHandler)))).
 		Methods(http.MethodGet, http.MethodOptions)
-	s.HandleFunc("/v1/file/upload/{allocation}", RateLimitByFileRL(common.ToJSONResponse(WithConnection(UploadHandler))))
+	s.HandleFunc("/v1/file/upload/{allocation}", RateLimitByFileRL(WithDiskSpaceCheck(common.ToJSONResponse(WithConnection(UploadHandler)))))
 	s.HandleFunc("/v1/file/download/{allocation}", RateLimitByFileRL(common.ToByteStream(WithConnection(DownloadHandler)))).Methods(http.MethodGet, http.MethodOptions)
 }
 
