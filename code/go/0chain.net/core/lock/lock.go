@@ -28,6 +28,36 @@ func (m *Mutex) Lock() {
 	m.mu.Lock()
 }
 
+// TryLockWithTimeout attempts to acquire the write lock, polling until the
+// timeout elapses. Returns true if acquired (caller must Unlock), false on
+// timeout (caller must call GiveBack to balance the GetMutex reference). Lets
+// the commit path bound how long it waits on the per-allocation lock instead
+// of blocking indefinitely behind a long-running orphan-GC / challenge.
+func (m *Mutex) TryLockWithTimeout(d time.Duration) bool {
+	if d <= 0 {
+		m.mu.Lock()
+		return true
+	}
+	deadline := time.Now().Add(d)
+	for {
+		if m.mu.TryLock() {
+			return true
+		}
+		if time.Now().After(deadline) {
+			return false
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+// GiveBack releases the GetMutex reference WITHOUT unlocking — used when
+// TryLockWithTimeout times out. Keeps usedby balanced with GetMutex.
+func (m *Mutex) GiveBack() {
+	lockMutex.Lock()
+	defer lockMutex.Unlock()
+	m.usedby--
+}
+
 func (m *Mutex) RLock() {
 	m.mu.RLock()
 }

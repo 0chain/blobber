@@ -21,9 +21,14 @@ func SetupWorkers(ctx context.Context) {
 }
 
 func CleanupDiskFiles(ctx context.Context) error {
+	// List allocations in a short, self-contained transaction so we don't hold
+	// a transaction open across the (potentially long) per-allocation cleanup.
 	var allocations []allocation.Allocation
-	db := datastore.GetStore().GetTransaction(ctx)
-	db.Find(&allocations)
+	if err := datastore.GetStore().WithNewTransaction(func(lctx context.Context) error {
+		return datastore.GetStore().GetTransaction(lctx).Find(&allocations).Error
+	}); err != nil {
+		return err
+	}
 
 	for _, allocationObj := range allocations {
 		cleanupAllocationFiles(ctx, allocationObj)
@@ -31,39 +36,73 @@ func CleanupDiskFiles(ctx context.Context) error {
 	return nil
 }
 
+// cleanupAllocationFiles deletes on-disk objects with no reference rows
+// (orphans) WITHOUT starving CommitWrite, which competes for the same
+// per-allocation lock. Two phases:
+//
+//	Phase 1 (lock-free): scan all objects, collect orphan candidates. The
+//	  O(objects) scan runs without the per-allocation lock.
+//	Phase 2 (brief lock per delete): take the lock, RE-CHECK the ref count is
+//	  still 0 (a commit may have added a ref since phase 1), delete only if
+//	  still orphaned, release. The re-check under the lock keeps it safe — a
+//	  commit can't add a reference while we hold the lock.
 func cleanupAllocationFiles(ctx context.Context, allocationObj allocation.Allocation) {
-	mutex := lock.GetMutex(allocationObj.TableName(), allocationObj.ID)
-	logging.Logger.Info("cleanupAllocationLock", zap.Any("allocation_id", allocationObj.ID))
-	mutex.Lock()
-	defer mutex.Unlock()
-	db := datastore.GetStore().GetTransaction(ctx)
+	logging.Logger.Info("orphan_cleanup: scanning allocation (lock-free)", zap.String("allocation_id", allocationObj.ID))
 
-	_ = filestore.GetFileStore().IterateObjects(allocationObj.ID, func(hash string, contentSize int64) {
-		var refs []reference.Ref
-		version := 0
-		if len(hash) > 64 {
-			version = 1
-			hash = hash[:64]
-		}
-		err := db.Table((reference.Ref{}).TableName()).
-			Where(reference.Ref{ValidationRoot: hash, Type: reference.FILE}).
-			Or(reference.Ref{ThumbnailHash: hash, Type: reference.FILE}).
-			Find(&refs).Error
+	type orphanCand struct {
+		hash    string
+		version int
+	}
+	var candidates []orphanCand
 
-		if err != nil {
-			logging.Logger.Error("Error in cleanup of disk files.", zap.Error(err))
-			return
-		}
+	// Phase 1 — lock-free scan in a short transaction.
+	_ = datastore.GetStore().WithNewTransaction(func(sctx context.Context) error {
+		sdb := datastore.GetStore().GetTransaction(sctx)
+		return filestore.GetFileStore().IterateObjects(allocationObj.ID, func(hash string, contentSize int64) {
+			version := 0
+			h := hash
+			if len(h) > 64 {
+				version = 1
+				h = h[:64]
+			}
+			var cnt int64
+			if err := sdb.Table((reference.Ref{}).TableName()).
+				Where(reference.Ref{ValidationRoot: h, Type: reference.FILE}).
+				Or(reference.Ref{ThumbnailHash: h, Type: reference.FILE}).
+				Count(&cnt).Error; err != nil {
+				logging.Logger.Error("orphan_cleanup: ref count failed", zap.String("hash", h), zap.Error(err))
+				return
+			}
+			if cnt == 0 {
+				candidates = append(candidates, orphanCand{hash: h, version: version})
+			}
+		})
+	})
 
-		if len(refs) == 0 {
-			logging.Logger.Info("hash has no references. Deleting from disk",
-				zap.Any("count", len(refs)), zap.String("hash", hash))
+	if len(candidates) == 0 {
+		return
+	}
 
-			if err = filestore.GetFileStore().DeleteFromFilestore(allocationObj.ID, hash, version); err != nil {
-				logging.Logger.Error("FileStore_DeleteFile", zap.String("validation_root", hash), zap.Error(err))
+	// Phase 2 — delete each candidate under a brief lock with a re-check.
+	for _, c := range candidates {
+		mutex := lock.GetMutex(allocationObj.TableName(), allocationObj.ID)
+		mutex.Lock()
+		var cnt int64
+		_ = datastore.GetStore().WithNewTransaction(func(cctx context.Context) error {
+			return datastore.GetStore().GetTransaction(cctx).Table((reference.Ref{}).TableName()).
+				Where(reference.Ref{ValidationRoot: c.hash, Type: reference.FILE}).
+				Or(reference.Ref{ThumbnailHash: c.hash, Type: reference.FILE}).
+				Count(&cnt).Error
+		})
+		if cnt == 0 {
+			if err := filestore.GetFileStore().DeleteFromFilestore(allocationObj.ID, c.hash, c.version); err != nil {
+				logging.Logger.Error("FileStore_DeleteFile", zap.String("validation_root", c.hash), zap.Error(err))
+			} else {
+				logging.Logger.Info("orphan_cleanup: deleted orphan from disk", zap.String("hash", c.hash))
 			}
 		}
-	})
+		mutex.Unlock()
+	}
 }
 
 func cleanupTempFiles(ctx context.Context) {

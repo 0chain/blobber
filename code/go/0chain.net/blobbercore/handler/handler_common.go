@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/0chain/gosdk/core/client"
@@ -134,6 +136,18 @@ func GetBlobberInfoJson() BlobberInfo {
 }
 
 // Should only be used for handlers where the writemarker is submitted
+// commitLockTimeout bounds how long a commit waits on the per-allocation lock
+// before returning a retryable error. Default 5s; tune via
+// BLOBBER_COMMIT_LOCK_TIMEOUT_MS. <=0 means wait indefinitely (legacy).
+func commitLockTimeout() time.Duration {
+	if v := os.Getenv("BLOBBER_COMMIT_LOCK_TIMEOUT_MS"); v != "" {
+		if ms, err := strconv.Atoi(v); err == nil {
+			return time.Duration(ms) * time.Millisecond
+		}
+	}
+	return 5 * time.Second
+}
+
 func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.StatusCodeResponderF {
 	return func(ctx context.Context, r *http.Request) (resp interface{}, statusCode int, err error) {
 		allocationID := r.Header.Get(common.AllocationIdHeader)
@@ -141,11 +155,20 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 			return nil, http.StatusBadRequest, common.NewError("invalid_allocation_id", "Allocation ID is required")
 		}
 
-		// Lock will compete with other CommitWrites and Challenge validation
-
+		// Lock will compete with other CommitWrites and Challenge validation.
+		// Bound the wait so a long-running orphan-GC / challenge holding this
+		// lock can't pin the commit until the upstream proxy times out. On
+		// timeout return "pending_markers" (the retryable signal gosdk honours
+		// for in-progress writes) so the client retries instead of hanging.
 		mutex := lock.GetMutex(allocation.Allocation{}.TableName(), allocationID)
 		Logger.Info("Locking allocation", zap.String("allocation_id", allocationID))
-		mutex.Lock()
+		if !mutex.TryLockWithTimeout(commitLockTimeout()) {
+			mutex.GiveBack()
+			Logger.Warn("commit lock busy after timeout; returning retryable",
+				zap.String("allocation_id", allocationID))
+			return nil, http.StatusBadRequest, common.NewError("pending_markers",
+				"allocation lock busy (concurrent write/GC in progress); retry")
+		}
 		defer mutex.Unlock()
 		wmSet := writemarker.SetCommittingMarker(allocationID, true)
 		if !wmSet {
