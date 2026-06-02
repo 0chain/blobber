@@ -28,6 +28,7 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/readmarker"
@@ -1578,6 +1579,15 @@ func uploadHandler(ctx context.Context, r *http.Request) (interface{}, error) {
 	ctx = setupHandlerContext(ctx, r)
 	response, err := storageHandler.WriteFile(ctx, r)
 	if err != nil {
+		// Idempotent DELETE: if the ref was already removed (e.g. implicit
+		// empty-directory cleanup after its last child was deleted, or a
+		// concurrent bulk-delete), the caller's intent is already satisfied
+		// — don't 400 them. Matches the existing pattern in commitHandler /
+		// rollbackHandler. Scope to DELETE so other methods still surface
+		// the error if they ever see it.
+		if r.Method == http.MethodDelete && errors.Is(err, common.ErrFileWasDeleted) {
+			return allocation.UploadResult{}, nil
+		}
 		Logger.Error("writeFileHandler", zap.Error(err))
 		return nil, err
 	}
