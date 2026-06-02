@@ -6,13 +6,11 @@ import (
 	"net/http"
 
 	"github.com/0chain/gosdk/constants"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/reference"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
 // DeleteFileCommand command for deleting file
@@ -59,16 +57,11 @@ func (cmd *DeleteFileCommand) IsValidated(ctx context.Context, req *http.Request
 		}
 		return common.NewError("bad_db_operation", err.Error())
 	}
-	if allocationObj.IsStorageV2() && cmd.existingFileRef.Type == reference.DIRECTORY {
-		isEmpty, err := reference.IsDirectoryEmpty(ctx, allocationObj.ID, path)
-		if err != nil {
-			return err
-		}
-		if !isEmpty {
-			logging.Logger.Error("directory_not_empty", zap.String("path", path))
-			return common.NewError("invalid_reference_path", "directory is not empty")
-		}
-	}
+	// Non-empty directories are no longer rejected here. The recursive
+	// directory cleanup happens at commit time in DeleteFileChange.ApplyChangeV2
+	// (it soft-deletes descendant directory refs; file descendants are
+	// cascaded by the gosdk client). This upload-time guard would otherwise
+	// block that path and is the cause of the stuck streaming-video deletes.
 	cmd.existingFileRef.LookupHash = lookUpHash
 	return nil
 }
