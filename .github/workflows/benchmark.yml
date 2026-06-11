@@ -5,8 +5,7 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  push:
-    branches: [ master, staging ]
+  workflow_dispatch:
 
 jobs:
   benchmark:

@@ -1,22 +1,8 @@
 name: config_change_alert 
 
 on:
-  push:
-   branches: 
-     - staging
-   paths:
-      - config/0chain_blobber.yaml
-      - config/0chain_validator.yaml
+  workflow_dispatch:
 
-  pull_request:
-    branches: 
-      - staging
-    types:
-      - closed
-    paths:
-      - config/0chain_blobber.yaml
-      - config/0chain_validator.yaml
-   
 jobs:
   test:
     runs-on: docker-builds

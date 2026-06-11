@@ -1,22 +1,8 @@
 name: config_change_PR
 
 on:
-  push:
-   branches: 
-     - staging
-   paths:
-      - config/0chain_blobber.yaml
-      - config/0chain_validator.yaml
-  
-  pull_request:
-    branches: 
-      - staging
-    types:
-      - closed
-    paths:
-      - config/0chain_blobber.yaml
-      - config/0chain_validator.yaml
-   
+  workflow_dispatch:
+
 jobs:
   ConfigChange:
     runs-on: arc-runner
