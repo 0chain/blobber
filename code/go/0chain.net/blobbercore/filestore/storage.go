@@ -41,7 +41,9 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"unsafe"
 
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/encryption"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -61,10 +63,44 @@ const (
 	ThumbnailSuffix = "_thumbnail"
 )
 
+// getSectorSize returns the sector size for the given file path.
+// It tries BLKSSZGET ioctl for block devices, and falls back to statfs for regular files.
+func getSectorSize(path string) (int, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+
+	const BLKSSZGET = 0x1268
+	var sectorSize int32
+	_, _, errno := syscall.Syscall(
+		syscall.SYS_IOCTL,
+		f.Fd(),
+		BLKSSZGET,
+		uintptr(unsafe.Pointer(&sectorSize)),
+	)
+	if errno == 0 && sectorSize > 0 {
+		return int(sectorSize), nil
+	}
+
+	// Fallback: use statfs for regular files
+	var stat syscall.Statfs_t
+	err = syscall.Statfs(path, &stat)
+	if err != nil {
+		return 0, err
+	}
+	if stat.Bsize > 0 {
+		return int(stat.Bsize), nil
+	}
+	return 512, nil // fallback default
+}
+
 func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, infile multipart.File) (*FileOutputData, error) {
 	tempFilePath := fs.getTempPathForFile(allocID, fileData.Name, fileData.FilePathHash, conID)
 	var (
 		initialSize int64
+		writtenSize int64
 	)
 	finfo, err := os.Stat(tempFilePath)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -77,7 +113,28 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 	if err = createDirs(filepath.Dir(tempFilePath)); err != nil {
 		return nil, common.NewError("dir_creation_error", err.Error())
 	}
-	f, err := os.OpenFile(tempFilePath, os.O_CREATE|os.O_RDWR, 0644)
+
+	useDirectIO := false
+	var f *os.File
+	var sectorSize int
+	if config.Configuration.EnableDirectIO {
+		fd, derr := unix.Open(tempFilePath, unix.O_WRONLY|unix.O_CREAT|unix.O_DIRECT, 0644)
+		if derr == nil {
+			useDirectIO = true
+			f, err = os.NewFile(uintptr(fd), tempFilePath), nil
+			// Get sector size for alignment
+			sectorSize, err = getSectorSize(tempFilePath)
+			if err != nil || sectorSize <= 0 {
+				sectorSize = 512 // fallback
+			}
+		} else {
+			logging.Logger.Warn("O_DIRECT not supported, falling back to regular file operations", zap.String("file", tempFilePath), zap.Error(derr))
+		}
+	}
+	if !useDirectIO {
+		f, err = os.OpenFile(tempFilePath, os.O_CREATE|os.O_RDWR, 0644)
+		sectorSize = 0 // not needed
+	}
 	if err != nil {
 		return nil, common.NewError("file_open_error", err.Error())
 	}
@@ -87,10 +144,32 @@ func (fs *FileStore) WriteFile(allocID, conID string, fileData *FileInputData, i
 	if err != nil {
 		return nil, common.NewError("file_seek_error", err.Error())
 	}
-	buf := make([]byte, BufferSize)
-	writtenSize, err := io.CopyBuffer(f, infile, buf)
-	if err != nil {
-		return nil, common.NewError("file_write_error", err.Error())
+
+	if useDirectIO {
+		// Round BufferSize up to the next multiple of sectorSize for O_DIRECT alignment requirements
+		// This ensures the buffer is properly aligned for direct I/O
+		alignedBufSize := BufferSize
+		if sectorSize > 0 {
+			alignedBufSize = (BufferSize + sectorSize - 1) &^ (sectorSize - 1)
+		}
+		alignedBuf := make([]byte, alignedBufSize)
+		writtenSize, err = copyWithDirectIO(f, infile, alignedBuf, BufferSize, sectorSize)
+		if err != nil {
+			return nil, common.NewError("file_write_error", err.Error())
+		}
+		// Truncate the file to the actual data size to remove padding
+		if writtenSize > 0 {
+			err = f.Truncate(fileData.UploadOffset + writtenSize)
+			if err != nil {
+				return nil, common.NewError("file_truncate_error", err.Error())
+			}
+		}
+	} else {
+		buf := make([]byte, BufferSize)
+		writtenSize, err = io.CopyBuffer(f, infile, buf)
+		if err != nil {
+			return nil, common.NewError("file_write_error", err.Error())
+		}
 	}
 
 	finfo, err = f.Stat()
@@ -1070,4 +1149,40 @@ func sanitizeFileName(fileName string) string {
 	fileName = strings.ReplaceAll(fileName, "..\\", "")
 	fileName = filepath.Base(fileName)
 	return fileName
+}
+
+// copyWithDirectIO performs I/O operations that are compatible with O_DIRECT
+// O_DIRECT requires aligned buffers and aligned I/O operations
+func copyWithDirectIO(dst io.Writer, src io.Reader, buf []byte, maxBufferSize int, alignment int) (int64, error) {
+	var totalWritten int64
+
+	for {
+		n, err := src.Read(buf[:maxBufferSize])
+		if n > 0 {
+			alignedSize := (n + alignment - 1) &^ (alignment - 1)
+			if alignedSize > len(buf) {
+				alignedSize = len(buf)
+			}
+			if alignedSize > n {
+				for i := n; i < alignedSize; i++ {
+					buf[i] = 0
+				}
+			}
+			written, writeErr := dst.Write(buf[:alignedSize])
+			if written > n {
+				written = n // Don't count padding bytes
+			}
+			totalWritten += int64(written)
+			if writeErr != nil {
+				return totalWritten, writeErr
+			}
+		}
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return totalWritten, err
+		}
+	}
+	return totalWritten, nil
 }

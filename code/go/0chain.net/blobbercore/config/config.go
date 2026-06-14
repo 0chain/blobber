@@ -171,6 +171,9 @@ type Config struct {
 	PebbleCache        int64
 	PebbleMemtableSize int64
 	PebbleMaxOpenFiles int
+
+	// EnableDirectIO enables O_DIRECT flag for file operations (bypasses OS cache)
+	EnableDirectIO bool
 }
 
 /*Configuration of the system */
@@ -321,6 +324,8 @@ func ReadConfig(deploymentMode int) {
 	Configuration.PebbleCache = viper.GetInt64("kv.pebble_cache")
 	Configuration.PebbleMemtableSize = viper.GetInt64("kv.pebble_memtable_size")
 	Configuration.PebbleMaxOpenFiles = viper.GetInt("kv.pebble_max_open_files")
+
+	Configuration.EnableDirectIO = viper.GetBool("storage.enable_direct_io")
 }
 
 // StorageSCConfiguration will include all the required sc configs to operate blobber

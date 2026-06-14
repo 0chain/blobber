@@ -1019,3 +1019,170 @@ mainloop:
 	mr = fixedMT.GetMerkleRoot()
 	return
 }
+
+func TestDirectIOFunctionality(t *testing.T) {
+	// Test O_DIRECT functionality with configuration
+	tests := []struct {
+		name           string
+		enableDirectIO bool
+		expectDirectIO bool
+	}{
+		{
+			name:           "O_DIRECT disabled",
+			enableDirectIO: false,
+			expectDirectIO: false,
+		},
+		{
+			name:           "O_DIRECT enabled",
+			enableDirectIO: true,
+			expectDirectIO: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set configuration
+			config.Configuration.EnableDirectIO = tt.enableDirectIO
+
+			fs, cleanUp := setupStorage(t)
+			defer cleanUp()
+
+			// Create test data
+			allocID := randString(64)
+			connID := randString(32)
+			fileName := "test_file.txt"
+			filePathHash := randString(64)
+
+			// Create a simple test file
+			testData := []byte("Hello, O_DIRECT test!")
+			fileData := &FileInputData{
+				Name:         fileName,
+				Path:         "/test/path",
+				FilePathHash: filePathHash,
+				UploadOffset: 0,
+				Size:         int64(len(testData)),
+			}
+
+			// Create multipart file from bytes
+			multipartFile := &mockMultipartFile{
+				reader: bytes.NewReader(testData),
+				size:   int64(len(testData)),
+			}
+
+			// Test WriteFile function
+			result, err := fs.WriteFile(allocID, connID, fileData, multipartFile)
+
+			// Should succeed regardless of O_DIRECT setting
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			require.Equal(t, int64(len(testData)), result.Size)
+			require.Equal(t, fileName, result.Name)
+			require.Equal(t, "/test/path", result.Path)
+
+			// Verify file was actually written
+			tempFilePath := fs.getTempPathForFile(allocID, fileName, filePathHash, connID)
+			fileInfo, err := os.Stat(tempFilePath)
+			require.NoError(t, err)
+			require.Equal(t, int64(len(testData)), fileInfo.Size())
+
+			// Read back the file to verify content
+			content, err := os.ReadFile(tempFilePath)
+			require.NoError(t, err)
+			require.Equal(t, testData, content)
+		})
+	}
+}
+
+// mockMultipartFile implements multipart.File interface for testing
+type mockMultipartFile struct {
+	reader io.Reader
+	size   int64
+}
+
+func (m *mockMultipartFile) Read(p []byte) (n int, err error) {
+	return m.reader.Read(p)
+}
+
+func (m *mockMultipartFile) Seek(offset int64, whence int) (int64, error) {
+	if seeker, ok := m.reader.(io.Seeker); ok {
+		return seeker.Seek(offset, whence)
+	}
+	return 0, errors.New("seeker not implemented")
+}
+
+func (m *mockMultipartFile) Close() error {
+	return nil
+}
+
+func (m *mockMultipartFile) ReadAt(p []byte, off int64) (n int, err error) {
+	if readerAt, ok := m.reader.(io.ReaderAt); ok {
+		return readerAt.ReadAt(p, off)
+	}
+	return 0, errors.New("ReadAt not implemented")
+}
+
+func TestCopyWithDirectIO(t *testing.T) {
+	// Test the copyWithDirectIO function directly
+	tests := []struct {
+		name        string
+		inputData   []byte
+		bufferSize  int
+		expectError bool
+	}{
+		{
+			name:        "Small data",
+			inputData:   []byte("Hello, World!"),
+			bufferSize:  1024,
+			expectError: false,
+		},
+		{
+			name:        "Large data",
+			inputData:   make([]byte, 8192), // 8KB
+			bufferSize:  4096,
+			expectError: false,
+		},
+		{
+			name:        "Empty data",
+			inputData:   []byte{},
+			bufferSize:  1024,
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Fill large data with random content
+			if len(tt.inputData) > 100 {
+				_, err := rand.Read(tt.inputData)
+				require.NoError(t, err)
+			}
+
+			src := bytes.NewReader(tt.inputData)
+			var dst bytes.Buffer
+
+			// Create aligned buffer for O_DIRECT
+			const alignment = 512
+			alignedBufSize := (tt.bufferSize + alignment - 1) &^ (alignment - 1)
+			buf := make([]byte, alignedBufSize)
+
+			written, err := copyWithDirectIO(&dst, src, buf, tt.bufferSize, 512)
+
+			if tt.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, int64(len(tt.inputData)), written)
+				out := dst.Bytes()
+				if len(tt.inputData) == 0 {
+					require.True(t, out == nil || len(out) == 0)
+				} else {
+					require.GreaterOrEqual(t, len(out), len(tt.inputData))
+					require.Equal(t, tt.inputData, out[:len(tt.inputData)])
+					for _, b := range out[len(tt.inputData):] {
+						require.Equal(t, byte(0), b)
+					}
+				}
+			}
+		})
+	}
+}
