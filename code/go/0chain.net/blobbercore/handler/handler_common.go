@@ -191,6 +191,7 @@ func WithStatusConnectionForWM(handler common.StatusCodeResponderF) common.Statu
 			// Save the write marker data
 			if blobberRes.WriteMarker != nil {
 				writemarker.SaveMarkerData(allocationID, blobberRes.WriteMarker.WM.Timestamp, blobberRes.WriteMarker.WM.ChainLength)
+				notifySyncEvent(allocationID, blobberRes.WriteMarker.WM.ClientID, "file_updated", r.Header.Get("X-App-Session-ID"))
 				trie := blobberRes.Trie
 				if trie != nil && blobberRes.WriteMarker.WM.AllocationRoot != blobberRes.WriteMarker.WM.PreviousAllocationRoot {
 					_ = trie.DeleteNodes()

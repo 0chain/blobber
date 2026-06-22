@@ -87,6 +87,7 @@ func readKeysFromAws() error {
 	return nil
 }
 
+//nolint:unused
 func readKeysFromString(keyFileRaw *string) error {
 	publicKey, privateKey, _, _ = encryption.ReadKeys(
 		bytes.NewBufferString(*keyFileRaw))

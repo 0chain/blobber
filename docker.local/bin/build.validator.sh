@@ -6,7 +6,7 @@ echo $GIT_COMMIT
 
 echo "1> set DOCKER_IMAGE & DOCKER_BUILD"
 if [ -z "$DOCKER_BUILD" ]; then  
-    if [ "x86_64" != "$(uname -m)" ]; then
+    if [ "x86_64" != "$(uname -m)" ] && [ "$(uname)" != "Darwin" ]; then
         #docker buildx use blobber_buildx || docker buildx create --name blobber_buildx --use
         DOCKER_BUILD="buildx build --platform linux/arm64"
     else
@@ -28,4 +28,11 @@ echo "  DOCKER_IMAGE_VALIDATOR=$DOCKER_IMAGE_VALIDATOR"
 
 echo ""
 echo "2> docker build validator"
-DOCKER_BUILDKIT=1 docker $DOCKER_BUILD --progress=plain --build-arg GIT_COMMIT=$GIT_COMMIT --build-arg DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE -f docker.local/validator.Dockerfile . $DOCKER_IMAGE_VALIDATOR
+# Set flags based on build type
+if [[ "$DOCKER_BUILD" == *"buildx"* ]]; then
+    BUILD_FLAGS="--progress=plain"
+else
+    BUILD_FLAGS=""
+fi
+
+docker $DOCKER_BUILD $BUILD_FLAGS --build-arg GIT_COMMIT=$GIT_COMMIT --build-arg DOCKER_IMAGE_BASE=$DOCKER_IMAGE_BASE -f docker.local/validator.Dockerfile . $DOCKER_IMAGE_VALIDATOR

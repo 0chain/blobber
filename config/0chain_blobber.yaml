@@ -1,8 +1,15 @@
 version: "1.0"
 
 logging:
-  level: "info"
+  level: "debug"
   console: true # printing log to console is only supported in development mode
+
+info:
+  name: my_blobber
+  logo_url: https://google.com
+  description: this is my conductor test blobber
+  website_url: https://google.com
+
 
 # for testing
 #  500 MB - 536870912
@@ -10,16 +17,23 @@ logging:
 #    2 GB - 2147483648
 #    3 GB - 3221225472
 #  100 GB - 107374182400
-capacity: 1073741824 # 1 GB bytes total blobber capacity
-read_price: 0.00     # token / GB for reading
-write_price: 0.025    # token / GB / time_unit for writing
+capacity: 10737418240 # 1 GB bytes total blobber capacity
+read_price: 0.01     # token / GB for reading
+write_price: 0.10    # token / GB / time_unit for writing
 price_in_usd: false
 price_worker_in_hours: 12
 
-is_enterprise: false
+# max_offer_duration restrict long contracts where,
+# in the future, prices can be changed
+max_offer_duration: 744h # 31 day
+
+# these timeouts required by blobber to check client pools, perform
+# a task and redeem tokens, it should be big enough
+read_lock_timeout: 1m
+write_lock_timeout: 1m
 
 # update_allocations_interval used to refresh known allocation objects from SC
-update_allocations_interval: 60m
+update_allocations_interval: 1m
 
 #finalize_allocations_interval used to get and finalize empty allocations
 finalize_allocations_interval: 24h
@@ -27,28 +41,19 @@ finalize_allocations_interval: 24h
 # maximum limit on the number of combined directories and files on each allocation
 max_dirs_files: 50000
 
-#recover allocations
-recover_allocations: [""]
-
-# maximum limit on the number of objects in a directory
-max_objects_dir: 1000
-# limit of objects per gb(storage v2)
-max_objects_per_gb: 1000
-
 # delegate wallet (must be set)
-delegate_wallet: '9c693cb14f29917968d6e8c909ebbea3425b4c1bc64b6732cadc2a1869f49be9'
+delegate_wallet: 'c4a3573c7f7c2e31210c1988d49ee2b6c2009fe67613457904ea7109cae1f4c9'
 # maximum allowed number of stake holders
-num_delegates: 10
+num_delegates: 50
 # service charge of the blobber
-service_charge: 0
-# min submit from miners`
-min_submit: 20
+service_charge: 0.10
+# min submit from miners
+min_submit: 50
 # min confirmation from sharder
-min_confirmation: 10
+min_confirmation: 50
 
-block_worker: https://dev.0chain.net/dns
+block_worker: http://198.18.0.98:9091
 
-zauth_server: https://zauth.dev.0chain.net/
 
 rate_limiters:
   # Rate limiters will use this duration to clean unused token buckets.
@@ -74,21 +79,7 @@ rate_limiters:
   # General Request Per Second. This rps is used to rate limit endpoints like copy, rename, get file metadata,
   # get paginated refs, etc. Default is 5
   general_rps: 1600
-  # Number of blocks downloaded in a day. Default is 100GB(the value needs to be in blocks which is data/64KB)
-  block_limit_daily: 1562500
-  # Max blocks per download request. Default is 500
-  block_limit_request: 500
-  # Max blocks in a month for a client. Default is 2000GB(the value needs to be in blocks which is data/64KB)
-  block_limit_monthly: 31250000
-  # Max upload limit in a month for a client. Default is 2000GB(the value needs to be in blocks which is data/64KB)
-  upload_limit_monthly: 31250000
-  # Max commit limit in a month for a client. Default is 30000
-  commit_limit_monthly: 30000
-  # Max commit limit in a day for a client. Default is 1600
-  commit_limit_daily: 1600
-  # Max commit limit with size zero or less in a day for a client. Default is 400
-  commit_zero_limit_daily: 400
-  
+
 server_chain:
   id: "0afc093ffb509f059c55478bc1a60351cef7b4e9c008a53a6cc8241ca8617dfe"
   owner: "edb90b850f2e7e7cbd0a1fa370fdcc5cd378ffbec95363a7bc0e5a98b8ba5759"
@@ -105,7 +96,7 @@ openconnection_cleaner:
 writemarker_redeem:
   frequency: 10
   num_workers: 5
-  max_chain_length: 32
+  max_chain_length: 1
   max_timestamp_gap: 1800 # max timestamp gap to redeem write marker in seconds
   marker_redeem_interval: 10m # interval to check for write markers which are ready to redeem
 readmarker_redeem:
@@ -118,7 +109,7 @@ challenge_response:
   cleanup_gap: 100000
 
 healthcheck:
-  frequency: 60m # send healthcheck to miners every 60 minutes
+  frequency: 60s # send healthcheck to miners every 60 seconds
 
 pg:
   user: postgres
@@ -129,7 +120,11 @@ db:
   password: blobber
   host: postgres
   port: 5432
-  archive_path: "/var/lib/postgresql/hdd"
+
+
+geolocation:
+  latitude: 0
+  longitude: 0
 
 storage:
   files_dir: "/path/to/hdd"
@@ -141,10 +136,9 @@ storage:
 #  Similarly for some file_hash "ef935503b66b1ce026610edf18bffd756a79676a8fe317d951965b77a77c0227" with dir_level [2, 2, 1]
 #  following path is created for the file:
 # {alloc_dir}/ef/93/5/503b66b1ce026610edf18bffd756a79676a8fe317d951965b77a77c0227
-  alloc_dir_level: [2, 1] #TODO sort it out
+  alloc_dir_level: [2, 1]
   file_dir_level: [2, 2, 1]
 
-#TODO remove
 disk_update:
   # defaults to true. If false, blobber has to manually update blobber's capacity upon increase/decrease
   # If blobber has to limit its capacity to 5% of its capacity then it should turn automaci_update to false.
@@ -160,3 +154,9 @@ integration_tests:
 admin:
   username: "admin"
   password: "password"
+
+0box:
+  client_id: "0box_client_id"
+  public_key: "0box_public_key"
+  sync_notify_url: "https://0box.dev.zus.network/v2/sync/notify/blobber"
+  sync_notify_enabled: true

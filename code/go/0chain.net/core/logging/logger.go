@@ -11,8 +11,9 @@ import (
 )
 
 var (
-	Logger *zap.Logger
-	once   sync.Once
+	Logger  *zap.Logger
+	LogFile string // path to current blobber log file, set by InitLogging
+	once    sync.Once
 )
 
 func InitLogging(mode, logDir, logFile string) {
@@ -23,6 +24,7 @@ func InitLogging(mode, logDir, logFile string) {
 
 func initLogging(mode, logDir, logFile string) {
 	var logName = logDir + "/" + logFile
+	LogFile = logName
 
 	var logWriter = getWriteSyncer(logName)
 

@@ -4,14 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/0chain/gosdk/core/transaction"
 	"strconv"
 	"time"
+
+	"github.com/0chain/gosdk/core/transaction"
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 )
 
+// nolint:unused
 type storageScCB struct {
 	done chan struct{}
 	cct  int64
@@ -19,6 +21,7 @@ type storageScCB struct {
 	err  error
 }
 
+// nolint:unused
 func (ssc *storageScCB) OnInfoAvailable(op int, status int, info string, errStr string) {
 	defer func() {
 		ssc.done <- struct{}{}

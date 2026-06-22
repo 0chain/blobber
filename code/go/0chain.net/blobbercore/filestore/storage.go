@@ -833,6 +833,21 @@ func (fs *FileStore) CalculateCurrentDiskCapacity() error {
 	return nil
 }
 
+// GetDiskUsedPct returns the percentage of disk used at mp (0–100).
+// Uses Blocks (total) and Bavail (available to unprivileged processes).
+// Returns 0 and an error when the stat call fails.
+func GetDiskUsedPct(mp string) (int, error) {
+	var st unix.Statfs_t
+	if err := unix.Statfs(mp, &st); err != nil {
+		return 0, err
+	}
+	if st.Blocks == 0 {
+		return 0, nil
+	}
+	used := st.Blocks - st.Bavail
+	return int(used * 100 / st.Blocks), nil
+}
+
 func (fs *FileStore) isMountPoint() bool {
 	if !filepath.IsAbs(fs.mp) {
 		logging.Logger.Error(fmt.Sprintf("%s is not absolute path", fs.mp))

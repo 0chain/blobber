@@ -49,7 +49,7 @@ func SetupDefaultConfig() {
 	viper.SetDefault("service_charge", 0.3)
 
 	viper.SetDefault("update_allocations_interval", time.Duration(-1))
-	viper.SetDefault("finalize_allocations_interval", time.Duration(-1))
+	viper.SetDefault("finalize_allocations_interval", 7*24*time.Hour)
 
 	viper.SetDefault("max_dirs_files", 50000)
 	viper.SetDefault("max_objects_dir", 1000)
@@ -59,6 +59,12 @@ func SetupDefaultConfig() {
 	viper.SetDefault("kv.pebble_cache", 4*1024*1024*1024)
 	viper.SetDefault("kv.pebble_memtable_size", 256*1024*1024)
 	viper.SetDefault("kv.pebble_max_open_files", 10000)
+
+	viper.SetDefault("0box.sync_notify_url", "")
+	viper.SetDefault("0box.sync_notify_enabled", false)
+
+	// DiskWriteThreshold: reject uploads when disk is this % full. 0 = disabled.
+	viper.SetDefault("storage.disk_write_threshold", 90)
 }
 
 /*SetupConfig - setup the configuration system */
@@ -158,6 +164,9 @@ type Config struct {
 
 	// MountPoint is where allocation files are stored. This is basically arranged in RAID5.
 	MountPoint         string
+	// DiskWriteThreshold is the disk-usage percentage (0–100) above which uploads
+	// are rejected with 507 Insufficient Storage. 0 disables the check. Default: 90.
+	DiskWriteThreshold int
 	AllocDirLevel      []int
 	FileDirLevel       []int
 	RecoverAllocations []string
@@ -171,6 +180,9 @@ type Config struct {
 	PebbleCache        int64
 	PebbleMemtableSize int64
 	PebbleMaxOpenFiles int
+
+	SyncNotifyURL     string
+	SyncNotifyEnabled bool
 }
 
 /*Configuration of the system */
@@ -321,6 +333,11 @@ func ReadConfig(deploymentMode int) {
 	Configuration.PebbleCache = viper.GetInt64("kv.pebble_cache")
 	Configuration.PebbleMemtableSize = viper.GetInt64("kv.pebble_memtable_size")
 	Configuration.PebbleMaxOpenFiles = viper.GetInt("kv.pebble_max_open_files")
+
+	Configuration.SyncNotifyURL = viper.GetString("0box.sync_notify_url")
+	Configuration.SyncNotifyEnabled = viper.GetBool("0box.sync_notify_enabled")
+
+	Configuration.DiskWriteThreshold = viper.GetInt("storage.disk_write_threshold")
 }
 
 // StorageSCConfiguration will include all the required sc configs to operate blobber
