@@ -24,6 +24,13 @@ const (
 	UPDATE_DB_INTERVAL = 5 * time.Second //
 	REQUEST_TIMEOUT    = 1 * time.Second //
 	REPAIR_TIMEOUT     = 900             // 15 Minutes
+
+	// FinalizeCountThreshold is the number of pending expired allocations that
+	// triggers an early finalization check (before the normal weekly interval).
+	FinalizeCountThreshold = 100
+	// FinalizeEarlyCheckInterval is the re-check interval when pending expired
+	// allocations exceed FinalizeCountThreshold.
+	FinalizeEarlyCheckInterval = 10 * time.Minute
 )
 
 func StartUpdateWorker(ctx context.Context, interval time.Duration) {
@@ -64,24 +71,45 @@ func UpdateWorker(ctx context.Context, interval time.Duration) {
 }
 
 func FinalizeAllocationsWorker(ctx context.Context, interval time.Duration) {
-	logging.Logger.Info("start finalize allocations worker")
+	if interval <= 0 {
+		interval = 7 * 24 * time.Hour
+	}
+	logging.Logger.Info("start finalize allocations worker", zap.Duration("interval", interval))
 
-	var tk = time.NewTicker(interval)
+	// Run immediately on startup so recently expired allocations are cleaned up
+	// without waiting for the first tick.
+	var pending int
+	_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+		pending = finalizeExpiredAllocations(ctx)
+		return nil
+	})
+
+	nextInterval := interval
+	if pending >= FinalizeCountThreshold {
+		logging.Logger.Info("many expired allocations pending after startup, using early check interval",
+			zap.Int("pending", pending), zap.Duration("early_interval", FinalizeEarlyCheckInterval))
+		nextInterval = FinalizeEarlyCheckInterval
+	}
+
+	tk := time.NewTicker(nextInterval)
 	defer tk.Stop()
-
-	var (
-		tick = tk.C
-		quit = ctx.Done()
-	)
 
 	for {
 		select {
-		case <-tick:
+		case <-tk.C:
 			_ = datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
-				finalizeExpiredAllocations(ctx)
+				pending = finalizeExpiredAllocations(ctx)
 				return nil
 			})
-		case <-quit:
+			// If many allocations remain, check again soon; otherwise resume normal cadence.
+			if pending >= FinalizeCountThreshold {
+				logging.Logger.Info("expired allocations above threshold, continuing early checks",
+					zap.Int("pending", pending), zap.Duration("next_check", FinalizeEarlyCheckInterval))
+				tk.Reset(FinalizeEarlyCheckInterval)
+			} else {
+				tk.Reset(interval)
+			}
+		case <-ctx.Done():
 			return
 		}
 	}
@@ -196,16 +224,19 @@ func updateAllocation(ctx context.Context, a *Allocation, selfBlobberID string) 
 
 }
 
-func finalizeExpiredAllocations(ctx context.Context) {
-	var allocs, err = requestExpiredAllocations()
+// finalizeExpiredAllocations fetches expired allocations from the SC and submits
+// FINALIZE_ALLOCATION transactions for each. Returns the number processed.
+func finalizeExpiredAllocations(ctx context.Context) int {
+	allocs, err := requestExpiredAllocations()
 	if err != nil {
 		logging.Logger.Error("requesting expired allocations from SC", zap.Error(err))
-		return
+		return 0
 	}
 
 	for _, allocID := range allocs {
 		sendFinalizeAllocation(allocID)
 	}
+	return len(allocs)
 }
 
 func requestAllocation(allocID string) (sa *transaction.StorageAllocation, err error) {
@@ -361,8 +392,8 @@ func RecoverTrie(recoverAllocs []string) {
 			return err
 		})
 		if err != nil {
-			logging.Logger.Error("recover_trie_fetch_alloc", zap.Error(err))
-			return
+			logging.Logger.Error("recover_trie_fetch_alloc", zap.String("allocation_id", allocID), zap.Error(err))
+			continue
 		}
 
 		// recover trie of allocation

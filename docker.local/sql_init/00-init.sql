@@ -1,5 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";
-SET log_statement = 'all';
+-- SET log_statement = 'all';  -- Commented out to reduce verbose output
 CREATE DATABASE blobber_meta;
 \connect blobber_meta;
 CREATE USER blobber_user WITH ENCRYPTED PASSWORD 'blobber';

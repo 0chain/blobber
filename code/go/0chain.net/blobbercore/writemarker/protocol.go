@@ -10,9 +10,7 @@ import (
 	. "github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/blobber/code/go/0chain.net/core/node"
 	"github.com/0chain/gosdk/constants"
-
 	"github.com/0chain/gosdk/core/transaction"
-
 	"go.uber.org/zap"
 )
 
@@ -167,10 +165,8 @@ func (wme *WriteMarkerEntity) redeemMarker(ctx context.Context, startSeq int64) 
 
 	}
 
-	hash, out, nonce, txn, err = transaction.SmartContractTxn(STORAGE_CONTRACT_ADDRESS, transaction.SmartContractTxnData{
-		Name:      CLOSE_CONNECTION_SC_NAME,
-		InputArgs: sn,
-	}, true)
+	snData := transaction.SmartContractTxnData{Name: CLOSE_CONNECTION_SC_NAME, InputArgs: sn}
+	hash, out, nonce, txn, err = transaction.SmartContractTxn(STORAGE_CONTRACT_ADDRESS, snData, true)
 	if err != nil {
 		Logger.Error("Failed during sending close connection to the miner. ", zap.String("err:", err.Error()))
 		wme.Status = Failed

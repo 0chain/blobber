@@ -1,0 +1,67 @@
+version: "3"
+services:
+  postgres:
+    container_name: blobber-postgres-${BLOBBER:-1}
+    image: postgres:14
+    environment:
+      POSTGRES_PORT: 5432
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - ../config/postgresql.conf:/etc/postgresql/postgresql.conf
+      - ./blobber${BLOBBER:-1}/data/postgresql:/var/lib/postgresql/data
+      - ./sql_init:/docker-entrypoint-initdb.d
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    networks:
+      testnet0:
+        ipv4_address: 198.18.8.${BLOBBER:-1}
+    restart: on-failure:5
+    shm_size: 4gb 
+
+  validator:
+    container_name: validator-${BLOBBER:-1}
+    image: validator
+    environment:
+      - DOCKER=true
+    depends_on:
+      - postgres
+    volumes:
+      - ../config:/validator/config
+      - ./validator${BLOBBER:-1}/data:/validator/data
+      - ./validator${BLOBBER:-1}/log:/validator/log
+      - ./keys_config:/validator/keysconfig
+    ports:
+      - "506${BLOBBER:-1}:506${BLOBBER:-1}"
+    command: ./bin/validator --port 506${BLOBBER:-1} --hostname 0.0.0.0 --deployment_mode 0 --keys_file keysconfig/b0vnode${BLOBBER:-1}_keys.txt --log_dir /validator/log
+    networks:
+      testnet0:
+        ipv4_address: 198.18.7.${BLOBBER:-1}
+    restart: on-failure:5
+
+  blobber:
+    container_name: blobber-${BLOBBER:-1}
+    image: blobber
+    environment:
+      - DOCKER=true
+    depends_on:
+      - validator
+    volumes:
+      - ../config:/blobber/config
+      - ./blobber${BLOBBER:-1}/files:/blobber/files
+      - ./blobber${BLOBBER:-1}/data:/blobber/data
+      - ./blobber${BLOBBER:-1}/log:/blobber/log
+      - ./keys_config:/blobber/keysconfig
+      - ./blobber${BLOBBER:-1}/data/tmp:/tmp
+    ports:
+      - "505${BLOBBER:-1}:505${BLOBBER:-1}"
+      - "703${BLOBBER:-1}:703${BLOBBER:-1}"
+    command: ./bin/blobber --port 505${BLOBBER:-1} --grpc_port 703${BLOBBER:-1} --hostname 0.0.0.0 --deployment_mode 0 --keys_file keysconfig/b0bnode${BLOBBER:-1}_keys.txt --files_dir /blobber/files --log_dir /blobber/log --db_dir /blobber/data
+    networks:
+      testnet0:
+        ipv4_address: 198.18.6.${BLOBBER:-1}
+    restart: on-failure:5
+
+networks:
+  testnet0:
+    external: true 

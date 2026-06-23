@@ -1,15 +1,9 @@
 package transaction
 
 import (
-	"sync"
 	"time"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
-)
-
-var (
-	Last50Transactions      []string
-	last50TransactionsMutex sync.Mutex
 )
 
 type SmartContractTxnData struct {
@@ -94,13 +88,3 @@ const (
 
 const STORAGE_CONTRACT_ADDRESS = "6dba10422e368813802877a85039d3985d96760ed844092319743fb3a76712d7"
 
-func updateLast50Transactions(data string) {
-	last50TransactionsMutex.Lock()
-	defer last50TransactionsMutex.Unlock()
-
-	if len(Last50Transactions) == 50 {
-		Last50Transactions = Last50Transactions[1:]
-	} else {
-		Last50Transactions = append(Last50Transactions, data)
-	}
-}

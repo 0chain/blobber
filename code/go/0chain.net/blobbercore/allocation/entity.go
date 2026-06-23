@@ -408,5 +408,29 @@ func (a *Allocation) recoverTrie() error {
 			break
 		}
 	}
+
+	// Save the recovered trie root back to allocation's file_meta_root and allocation_root
+	root := trie.GetRoot()
+	if root != nil {
+		rootHash := hex.EncodeToString(root.Hash())
+		allocRoot := encryption.Hash(rootHash + a.ID)
+		numBlocks := root.Weight()
+		logging.Logger.Info("recover_trie_save_root", zap.String("allocation_id", a.ID),
+			zap.String("file_meta_root", rootHash), zap.String("allocation_root", allocRoot),
+			zap.Uint64("num_blocks", numBlocks))
+		err := datastore.GetStore().WithNewTransaction(func(ctx context.Context) error {
+			db := datastore.GetStore().GetTransaction(ctx)
+			return db.Model(&Allocation{}).Where("id = ?", a.ID).Updates(map[string]interface{}{
+				"file_meta_root":  rootHash,
+				"allocation_root": allocRoot,
+				"num_blocks":      numBlocks,
+			}).Error
+		})
+		if err != nil {
+			logging.Logger.Error("recover_trie_save_root", zap.Error(err))
+			return err
+		}
+		Repo.setTrie(a.ID, trie)
+	}
 	return nil
 }

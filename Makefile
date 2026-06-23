@@ -195,3 +195,41 @@ markdown-docs:
 	sed -i '' "s/in\:\ form/in\:\ formData/g" ./swagger.yaml
 	yq -i '(.paths.*.*.parameters.[] | select(.in == "formData") | select(.type == "object")).type = "file"' swagger.yaml
 	swagger generate markdown -f ./swagger.yaml --output=swagger.md
+
+
+.PHONY: clear-all-blobbers
+clear-all-blobbers:
+	@echo "=========================[ Clearing all blobber folders ]========================="
+	@for i in {1..6}; do \
+		echo "Clearing blobber$$i..."; \
+		rm -rf docker.local/blobber$$i/*; \
+		echo "Clearing validators$$i..."; \
+		rm -rf docker.local/validator$$i/*; \
+	done; \
+	echo "All blobber and validator folders cleared successfully!"
+
+.PHONY: blobbers_start
+blobbers_start:
+ifndef num
+	$(error "num parameter is required. Usage: make blobbers_start num=<number>")
+endif
+	@echo "Starting $(num) blobbers in parallel..."
+	@for i in $$(seq 1 $(num)); do \
+		echo "Starting blobber$$i..."; \
+		(cd docker.local/blobber$$i && BLOBBER=$$i ../bin/blobber.start_bls.sh --background &); \
+	done; \
+	echo "Waiting for blobbers to initialize..."; \
+	sleep 20; \
+	echo "All blobbers started!"
+
+.PHONY: blobbers_stop
+blobbers_stop:
+	@echo "Stopping all blobbers..."
+	@for i in $$(seq 1 6); do \
+		if [ -d "docker.local/blobber$$i" ]; then \
+			echo "Stopping blobber$$i..."; \
+			(cd docker.local/blobber$$i && ../bin/blobber.stop_bls.sh &); \
+			sleep 5; \
+		fi; \
+	done; \
+	echo "All blobbers stopped!"
