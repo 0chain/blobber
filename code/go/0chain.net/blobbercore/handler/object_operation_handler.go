@@ -526,6 +526,7 @@ func (fsh *StorageHandler) DownloadFile(ctx context.Context, r *http.Request) (i
 			EncryptedKey:              fileref.EncryptedKey,
 			ReEncryptionKey:           shareInfo.ReEncryptionKey,
 			ClientEncryptionPublicKey: shareInfo.ClientEncryptionPublicKey,
+			LookupHash:                fileref.LookupHash,
 		}
 	} else {
 		chunkEncoder = &RawChunkEncoder{}

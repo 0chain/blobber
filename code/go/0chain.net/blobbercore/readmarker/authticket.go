@@ -19,7 +19,6 @@ type AuthTicket struct {
 	OwnerID             string           `json:"owner_id"`
 	AllocationID        string           `json:"allocation_id"`
 	FilePathHash        string           `json:"file_path_hash"`
-	ActualFileHash      string           `json:"actual_file_hash"`
 	FileName            string           `json:"file_name"`
 	RefType             string           `json:"reference_type"`
 	Expiration          common.Timestamp `json:"expiration"`
@@ -41,7 +40,6 @@ func (rm *AuthTicket) GetHashData() string {
 		rm.ReEncryptionKey,
 		rm.Expiration,
 		rm.Timestamp,
-		rm.ActualFileHash,
 		rm.Encrypted,
 	)
 	return hashData

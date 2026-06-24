@@ -45,12 +45,18 @@ func setupDownloadHandlers() (*mux.Router, map[string]string) {
 	}
 }
 
+// getLookupHash generates a deterministic lookup hash for testing
+func getLookupHash() string {
+	return fileref.GetReferenceLookup("test-allocation-id", "/test/file/path")
+}
+
 func getEncryptionScheme(mnemonic string) (zencryption.EncryptionScheme, error) {
 	encscheme := zencryption.NewEncryptionScheme()
 	if _, err := encscheme.Initialize(mnemonic); err != nil {
 		return nil, err
 	}
-	encscheme.InitForEncryption("filetype:audio")
+	lookupHash := getLookupHash()
+	encscheme.InitForEncryption(lookupHash)
 	return encscheme, nil
 }
 
@@ -623,7 +629,8 @@ func TestHandlers_Download(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				reEncryptionKey, err := ownerScheme.GetReGenKey(guestPublicEncryptedKey, "filetype:audio")
+				lookupHash := getLookupHash()
+				reEncryptionKey, err := ownerScheme.GetReGenKey(guestPublicEncryptedKey, lookupHash)
 
 				if err != nil {
 					t.Fatal(err)
@@ -746,7 +753,8 @@ func TestHandlers_Download(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				reEncryptionKey, _ := ownerScheme.GetReGenKey(gpbk, "filetype:audio")
+				lookupHash := getLookupHash()
+				reEncryptionKey, _ := ownerScheme.GetReGenKey(gpbk, lookupHash)
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace_share_info" WHERE`)).
 					WithArgs(guestClient.ClientID, rootPathHash).
 					WillReturnRows(
@@ -866,7 +874,8 @@ func TestHandlers_Download(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				reEncryptionKey, _ := ownerScheme.GetReGenKey(gpbk, "filetype:audio")
+				lookupHash := getLookupHash()
+				reEncryptionKey, _ := ownerScheme.GetReGenKey(gpbk, lookupHash)
 				mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "marketplace_share_info" WHERE`)).
 					WithArgs(guestClient.ClientID, rootPathHash).
 					WillReturnRows(

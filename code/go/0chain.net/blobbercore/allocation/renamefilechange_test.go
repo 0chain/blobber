@@ -21,6 +21,7 @@ import (
 	coreNetwork "github.com/0chain/gosdk/core/conf"
 	"github.com/0chain/gosdk/core/zcncrypto"
 	zencryption "github.com/0chain/gosdk/zboxcore/encryption"
+	"github.com/0chain/gosdk/zboxcore/fileref"
 	"github.com/0chain/gosdk/zcncore"
 	"github.com/DATA-DOG/go-sqlmock"
 	mocket "github.com/selvatico/go-mocket"
@@ -37,13 +38,19 @@ func resetMockFileBlock() {
 
 var encscheme zencryption.EncryptionScheme
 
+// getLookupHash generates a deterministic lookup hash for testing
+func getLookupHash() string {
+	return fileref.GetReferenceLookup("test-allocation-id", "/test/file/path")
+}
+
 func setupEncryptionScheme() {
 	encscheme = zencryption.NewEncryptionScheme()
 	mnemonic := client.GetClient().Mnemonic
 	if _, err := encscheme.Initialize(mnemonic); err != nil {
 		panic("initialize encscheme")
 	}
-	encscheme.InitForEncryption("filetype:audio")
+	lookupHash := getLookupHash()
+	encscheme.InitForEncryption(lookupHash)
 }
 
 func setup(t *testing.T) {
