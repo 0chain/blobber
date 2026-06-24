@@ -4,9 +4,9 @@
 [![GoDoc](https://godoc.org/github.com/0chain/blobber?status.png)](https://godoc.org/github.com/0chain/blobber)
 [![codecov](https://codecov.io/gh/0chain/blobber/branch/staging/graph/badge.svg)](https://codecov.io/gh/0chain/blobber)
 
-# Blobber - A storage provider in Z체s network
+# Blobber - A storage provider in the Z체s network
 
-This readme provides instructions on how to setup and register blobber to the Z체s network .
+This readme provides instructions on setting up and registering blobber to the Z체s network.
 
 ## Table of Contents  
 
@@ -16,7 +16,7 @@ This readme provides instructions on how to setup and register blobber to the Z�
 - [Building and Starting the Blobber](#building-and-starting-the-nodes)
   - [Building on Standard Hardware](#building-on-standard-hardware)
   - [Building on apple silicon](#building-on-apple-silicon) 
-- [Connect to other network](#connect-to-other-network)
+- [Connect to another network](#connect-to-other-network)
 - [Miscellaneous](#miscellaneous) 
 - [Cleanup](#cleanup)
 - [Run blobber on ec2 / vm / bare metal](https://github.com/0chain/blobber/blob/master/docker.aws/README.md)
@@ -26,15 +26,15 @@ This readme provides instructions on how to setup and register blobber to the Z�
 ## Z체s Overview
 [Z체s](https://zus.network/) is a high-performance cloud on a fast blockchain offering privacy and configurable uptime. It is an alternative to traditional cloud S3 and has shown better performance on a test network due to its parallel data architecture. The technology uses erasure code to distribute the data between data and parity servers. Z체s storage is configurable to provide flexibility for IT managers to design for desired security and uptime, and can design a hybrid or a multi-cloud architecture with a few clicks using [Blimp's](https://blimp.software/) workflow, and can change redundancy and providers on the fly.
 
-For instance, the user can start with 10 data and 5 parity providers and select where they are located globally, and later decide to add a provider on-the-fly to increase resilience, performance, or switch to a lower cost provider.
+For instance, the user can start with 10 data and 5 parity providers, select where they are located globally, and later decide to add a provider on-the-fly to increase resilience and performance or switch to a lower-cost provider.
 
-Users can also add their own servers to the network to operate in a hybrid cloud architecture. Such flexibility allows the user to improve their regulatory, content distribution, and security requirements with a true multi-cloud architecture. Users can also construct a private cloud with all of their own servers rented across the globe to have a better content distribution, highly available network, higher performance, and lower cost.
+Users can also add their own servers to the network to operate in a hybrid cloud architecture. Such flexibility allows users to improve their regulatory, content distribution, and security requirements with an authentic multi-cloud architecture. Users can also construct a private cloud with all their own servers rented across the globe to have better content distribution, a highly available network, higher performance, and lower cost.
 
-[The QoS protocol](https://medium.com/0chain/qos-protocol-weekly-debrief-april-12-2023-44524924381f) is time-based where the blockchain challenges a provider on a file that the provider must respond within a certain time based on its size to pass. This forces the provider to have a good server and data center performance to earn rewards and income.
+[The QoS protocol](https://medium.com/0chain/qos-protocol-weekly-debrief-april-12-2023-44524924381f) is time-based where the blockchain challenges a provider on a file that the provider must respond within a specific time based on its size to pass. This forces the provider to have a good server and data center performance to earn rewards and income.
 
 The [privacy protocol](https://zus.network/build) from Z체s is unique where a user can easily share their encrypted data with their business partners, friends, and family through a proxy key sharing protocol, where the key is given to the providers, and they re-encrypt the data using the proxy key so that only the recipient can decrypt it with their private key.
 
-Z체s has ecosystem apps to encourage traditional storage consumption such as [Blimp](https://blimp.software/), a S3 server and cloud migration platform, and [Vult](https://vult.network/), a personal cloud app to store encrypted data and share privately with friends and family, and [Chalk](https://chalk.software/), a high-performance story-telling storage solution for NFT artists.
+Z체s has ecosystem apps to encourage traditional storage consumption, such as [Blimp](https://blimp.software/), an S3 server and cloud migration platform, and [Vult](https://vult.network/), a personal cloud app to store encrypted data and share privately with friends and family, and [Chalk](https://chalk.software/), a high-performance story-telling storage solution for NFT artists.
 
 Other apps are [Bolt](https://bolt.holdings/), a wallet that is very secure with air-gapped 2FA split-key protocol to prevent hacks from compromising your digital assets, and it enables you to stake and earn from the storage providers; [Atlus](https://atlus.cloud/), a blockchain explorer and [Chimney](https://demo.chimney.software/), which allows anyone to join the network and earn using their server or by just renting one, with no prior knowledge required.
 
@@ -46,8 +46,9 @@ Other apps are [Bolt](https://bolt.holdings/), a wallet that is very secure with
  - Linux (Ubuntu Preferred) Version: 20.04 and Above
  - Mac(Apple Silicon or Intel) Version: Big Sur and Above
  - Windows(Requires WSL ) Version: Windows 11 or 10 version 2004 and above
- - Docker is available for Linux, macOS and Windows platforms. Find instructions for the preferred operating system [here](https://docs.docker.com/engine/install/#supported-platforms).
-
+ - Docker is available for Linux, macOS, and Windows platforms. Find instructions for the preferred operating system [here](https://docs.docker.com/engine/install/#supported-pl 
+ atforms).
+   
 ### Directory Setup for Blobbers
 
 1. Clone the Blobber repository using the command
@@ -67,7 +68,7 @@ chmod +x ./docker.local/bin/blobber.init.setup-mac.sh
 ```
 ## Building and Starting the Nodes
   
-1. Setup a network called testnet0 for each of these node containers to talk to each other.
+1. Setup a network called testnet0 for each node container to talk to each other.
  
  ```
 docker network create --driver=bridge --subnet=198.18.0.0/15 --gateway=198.18.0.255 testnet0
