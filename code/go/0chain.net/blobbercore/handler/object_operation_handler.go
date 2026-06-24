@@ -575,6 +575,7 @@ func (fsh *StorageHandler) CreateConnection(ctx context.Context, r *http.Request
 
 	valid, err := verifySignatureFromRequest(allocationTx, r.Header.Get(common.ClientSignatureHeader), r.Header.Get(common.ClientSignatureHeaderV2), allocationObj.OwnerPublicKey)
 	if !valid || err != nil {
+		logging.Logger.Error("invalid_signature", zap.Any("err", err), zap.Bool("valid", valid), zap.String("allocation_tx", allocationTx), zap.String("client_signature_v2", r.Header.Get(common.ClientSignatureHeaderV2)), zap.String("base_url", node.Self.GetURLBase()), zap.String("owner_public_key", allocationObj.OwnerPublicKey))
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
