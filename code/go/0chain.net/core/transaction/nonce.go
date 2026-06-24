@@ -1,15 +1,17 @@
 package transaction
 
 import (
-	"github.com/0chain/gosdk/core/client"
 	"sync"
 	"time"
+
+	"github.com/0chain/gosdk/core/client"
 
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
 	"github.com/0chain/gosdk/zcncore"
 	"go.uber.org/zap"
 )
 
+// nolint:unused
 var monitor = &nonceMonitor{
 	failed:                   map[int64]int64{},
 	used:                     map[int64]time.Time{},
@@ -17,6 +19,7 @@ var monitor = &nonceMonitor{
 	shouldRefreshFromBalance: true,
 }
 
+// nolint:unused
 type nonceMonitor struct {
 	sync.Mutex
 	failed                   map[int64]int64
@@ -25,6 +28,7 @@ type nonceMonitor struct {
 	shouldRefreshFromBalance bool
 }
 
+// nolint:unused
 func (m *nonceMonitor) getNextUnusedNonce() int64 {
 	m.Lock()
 	defer m.Unlock()
@@ -43,6 +47,7 @@ func (m *nonceMonitor) getNextUnusedNonce() int64 {
 	}
 }
 
+// nolint:unused
 func (m *nonceMonitor) recordFailedNonce(nonce int64) {
 	m.Lock()
 	defer m.Unlock()
@@ -63,6 +68,7 @@ func (m *nonceMonitor) recordFailedNonce(nonce int64) {
 	}
 }
 
+// nolint:unused
 func (m *nonceMonitor) recordSuccess(nonce int64) {
 	m.Lock()
 	defer m.Unlock()
@@ -83,6 +89,7 @@ func (m *nonceMonitor) recordSuccess(nonce int64) {
 	}
 }
 
+// nolint:unused
 func (m *nonceMonitor) refreshFromBalance() {
 	logging.Logger.Info("Refreshing nonce from balance.")
 
@@ -95,12 +102,14 @@ func (m *nonceMonitor) refreshFromBalance() {
 	m.used = make(map[int64]time.Time)
 }
 
+// nolint:unused
 type getNonceCallBack struct {
 	waitCh   chan struct{}
 	nonce    int64
 	hasError bool
 }
 
+// nolint:unused
 func (g *getNonceCallBack) OnNonceAvailable(status int, nonce int64, info string) {
 	if status != zcncore.StatusSuccess {
 		g.hasError = true

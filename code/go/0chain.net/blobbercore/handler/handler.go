@@ -257,6 +257,26 @@ func setupHandlers(s *mux.Router) {
 		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(ListShare)))).
 		Methods(http.MethodOptions, http.MethodGet)
 
+	// NEW: Revoke public share endpoint
+	s.HandleFunc("/v1/marketplace/shareinfo/public/{allocation}",
+		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(RevokePublicShare)))).
+		Methods(http.MethodOptions, http.MethodDelete)
+
+	// NEW: Add specific recipient removal endpoint
+	s.HandleFunc("/v1/marketplace/shareinfo/public/recipient/{allocation}",
+		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(RemovePublicShareRecipient)))).
+		Methods(http.MethodOptions, http.MethodDelete)
+
+	// NEW: Add check public share exists endpoint
+	s.HandleFunc("/v1/marketplace/shareinfo/public/check/{allocation}",
+		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(CheckPublicShareExists)))).
+		Methods(http.MethodOptions, http.MethodGet)
+
+	// NEW: Add get public share recipients endpoint
+	s.HandleFunc("/v1/marketplace/shareinfo/public/recipients/{allocation}",
+		RateLimitByGeneralRL(common.ToJSONResponse(WithConnection(GetPublicShareRecipients)))).
+		Methods(http.MethodOptions, http.MethodGet)
+
 	// lightweight http handler without heavy postgres transaction to improve performance
 
 	s.HandleFunc("/v1/writemarker/lock/{allocation}",
@@ -1747,6 +1767,11 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, common.NewError("invalid_signature", "Invalid signature")
 	}
 
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	if clientID != allocationObj.OwnerID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
 	path, _ := common.GetField(r, "path")
 	if path == "" {
 		return nil, common.NewError("invalid_parameters", "Invalid file path")
@@ -1758,13 +1783,68 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
 	}
 
+	err = reference.DeleteShareInfo(ctx, &reference.ShareInfo{
+		OwnerID:      clientID,
+		ClientID:     refereeClientID,
+		FilePathHash: filePathHash,
+		ShareType:    reference.ShareTypePrivate,
+	})
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		resp := map[string]interface{}{
+			"status":  http.StatusNotFound,
+			"message": "Path not found",
+		}
+		return resp, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	resp := map[string]interface{}{
+		"status":  http.StatusNoContent,
+		"message": "Path successfully removed from allocation",
+	}
+	return resp, nil
+}
+
+func RevokePublicShare(ctx context.Context, r *http.Request) (interface{}, error) {
+
+	ctx = setupHandlerContext(ctx, r)
+
+	allocationID := ctx.Value(constants.ContextKeyAllocationID).(string)
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, allocationTx, true)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation ID passed."+err.Error())
+	}
+
+	sign := r.Header.Get(common.ClientSignatureHeader)
+	signV2 := r.Header.Get(common.ClientSignatureHeaderV2)
+
+	valid, err := verifySignatureFromRequest(allocationTx, sign, signV2, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
 	clientID := ctx.Value(constants.ContextKeyClient).(string)
 	if clientID != allocationObj.OwnerID {
 		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
 	}
 
-	err = reference.DeleteShareInfo(ctx, &reference.ShareInfo{
-		ClientID:     refereeClientID,
+	path, _ := common.GetField(r, "path")
+	if path == "" {
+		return nil, common.NewError("invalid_parameters", "Invalid file path")
+	}
+
+	filePathHash := fileref.GetReferenceLookup(allocationID, path)
+	_, err = reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, filePathHash, []string{"id", "type"})
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+	}
+
+	err = reference.DeletePublicShareInfo(ctx, &reference.ShareInfo{
+		OwnerID:      clientID,
 		FilePathHash: filePathHash,
 	})
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -1784,6 +1864,308 @@ func RevokeShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		"message": "Path successfully removed from allocation",
 	}
 	return resp, nil
+}
+
+// swagger:route DELETE /v1/marketplace/shareinfo/public/recipient/{allocation} RemovePublicShareRecipient
+// Removes a specific recipient from a public share.
+// Handle remove specific recipient from public share requests.
+//
+// parameters:
+//
+//	  +name: allocation
+//	    description: TxHash of the allocation in question.
+//	    in: path
+//	    required: true
+//	    type: string
+//		 +name: X-App-Client-ID
+//	    description: The ID/Wallet address of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		 +name: X-App-Client-Key
+//		   description: The key of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		 +name: ALLOCATION-ID
+//		   description: The ID of the allocation in question.
+//	    in: header
+//	    type: string
+//	    required: true
+//	 +name: X-App-Client-Signature
+//	    description: Digital signature of the client used to verify the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//	 +name: X-App-Client-Signature-V2
+//	    description: Digital signature of the client used to verify the request. Overrides X-App-Client-Signature if provided.
+//	    in: header
+//	    type: string
+//
+// +name: path
+//
+//	description: Path of the file to be shared.
+//	in: query
+//	type: string
+//	required: true
+//
+// +name: recipient_client_id
+//
+//	description: The ID of the client to remove from the public share.
+//	in: query
+//	type: string
+//	required: true
+//
+// responses:
+//
+//		200:
+//	 400:
+func RemovePublicShareRecipient(ctx context.Context, r *http.Request) (interface{}, error) {
+	ctx = setupHandlerContext(ctx, r)
+
+	allocationID := ctx.Value(constants.ContextKeyAllocationID).(string)
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, allocationTx, true)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation ID passed."+err.Error())
+	}
+
+	sign := r.Header.Get(common.ClientSignatureHeader)
+	signV2 := r.Header.Get(common.ClientSignatureHeaderV2)
+
+	valid, err := verifySignatureFromRequest(allocationTx, sign, signV2, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	if clientID != allocationObj.OwnerID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	path, _ := common.GetField(r, "path")
+	if path == "" {
+		return nil, common.NewError("invalid_parameters", "Invalid file path")
+	}
+
+	recipientClientID, _ := common.GetField(r, "recipientClientId")
+	if recipientClientID == "" {
+		return nil, common.NewError("invalid_parameters", "Invalid recipient client ID")
+	}
+
+	filePathHash := fileref.GetReferenceLookup(allocationID, path)
+	_, err = reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, filePathHash, []string{"id", "type"})
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+	}
+
+	// Remove specific recipient from public share
+	err = reference.RemovePublicShareRecipient(ctx, &reference.ShareInfo{
+		OwnerID:      clientID,
+		ClientID:     recipientClientID,
+		FilePathHash: filePathHash,
+	})
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		resp := map[string]interface{}{
+			"status":  http.StatusNotFound,
+			"message": "Public share recipient not found",
+		}
+		return resp, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	resp := map[string]interface{}{
+		"status":  http.StatusNoContent,
+		"message": "Public share recipient successfully removed",
+	}
+	return resp, nil
+}
+
+// swagger:route GET /v1/marketplace/shareinfo/public/check/{allocation} CheckPublicShareExists
+// Checks if a public share exists for a file.
+// Handle check public share exists requests.
+//
+// parameters:
+//
+//	  +name: allocation
+//	    description: TxHash of the allocation in question.
+//	    in: path
+//	    required: true
+//	    type: string
+//		 +name: X-App-Client-ID
+//	    description: The ID/Wallet address of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		 +name: X-App-Client-Key
+//		   description: The key of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		 +name: ALLOCATION-ID
+//		   description: The ID of the allocation in question.
+//	    in: header
+//	    type: string
+//	    required: true
+//	 +name: X-App-Client-Signature
+//	    description: Digital signature of the client used to verify the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//	 +name: X-App-Client-Signature-V2
+//	    description: Digital signature of the client used to verify the request. Overrides X-App-Client-Signature if provided.
+//	    in: header
+//	    type: string
+//
+// +name: path
+//
+//	description: Path of the file to check.
+//	in: query
+//	type: string
+//	required: true
+//
+// responses:
+//
+//		200:
+//	 400:
+func CheckPublicShareExists(ctx context.Context, r *http.Request) (interface{}, error) {
+	ctx = setupHandlerContext(ctx, r)
+
+	allocationID := ctx.Value(constants.ContextKeyAllocationID).(string)
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, allocationTx, true)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation ID passed."+err.Error())
+	}
+
+	sign := r.Header.Get(common.ClientSignatureHeader)
+	signV2 := r.Header.Get(common.ClientSignatureHeaderV2)
+
+	valid, err := verifySignatureFromRequest(allocationTx, sign, signV2, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	if clientID != allocationObj.OwnerID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	path, _ := common.GetField(r, "path")
+	if path == "" {
+		return nil, common.NewError("invalid_parameters", "Invalid file path")
+	}
+
+	filePathHash := fileref.GetReferenceLookup(allocationID, path)
+	_, err = reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, filePathHash, []string{"id", "type"})
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+	}
+
+	// Check if public share exists for this owner and file
+	exists, err := reference.CheckPublicShareExists(ctx, clientID, filePathHash)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := map[string]interface{}{
+		"exists": exists,
+		"path":   path,
+	}
+	return resp, nil
+}
+
+// swagger:route GET /v1/marketplace/shareinfo/public/recipients/{allocation} GetPublicShareRecipients
+// Gets all recipients of a public share.
+// Handle get public share recipients requests.
+//
+// parameters:
+//
+//	  +name: allocation
+//	    description: TxHash of the allocation in question.
+//	    in: path
+//	    required: true
+//	    type: string
+//		 +name: X-App-Client-ID
+//	    description: The ID/Wallet address of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		 +name: X-App-Client-Key
+//		   description: The key of the client sending the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//		 +name: ALLOCATION-ID
+//		   description: The ID of the allocation in question.
+//	    in: header
+//	    type: string
+//	    required: true
+//	 +name: X-App-Client-Signature
+//	    description: Digital signature of the client used to verify the request.
+//	    in: header
+//	    type: string
+//	    required: true
+//	 +name: X-App-Client-Signature-V2
+//	    description: Digital signature of the client used to verify the request. Overrides X-App-Client-Signature if provided.
+//	    in: header
+//	    type: string
+//
+// +name: path
+//
+//	description: Path of the file to get recipients for.
+//	in: query
+//	type: string
+//	required: true
+//
+// responses:
+//
+//		200:
+//	 400:
+func GetPublicShareRecipients(ctx context.Context, r *http.Request) (interface{}, error) {
+	ctx = setupHandlerContext(ctx, r)
+
+	allocationID := ctx.Value(constants.ContextKeyAllocationID).(string)
+	allocationTx := ctx.Value(constants.ContextKeyAllocation).(string)
+	allocationObj, err := storageHandler.verifyAllocation(ctx, allocationID, allocationTx, true)
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid allocation ID passed."+err.Error())
+	}
+
+	sign := r.Header.Get(common.ClientSignatureHeader)
+	signV2 := r.Header.Get(common.ClientSignatureHeaderV2)
+
+	valid, err := verifySignatureFromRequest(allocationTx, sign, signV2, allocationObj.OwnerPublicKey)
+	if !valid || err != nil {
+		return nil, common.NewError("invalid_signature", "Invalid signature")
+	}
+
+	clientID := ctx.Value(constants.ContextKeyClient).(string)
+	if clientID != allocationObj.OwnerID {
+		return nil, common.NewError("invalid_operation", "Operation needs to be performed by the owner of the allocation")
+	}
+
+	path, _ := common.GetField(r, "path")
+	if path == "" {
+		return nil, common.NewError("invalid_parameters", "Invalid file path")
+	}
+
+	filePathHash := fileref.GetReferenceLookup(allocationID, path)
+	_, err = reference.GetLimitedRefFieldsByLookupHash(ctx, allocationID, filePathHash, []string{"id", "type"})
+	if err != nil {
+		return nil, common.NewError("invalid_parameters", "Invalid file path. "+err.Error())
+	}
+
+	// Get all recipients of the public share
+	recipients, err := reference.GetPublicShareRecipients(ctx, clientID, filePathHash)
+	if err != nil {
+		return nil, err
+	}
+
+	return recipients, nil
 }
 
 // swagger:route POST /v1/marketplace/shareinfo/{allocation} PostShareInfo
@@ -1908,8 +2290,16 @@ func InsertShare(ctx context.Context, r *http.Request) (interface{}, error) {
 		ExpiryAt:                  common.ToTime(authTicket.Expiration).UTC(),
 		AvailableAt:               common.ToTime(availableAt).UTC(),
 	}
+	shareType := r.FormValue("share_type")
+	if shareType == "" {
+		shareType = reference.ShareTypePrivate
+	}
+	if shareType != reference.ShareTypePublic && shareType != reference.ShareTypePrivate {
+		shareType = reference.ShareTypePrivate
+	}
+	shareInfo.ShareType = shareType
 
-	existingShare, _ := reference.GetShareInfo(ctx, authTicket.ClientID, authTicket.FilePathHash)
+	existingShare, _ := reference.GetShareInfoByType(ctx, authTicket.ClientID, authTicket.FilePathHash, shareType)
 
 	if existingShare != nil && len(existingShare.OwnerID) > 0 {
 		err = reference.UpdateShareInfo(ctx, &shareInfo)
