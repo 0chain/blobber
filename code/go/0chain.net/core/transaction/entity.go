@@ -45,6 +45,7 @@ type StorageNode struct {
 	StakePoolSettings StakePoolSettings `json:"stake_pool_settings"`
 	IsEnterprise      bool              `json:"is_enterprise"`
 	StorageVersion    int               `json:"storage_version"`
+	ManagingWallet    string            `json:"managing_wallet"`
 }
 
 type BlobberAllocation struct {

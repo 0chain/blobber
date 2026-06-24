@@ -26,6 +26,8 @@ func main() {
 		panic(err)
 	}
 
+	common.Set0boxDetails()
+
 	if err := setupNode(); err != nil {
 		logging.Logger.Error("Error setting up blobber node " + err.Error())
 		panic(err)

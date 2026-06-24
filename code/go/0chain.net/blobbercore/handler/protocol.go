@@ -3,6 +3,8 @@ package handler
 import (
 	"context"
 	"errors"
+	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
+	"strings"
 	"sync"
 
 	"github.com/0chain/gosdk/core/client"
@@ -10,7 +12,6 @@ import (
 
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/allocation"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/config"
-	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/datastore"
 	"github.com/0chain/blobber/code/go/0chain.net/blobbercore/filestore"
 	"github.com/0chain/blobber/code/go/0chain.net/core/common"
 	"github.com/0chain/blobber/code/go/0chain.net/core/logging"
@@ -70,6 +71,8 @@ func getStorageNode() (*transaction.StorageNode, error) {
 	sn.IsEnterprise = config.Configuration.IsEnterprise
 	sn.StorageVersion = allocation.StorageV2
 
+	sn.ManagingWallet = common.ClientId0box
+
 	return sn, nil
 }
 
@@ -80,15 +83,10 @@ func RegisterBlobber(ctx context.Context) error {
 		return e
 	})
 
-	if err != nil { // blobber is not registered yet
-		txn, err := sendSmartContractBlobberAdd()
-		if err != nil {
-			logging.Logger.Error("Error in add blobber", zap.Any("err", err))
-			return err
-		}
-
-		logging.Logger.Info("Verified blobber register transaction", zap.String("txn_hash", txn.Hash), zap.Any("txn_output", txn.TransactionOutput))
-		return nil
+	_, err = sendSmartContractBlobberAdd()
+	if err != nil && !strings.Contains(err.Error(), "blobber already exists") {
+		logging.Logger.Error("Error in add blobber", zap.Any("err", err))
+		return err
 	}
 
 	txnHash, err := SendHealthCheck(common.ProviderTypeBlobber)
