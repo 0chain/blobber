@@ -2,6 +2,7 @@ package writemarker
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"strings"
 	"sync"
@@ -80,7 +81,9 @@ func SaveMarkerData(allocationID string, timestamp common.Timestamp, chainLength
 func CheckProcessingMarker(allocationID string) bool {
 	markerDataMut.Lock()
 	defer markerDataMut.Unlock()
+	fmt.Println("CheckProcessingMarker", allocationID)
 	if data, ok := markerDataMap[allocationID]; ok {
+		fmt.Println("CheckProcessingMarker: data.processing", data.processing)
 		return data.processing
 	}
 	return false
