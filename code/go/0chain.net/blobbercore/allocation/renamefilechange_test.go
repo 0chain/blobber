@@ -96,11 +96,6 @@ func setupMockForFileManagerInit(mock sqlmock.Sqlmock) {
 		),
 		)
 
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT count(*) FROM "reference_objects" WHERE`)).
-		WillReturnRows(
-			sqlmock.NewRows([]string{"count"}).AddRow(1000),
-		)
-
 	mock.ExpectCommit()
 }
 

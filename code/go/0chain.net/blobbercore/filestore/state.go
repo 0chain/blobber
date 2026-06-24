@@ -65,6 +65,9 @@ func (fs *FileStore) initMap() error {
 			allocsMap := make(map[string]*allocation)
 
 			for _, dbAlloc := range dbAllocations {
+				if dbAlloc.CleanedUp || dbAlloc.Finalized {
+					continue
+				}
 				a := allocation{
 					allocatedSize: uint64(dbAlloc.BlobberSize),
 					mu:            &sync.Mutex{},
@@ -72,12 +75,7 @@ func (fs *FileStore) initMap() error {
 				}
 
 				allocsMap[dbAlloc.ID] = &a
-				if dbAlloc.StorageVersion == 0 {
-					err := getStorageDetails(ctx, &a, dbAlloc.ID)
-					if err != nil {
-						return err
-					}
-				} else {
+				if dbAlloc.StorageVersion != 0 {
 					a.filesNumber = uint64(dbAlloc.NumObjects)
 				}
 				a.filesSize = uint64(dbAlloc.BlobberSizeUsed)
@@ -154,22 +152,6 @@ type ref struct {
 
 func (ref) TableName() string {
 	return "reference_objects"
-}
-
-func getStorageDetails(ctx context.Context, a *allocation, ID string) error {
-	db := datastore.GetStore().GetTransaction(ctx)
-	r := map[string]interface{}{
-		"allocation_id": ID,
-		"type":          "f",
-	}
-	var totalFiles int64
-	if err := db.Model(&ref{}).Where(r).Count(&totalFiles).Error; err != nil {
-		return err
-	}
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.filesNumber = uint64(totalFiles)
-	return nil
 }
 
 // UpdateAllocationMetaData only updates if allocation size has changed or new allocation is allocated. Must use allocationID.
