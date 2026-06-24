@@ -116,6 +116,7 @@ type BlobberInfo struct {
 	ChainId          string      `json:"chain_id"`
 	BlobberId        string      `json:"blobber_id"`
 	BlobberPublicKey string      `json:"public_key"`
+	IsSplit          bool        `json:"is_split"`
 	BuildTag         string      `json:"build_tag"`
 	Stats            interface{} `json:"stats"`
 }
@@ -127,6 +128,7 @@ func GetBlobberInfoJson() BlobberInfo {
 		ChainId:          mc.ID,
 		BlobberId:        node.Self.ID,
 		BlobberPublicKey: node.Self.PublicKey,
+		IsSplit:          node.Self.GetWallet().IsSplit,
 		BuildTag:         build.BuildTag,
 	}
 
