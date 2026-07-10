@@ -23,6 +23,9 @@ const SLEEP_BETWEEN_RETRIES = 5
 func NewHTTPRequest(method, url string, data []byte) (*http.Request, context.Context, context.CancelFunc, error) {
 	requestHash := encryption.Hash(data)
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(data))
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Access-Control-Allow-Origin", "*")
 	req.Header.Set("X-App-Client-ID", node.Self.ID)
